@@ -214,16 +214,16 @@ const ScheduleView = () => {
                         <td key={dayIndex} className="p-3 border-b text-center">
                           <div className="space-y-2">
                             <Select
-                              value={schedule[round.id]?.[dayKey] || ''}
+                              value={schedule[round.id]?.[dayKey] || '__unassigned__'}
                               onValueChange={(value) => 
-                                handleAssignment(round.id, dayKey, value || null)
+                                handleAssignment(round.id, dayKey, value === '__unassigned__' ? null : value)
                               }
                             >
                               <SelectTrigger className="w-full">
                                 <SelectValue placeholder="Assign driver" />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="">Unassigned</SelectItem>
+                                <SelectItem value="__unassigned__">Unassigned</SelectItem>
                                 {drivers?.map((driver) => (
                                   <SelectItem key={driver.id} value={driver.id}>
                                     {driver.profiles?.first_name} {driver.profiles?.last_name}

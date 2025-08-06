@@ -104,14 +104,14 @@ export const SmartSearch: React.FC<SmartSearchProps> = ({
         {filterOptions.map((option) => (
           <Select
             key={option.field}
-            value={activeFilters[option.field] || ''}
-            onValueChange={(value) => handleFilterChange(option.field, value)}
+            value={activeFilters[option.field] || '__none__'}
+            onValueChange={(value) => handleFilterChange(option.field, value === '__none__' ? '' : value)}
           >
             <SelectTrigger className="w-full sm:w-48">
               <SelectValue placeholder={option.label} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All {option.label}</SelectItem>
+              <SelectItem value="__none__">All {option.label}</SelectItem>
               {option.options.map((opt) => (
                 <SelectItem key={opt.value} value={opt.value}>
                   {opt.label}
