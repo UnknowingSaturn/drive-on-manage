@@ -82,7 +82,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Send invitation email
     const emailResponse = await resend.emails.send({
-      from: "Driver Portal <noreply@yourdomain.com>", // Update this to your verified domain
+      from: "Driver Portal <noreply@unflawed.uk>",
       to: [email],
       subject: "Welcome to the Driver Portal - Account Created",
       html: `
