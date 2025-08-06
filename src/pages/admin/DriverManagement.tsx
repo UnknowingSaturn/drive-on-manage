@@ -112,10 +112,12 @@ const DriverManagement = () => {
     refetchInterval: 30000 // Refresh every 30 seconds for real-time updates
   });
 
-  // Set initial filtered data
+  // Set initial filtered data - use useMemo to prevent infinite loops
+  const initialFilteredDrivers = React.useMemo(() => drivers, [drivers]);
+  
   React.useEffect(() => {
-    setFilteredDrivers(drivers);
-  }, [drivers]);
+    setFilteredDrivers(initialFilteredDrivers);
+  }, [initialFilteredDrivers]);
 
   // Real-time form validation
   const validateField = (field: string, value: string) => {
