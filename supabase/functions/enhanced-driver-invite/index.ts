@@ -284,7 +284,7 @@ serve(async (req) => {
     console.log('Sending invitation email...');
     try {
       const emailResponse = await resend.emails.send({
-        from: "Driver Portal <onboarding@resend.dev>",
+        from: "Driver Portal <noreply@unflawed.uk>",
         to: [email.toLowerCase().trim()],
         subject: "🚗 Welcome to the Driver Team - Complete Your Onboarding",
         html: `
