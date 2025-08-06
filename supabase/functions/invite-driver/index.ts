@@ -179,8 +179,9 @@ serve(async (req) => {
         message: 'Driver profile created for existing user',
         emailId: null
       }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
   } catch (error) {
     console.error('=== ERROR ===');
