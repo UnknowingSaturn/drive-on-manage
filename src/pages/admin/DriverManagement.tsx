@@ -215,10 +215,10 @@ const DriverManagement = () => {
 
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       toast({
-        title: "Driver invited successfully",
-        description: "The driver has been added to your team and will receive login credentials via email.",
+        title: "🎉 Driver invited successfully!",
+        description: `${formData.firstName} ${formData.lastName} will receive an onboarding email. The invitation expires in 7 days.`,
       });
       setIsDialogOpen(false);
       setFormData({
@@ -233,9 +233,29 @@ const DriverManagement = () => {
       queryClient.invalidateQueries({ queryKey: ['drivers'] });
     },
     onError: (error: any) => {
+      console.error('Invitation error:', error);
+      
+      // Parse error response for better user feedback
+      let errorMessage = error.message || 'Failed to send invitation';
+      let errorTitle = 'Error inviting driver';
+      
+      if (error.message?.includes('already exists')) {
+        errorTitle = 'Duplicate invitation';
+        errorMessage = error.message;
+      } else if (error.message?.includes('Invalid') || error.message?.includes('validation')) {
+        errorTitle = 'Invalid information';
+        errorMessage = error.message;
+      } else if (error.message?.includes('Email delivery failed')) {
+        errorTitle = 'Email delivery failed';
+        errorMessage = 'Please check the email address and try again.';
+      } else if (error.message?.includes('Configuration error')) {
+        errorTitle = 'System error';
+        errorMessage = 'Please contact support - system configuration issue.';
+      }
+
       toast({
-        title: "Error inviting driver",
-        description: error.message,
+        title: errorTitle,
+        description: errorMessage,
         variant: "destructive",
       });
     },
