@@ -115,7 +115,7 @@ const Dashboard = () => {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <Button className="w-full">
+                  <Button className="w-full" onClick={() => window.location.href = '/admin/drivers'}>
                     <Users className="h-4 w-4 mr-2" />
                     Manage Drivers
                   </Button>
@@ -130,7 +130,7 @@ const Dashboard = () => {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <Button className="w-full">
+                  <Button className="w-full" onClick={() => window.location.href = '/admin/vans'}>
                     <Truck className="h-4 w-4 mr-2" />
                     Manage Vehicles
                   </Button>
@@ -145,7 +145,7 @@ const Dashboard = () => {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <Button className="w-full">
+                  <Button className="w-full" onClick={() => window.location.href = '/admin/schedule'}>
                     <Calendar className="h-4 w-4 mr-2" />
                     View Schedule
                   </Button>

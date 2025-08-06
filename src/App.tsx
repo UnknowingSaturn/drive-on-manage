@@ -9,6 +9,11 @@ import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import NotFound from "./pages/NotFound";
+import DriverManagement from "./pages/admin/DriverManagement";
+import VanManagement from "./pages/admin/VanManagement";
+import RoundManagement from "./pages/admin/RoundManagement";
+import ScheduleView from "./pages/admin/ScheduleView";
+import EODReports from "./pages/admin/EODReports";
 
 const queryClient = new QueryClient();
 
@@ -25,6 +30,31 @@ const App = () => (
             <Route path="/dashboard" element={
               <ProtectedRoute>
                 <Dashboard />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/drivers" element={
+              <ProtectedRoute>
+                <DriverManagement />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/vans" element={
+              <ProtectedRoute>
+                <VanManagement />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/rounds" element={
+              <ProtectedRoute>
+                <RoundManagement />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/schedule" element={
+              <ProtectedRoute>
+                <ScheduleView />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/reports" element={
+              <ProtectedRoute>
+                <EODReports />
               </ProtectedRoute>
             } />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
