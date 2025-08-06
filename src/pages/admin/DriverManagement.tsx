@@ -204,11 +204,13 @@ const DriverManagement = () => {
       });
 
       if (error) {
-        throw new Error(`Invitation failed: ${error.message || 'Unknown error'}`);
+        console.error('Supabase function error:', error);
+        throw new Error(`Invitation failed: ${error.message || 'Edge Function returned a non-2xx status code'}`);
       }
 
       if (!data?.success) {
-        throw new Error(data?.error || 'Failed to send invitation');
+        console.error('Function returned error:', data);
+        throw new Error(data?.message || data?.error || 'Failed to send invitation');
       }
 
       return data;

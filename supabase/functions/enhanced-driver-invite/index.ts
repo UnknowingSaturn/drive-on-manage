@@ -191,11 +191,10 @@ serve(async (req) => {
 
     // Check for existing driver with same email
     console.log('Checking for existing driver profiles...');
-    const { data: existingDriver, error: driverCheckError } = await supabase
+    const { data: existingDrivers, error: driverCheckError } = await supabase
       .from('driver_profiles')
-      .select('id, status, user_id, profiles!inner(email)')
-      .eq('company_id', companyId)
-      .limit(1000);
+      .select('id, status, user_id')
+      .eq('company_id', companyId);
 
     if (driverCheckError) {
       console.error('Error checking existing drivers:', driverCheckError);
@@ -208,19 +207,38 @@ serve(async (req) => {
       });
     }
 
-    const driverWithEmail = existingDriver?.find(d => 
-      d.profiles?.email?.toLowerCase() === email.toLowerCase().trim()
-    );
+    // Check if any existing driver has this email by querying profiles separately
+    if (existingDrivers && existingDrivers.length > 0) {
+      const userIds = existingDrivers.map(d => d.user_id).filter(Boolean);
+      if (userIds.length > 0) {
+        const { data: profilesWithEmail, error: profilesError } = await supabase
+          .from('profiles')
+          .select('user_id, email')
+          .eq('email', email.toLowerCase().trim())
+          .in('user_id', userIds);
 
-    if (driverWithEmail) {
-      console.log('Driver with this email already exists');
-      return new Response(JSON.stringify({
-        error: 'Driver already exists',
-        message: `A driver with email ${email} already exists in your company.`
-      }), {
-        status: 409,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+        if (profilesError) {
+          console.error('Error checking existing profiles:', profilesError);
+          return new Response(JSON.stringify({
+            error: 'Database error',
+            message: 'Failed to check existing profiles'
+          }), {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+
+        if (profilesWithEmail && profilesWithEmail.length > 0) {
+          console.log('Driver with this email already exists');
+          return new Response(JSON.stringify({
+            error: 'Driver already exists',
+            message: `A driver with email ${email} already exists in your company.`
+          }), {
+            status: 409,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+      }
     }
 
     // Generate secure invite token
@@ -239,7 +257,7 @@ serve(async (req) => {
         hourly_rate: hourlyRate ? parseFloat(hourlyRate) : null,
         company_id: companyId,
         invite_token: inviteToken,
-        created_by: 'system', // This would ideally be the admin's user ID
+        created_by: companyId, // Use company_id as a valid UUID
         expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() // 7 days from now
       })
       .select()
