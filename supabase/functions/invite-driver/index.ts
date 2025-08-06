@@ -82,7 +82,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Send invitation email
     const emailResponse = await resend.emails.send({
-      from: "Driver Portal <no-reply@yourdomain.com>", // Replace with your domain
+      from: "Driver Portal <noreply@yourdomain.com>", // Update this to your verified domain
       to: [email],
       subject: "Welcome to the Driver Portal - Account Created",
       html: `
@@ -105,7 +105,7 @@ const handler = async (req: Request): Promise<Response> => {
           </ul>
           
           <div style="margin: 30px 0;">
-            <a href="${Deno.env.get('SITE_URL') || 'https://yourapp.com'}/auth" 
+            <a href="https://5ece6ac1-a29e-48e5-8b0e-6b9cb11d1253.lovableproject.com/auth" 
                style="background-color: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
               Login to Your Account
             </a>
