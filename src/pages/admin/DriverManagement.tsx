@@ -24,9 +24,7 @@ const DriverManagement = () => {
     firstName: '',
     lastName: '',
     phone: '',
-    hourlyRate: '',
-    parcelRate: '',
-    employeeId: ''
+    hourlyRate: ''
   });
 
   // Fetch drivers for the company
@@ -84,9 +82,7 @@ const DriverManagement = () => {
         .insert({
           user_id: authData.user.id,
           company_id: profile?.company_id,
-          employee_id: driverData.employeeId,
           hourly_rate: parseFloat(driverData.hourlyRate) || null,
-          parcel_rate: parseFloat(driverData.parcelRate) || null,
           status: 'active'
         });
 
@@ -105,9 +101,7 @@ const DriverManagement = () => {
         firstName: '',
         lastName: '',
         phone: '',
-        hourlyRate: '',
-        parcelRate: '',
-        employeeId: ''
+        hourlyRate: ''
       });
       queryClient.invalidateQueries({ queryKey: ['drivers'] });
     },
@@ -214,35 +208,15 @@ const DriverManagement = () => {
               </div>
               
               <div>
-                <Label htmlFor="employeeId">Employee ID</Label>
+                <Label htmlFor="hourlyRate">Rate (£)</Label>
                 <Input
-                  id="employeeId"
-                  value={formData.employeeId}
-                  onChange={(e) => handleInputChange('employeeId', e.target.value)}
+                  id="hourlyRate"
+                  type="number"
+                  step="0.01"
+                  value={formData.hourlyRate}
+                  onChange={(e) => handleInputChange('hourlyRate', e.target.value)}
+                  placeholder="Enter hourly rate"
                 />
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="hourlyRate">Hourly Rate (£)</Label>
-                  <Input
-                    id="hourlyRate"
-                    type="number"
-                    step="0.01"
-                    value={formData.hourlyRate}
-                    onChange={(e) => handleInputChange('hourlyRate', e.target.value)}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="parcelRate">Parcel Rate (£)</Label>
-                  <Input
-                    id="parcelRate"
-                    type="number"
-                    step="0.01"
-                    value={formData.parcelRate}
-                    onChange={(e) => handleInputChange('parcelRate', e.target.value)}
-                  />
-                </div>
               </div>
               
               <Button type="submit" className="w-full" disabled={inviteDriverMutation.isPending}>
@@ -265,9 +239,8 @@ const DriverManagement = () => {
               <TableRow>
                 <TableHead>Name</TableHead>
                 <TableHead>Email</TableHead>
-                <TableHead>Employee ID</TableHead>
-                <TableHead>Hourly Rate</TableHead>
-                <TableHead>Parcel Rate</TableHead>
+                <TableHead>Mobile</TableHead>
+                <TableHead>Rate</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
@@ -279,12 +252,9 @@ const DriverManagement = () => {
                     {driver.profiles?.first_name} {driver.profiles?.last_name}
                   </TableCell>
                   <TableCell>{driver.profiles?.email}</TableCell>
-                  <TableCell>{driver.employee_id || '-'}</TableCell>
+                  <TableCell>{driver.profiles?.phone || '-'}</TableCell>
                   <TableCell>
                     {driver.hourly_rate ? `£${driver.hourly_rate}/hr` : '-'}
-                  </TableCell>
-                  <TableCell>
-                    {driver.parcel_rate ? `£${driver.parcel_rate}/parcel` : '-'}
                   </TableCell>
                   <TableCell>
                     <Badge variant={driver.status === 'active' ? 'default' : 'secondary'}>

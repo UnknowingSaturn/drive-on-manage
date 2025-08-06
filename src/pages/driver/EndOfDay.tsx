@@ -50,7 +50,7 @@ const EndOfDay = () => {
       const { data } = await supabase
         .from('daily_logs')
         .select('*')
-        .eq('driver_id', driverProfile.id)
+        .eq('driver_id', driverProfile.id.toString())
         .eq('log_date', today)
         .maybeSingle();
       return data;
@@ -80,13 +80,13 @@ const EndOfDay = () => {
 
     // Base rate from round
     if (roundInfo?.base_rate) {
-      totalPay += parseFloat(roundInfo.base_rate);
+      totalPay += parseFloat(roundInfo.base_rate.toString());
     }
 
     // Parcel rate
     const parcelRate = roundInfo?.parcel_rate || driverProfile?.parcel_rate;
     if (parcelRate && deliveredCount) {
-      totalPay += parseFloat(parcelRate) * deliveredCount;
+      totalPay += parseFloat(parcelRate.toString()) * deliveredCount;
     }
 
     return totalPay.toFixed(2);
