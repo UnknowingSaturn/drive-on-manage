@@ -59,21 +59,42 @@ const DriverManagement = () => {
     enabled: !!profile?.company_id
   });
 
-  // Invite driver mutation
+   // Invite driver mutation
   const inviteDriverMutation = useMutation({
     mutationFn: async (driverData: typeof formData) => {
+      console.log('=== DEBUG: Starting driver invitation ===');
+      console.log('Current profile:', profile);
+      
       // Get fresh profile data in case it was updated
-      const { data: freshProfile } = await supabase
+      const { data: freshProfile, error: profileError } = await supabase
         .from('profiles')
-        .select('company_id')
+        .select('company_id, user_id')
         .eq('user_id', profile?.user_id)
-        .single();
+        .maybeSingle();
+
+      console.log('Fresh profile data:', freshProfile);
+      console.log('Profile error:', profileError);
+
+      if (profileError) {
+        console.error('Profile fetch error:', profileError);
+        throw new Error('Failed to fetch profile data: ' + profileError.message);
+      }
 
       const companyId = freshProfile?.company_id || profile?.company_id;
+      console.log('Using company ID:', companyId);
 
       if (!companyId) {
-        throw new Error('No company assigned to your profile. Please contact support.');
+        throw new Error('No company assigned to your profile. Please go to Companies page and create/assign a company first.');
       }
+
+      console.log('Calling edge function with data:', {
+        email: driverData.email,
+        firstName: driverData.firstName,
+        lastName: driverData.lastName,
+        phone: driverData.phone,
+        hourlyRate: driverData.hourlyRate,
+        companyId: companyId
+      });
 
       const { data, error } = await supabase.functions.invoke('invite-driver', {
         body: {
@@ -86,15 +107,19 @@ const DriverManagement = () => {
         }
       });
 
+      console.log('Edge function response:', { data, error });
+
       if (error) {
         console.error('Function invoke error:', error);
-        throw new Error(error.message || 'Failed to invite driver');
+        throw new Error(`Edge function error: ${error.message || 'Failed to invoke function'}`);
       }
 
       if (!data?.success) {
-        throw new Error(data?.error || 'Failed to invite driver');
+        console.error('Function returned error:', data);
+        throw new Error(data?.error || 'Function completed but returned error');
       }
 
+      console.log('=== DEBUG: Driver invitation successful ===');
       return data;
     },
     onSuccess: () => {
