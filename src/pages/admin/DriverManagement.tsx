@@ -62,6 +62,19 @@ const DriverManagement = () => {
   // Invite driver mutation
   const inviteDriverMutation = useMutation({
     mutationFn: async (driverData: typeof formData) => {
+      // Get fresh profile data in case it was updated
+      const { data: freshProfile } = await supabase
+        .from('profiles')
+        .select('company_id')
+        .eq('user_id', profile?.user_id)
+        .single();
+
+      const companyId = freshProfile?.company_id || profile?.company_id;
+
+      if (!companyId) {
+        throw new Error('No company assigned to your profile. Please contact support.');
+      }
+
       const { data, error } = await supabase.functions.invoke('invite-driver', {
         body: {
           email: driverData.email,
@@ -69,7 +82,7 @@ const DriverManagement = () => {
           lastName: driverData.lastName,
           phone: driverData.phone,
           hourlyRate: driverData.hourlyRate,
-          companyId: profile?.company_id
+          companyId: companyId
         }
       });
 
