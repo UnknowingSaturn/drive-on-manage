@@ -115,7 +115,7 @@ serve(async (req) => {
     // Send invitation email
     console.log('Sending invitation email...');
     const emailResponse = await resend.emails.send({
-      from: "Driver Portal <noreply@unflawed.uk>",
+      from: "Driver Portal <onboarding@resend.dev>", // Using Resend's default domain temporarily
       to: [email],
       subject: "Welcome to the Driver Portal - Account Created",
       html: `
