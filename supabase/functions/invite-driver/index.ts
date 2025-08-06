@@ -17,8 +17,12 @@ interface InviteDriverRequest {
 }
 
 const handler = async (req: Request): Promise<Response> => {
+  console.log('=== Handler Started ===');
+  console.log('Method:', req.method);
+  
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
+    console.log('Handling CORS preflight');
     return new Response(null, { headers: corsHeaders });
   }
 
@@ -150,11 +154,16 @@ const handler = async (req: Request): Promise<Response> => {
     });
 
   } catch (error: any) {
-    console.error('Error in invite-driver function:', error);
+    console.error('=== Error in invite-driver function ===');
+    console.error('Error message:', error.message);
+    console.error('Error stack:', error.stack);
+    console.error('Error details:', error);
+    
     return new Response(
       JSON.stringify({ 
         error: error.message || 'Failed to invite driver',
-        details: error.hint || error.details || 'Unknown error'
+        details: error.hint || error.details || 'Unknown error',
+        timestamp: new Date().toISOString()
       }),
       {
         status: 500,
