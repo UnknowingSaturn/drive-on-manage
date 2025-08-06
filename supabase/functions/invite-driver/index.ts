@@ -23,6 +23,12 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
+    console.log('=== Edge Function Started ===');
+    console.log('Environment check:');
+    console.log('SUPABASE_URL:', Deno.env.get('SUPABASE_URL') ? 'SET' : 'MISSING');
+    console.log('SUPABASE_SERVICE_ROLE_KEY:', Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ? 'SET' : 'MISSING');
+    console.log('RESEND_API_KEY:', Deno.env.get('RESEND_API_KEY') ? 'SET' : 'MISSING');
+
     // Initialize Supabase with service role key for admin operations
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
@@ -35,14 +41,25 @@ const handler = async (req: Request): Promise<Response> => {
       }
     );
 
+    console.log('Supabase admin client initialized');
+
     const resend = new Resend(Deno.env.get('RESEND_API_KEY'));
+    console.log('Resend client initialized');
 
     const { email, firstName, lastName, phone, hourlyRate, companyId }: InviteDriverRequest = await req.json();
+    
+    console.log('Request data received:', {
+      email,
+      firstName,
+      lastName,
+      phone,
+      hourlyRate,
+      companyId
+    });
 
     // Generate a temporary password
     const tempPassword = Math.random().toString(36).slice(-8) + 'A1!';
-
-    console.log('Creating user with admin client...');
+    console.log('Generated temporary password');
 
     // Create user with admin privileges
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
