@@ -62,12 +62,15 @@ export function AppSidebar() {
       variant="sidebar"
       collapsible="icon"
     >
-      <SidebarHeader className="border-b border-sidebar-border p-4">
+      <SidebarHeader className="border-b border-sidebar-border p-4 bg-gradient-dark">
         <div className="flex items-center space-x-3">
-          <Truck className="h-8 w-8 text-sidebar-primary" />
+          <div className="relative">
+            <Truck className="h-8 w-8 text-primary animate-truck-drive" />
+            <div className="absolute inset-0 h-8 w-8 text-primary-glow opacity-50 blur-sm animate-truck-drive"></div>
+          </div>
           {!collapsed && (
             <div>
-              <h2 className="text-lg font-bold text-sidebar-foreground">LogiFlow</h2>
+              <h2 className="text-lg font-bold text-gradient">LogiFlow</h2>
               <p className="text-sm text-sidebar-foreground/70">
                 {profile?.first_name || 'User'}
               </p>
@@ -75,7 +78,10 @@ export function AppSidebar() {
           )}
         </div>
         {!collapsed && (
-          <Badge variant={isAdmin ? "default" : "secondary"} className="w-fit mt-2">
+          <Badge 
+            variant={isAdmin ? "default" : "secondary"} 
+            className={`w-fit mt-2 ${isAdmin ? 'bg-gradient-primary border-primary/30' : 'bg-secondary/50 border-secondary/30'}`}
+          >
             {isAdmin ? "Admin" : "Driver"}
           </Badge>
         )}
@@ -131,14 +137,14 @@ export function AppSidebar() {
         )}
       </SidebarContent>
 
-      <SidebarFooter className="border-t border-sidebar-border p-4">
+      <SidebarFooter className="border-t border-sidebar-border p-4 bg-gradient-dark">
         <Button 
           variant="outline" 
           onClick={signOut}
-          className="w-full justify-start"
+          className="w-full justify-start hover:bg-destructive/20 hover:border-destructive/30 hover:text-destructive transition-all duration-300 group"
           size={collapsed ? "icon" : "default"}
         >
-          <LogOut className="h-4 w-4" />
+          <LogOut className="h-4 w-4 group-hover:animate-pulse" />
           {!collapsed && <span className="ml-2">Sign Out</span>}
         </Button>
       </SidebarFooter>

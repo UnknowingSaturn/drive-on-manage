@@ -2,104 +2,175 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
-
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-
-    /* Logistics brand colors - professional blue */
-    --primary: 213 92% 45%;
-    --primary-foreground: 0 0% 98%;
-
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-
-    --accent: 39 96% 65%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-
-    /* Status colors for logistics */
-    --success: 142 71% 45%;
-    --success-foreground: 0 0% 98%;
-    --warning: 45 93% 47%;
-    --warning-foreground: 222.2 47.4% 11.2%;
-    --info: 213 92% 45%;
-    --info-foreground: 0 0% 98%;
-
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
-
-    --radius: 0.5rem;
-
-    --sidebar-background: 0 0% 98%;
-
-    --sidebar-foreground: 240 5.3% 26.1%;
-
-    --sidebar-primary: 240 5.9% 10%;
-
-    --sidebar-primary-foreground: 0 0% 98%;
-
-    --sidebar-accent: 240 4.8% 95.9%;
-
-    --sidebar-accent-foreground: 240 5.9% 10%;
-
-    --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
-  }
-
-  .dark {
-    --background: 222.2 84% 4.9%;
+    /* LogiFlow Dark Theme */
+    --background: 210 11% 3%;
     --foreground: 210 40% 98%;
 
-    --card: 222.2 84% 4.9%;
+    --card: 210 11% 6%;
     --card-foreground: 210 40% 98%;
 
-    --popover: 222.2 84% 4.9%;
+    --popover: 210 11% 6%;
     --popover-foreground: 210 40% 98%;
 
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    --primary: 25 95% 53%;
+    --primary-foreground: 210 11% 3%;
+    --primary-glow: 25 100% 60%;
 
-    --secondary: 217.2 32.6% 17.5%;
+    --secondary: 210 40% 10%;
     --secondary-foreground: 210 40% 98%;
 
-    --muted: 217.2 32.6% 17.5%;
+    --muted: 210 40% 8%;
     --muted-foreground: 215 20.2% 65.1%;
 
-    --accent: 217.2 32.6% 17.5%;
+    --accent: 210 40% 12%;
     --accent-foreground: 210 40% 98%;
 
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --border: 210 40% 15%;
+    --input: 210 40% 15%;
+    --ring: 25 95% 53%;
+
+    --success: 142 71% 45%;
+    --warning: 38 92% 50%;
+    --info: 217 91% 60%;
+
+    --radius: 0.75rem;
+
+    /* LogiFlow Brand Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-glow)));
+    --gradient-logistics: linear-gradient(135deg, hsl(25 95% 53%), hsl(45 95% 55%), hsl(25 95% 53%));
+    --gradient-dark: linear-gradient(135deg, hsl(210 11% 6%), hsl(210 40% 10%));
+    --gradient-subtle: linear-gradient(180deg, hsl(210 11% 3%), hsl(210 11% 6%));
+
+    /* Logistics Shadows */
+    --shadow-logistics: 0 10px 40px -10px hsl(var(--primary) / 0.3);
+    --shadow-card: 0 4px 20px -4px hsl(210 11% 0% / 0.5);
+    --shadow-glow: 0 0 30px hsl(var(--primary-glow) / 0.2);
+
+    /* Animation Variables */
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-logistics: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+
+    /* Sidebar Variables */
+    --sidebar-background: 210 11% 4%;
+    --sidebar-foreground: 210 40% 98%;
+    --sidebar-primary: 25 95% 53%;
+    --sidebar-primary-foreground: 210 11% 3%;
+    --sidebar-accent: 210 40% 12%;
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-border: 210 40% 15%;
+    --sidebar-ring: 25 95% 53%;
+  }
+}
+
+@layer components {
+  /* LogiFlow Brand Components */
+  .logistics-card {
+    @apply bg-gradient-to-br from-card to-accent border border-border/50 shadow-lg hover:shadow-xl transition-all duration-300 hover:border-primary/30;
+  }
+
+  .logistics-button {
+    @apply bg-gradient-to-r from-primary to-primary-glow text-primary-foreground font-semibold shadow-md hover:shadow-lg transition-all duration-300 hover:scale-105;
+  }
+
+  .route-indicator {
+    @apply relative overflow-hidden;
+  }
+
+  .route-indicator::before {
+    content: '';
+    @apply absolute inset-0 bg-gradient-to-r from-transparent via-primary/20 to-transparent transform -skew-x-12 -translate-x-full animate-[shimmer_2s_infinite];
+  }
+
+  .logistics-glow {
+    @apply relative;
+  }
+
+  .logistics-glow::after {
+    content: '';
+    @apply absolute inset-0 bg-gradient-to-r from-primary/0 via-primary/10 to-primary/0 blur-sm opacity-0 transition-opacity duration-300;
+  }
+
+  .logistics-glow:hover::after {
+    @apply opacity-100;
+  }
+
+  .truck-animation {
+    @apply transform transition-transform duration-500 hover:translate-x-2;
+  }
+
+  .delivery-status {
+    @apply relative inline-flex items-center px-3 py-1 rounded-full text-xs font-medium;
+  }
+
+  .status-delivered {
+    @apply bg-success/20 text-success border border-success/30;
+  }
+
+  .status-in-progress {
+    @apply bg-warning/20 text-warning border border-warning/30 animate-pulse;
+  }
+
+  .status-pending {
+    @apply bg-muted text-muted-foreground border border-border;
+  }
+
+  /* Interactive Effects */
+  .hover-lift {
+    @apply transition-transform duration-200 hover:-translate-y-1 hover:shadow-lg;
+  }
+
+  .click-shrink {
+    @apply transition-transform duration-100 active:scale-95;
+  }
+
+  .focus-glow {
+    @apply focus:ring-2 focus:ring-primary/50 focus:ring-offset-2 focus:ring-offset-background;
+  }
+}
+
+@layer utilities {
+  .text-gradient {
+    @apply bg-gradient-to-r from-primary to-primary-glow bg-clip-text text-transparent;
+  }
+
+  .logistics-border {
+    @apply border border-border/50 hover:border-primary/30 transition-colors duration-300;
+  }
+}
+
+/* Custom Keyframes */
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%) skewX(-12deg);
+  }
+  100% {
+    transform: translateX(200%) skewX(-12deg);
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes truck-drive {
+  0% {
+    transform: translateX(-10px);
+  }
+  50% {
+    transform: translateX(10px);
+  }
+  100% {
+    transform: translateX(-10px);
   }
 }
 

@@ -46,54 +46,61 @@ const Dashboard = () => {
               </p>
             </div>
 
-            {/* Admin Overview Cards */}
+            {/* Admin Overview Cards with Logistics Effects */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <Card>
+              <Card className="logistics-card hover-lift">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">Active Drivers</CardTitle>
-                  <Users className="h-4 w-4 text-muted-foreground" />
+                  <div className="truck-animation">
+                    <Users className="h-4 w-4 text-primary" />
+                  </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">12</div>
-                  <p className="text-xs text-muted-foreground">
+                  <div className="text-2xl font-bold text-gradient">12</div>
+                  <p className="text-xs text-muted-foreground flex items-center">
+                    <div className="w-2 h-2 bg-success rounded-full mr-2 animate-pulse"></div>
                     +2 from last month
                   </p>
                 </CardContent>
               </Card>
 
-              <Card>
+              <Card className="logistics-card hover-lift route-indicator">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">Active Vans</CardTitle>
-                  <Truck className="h-4 w-4 text-muted-foreground" />
+                  <div className="truck-animation">
+                    <Truck className="h-4 w-4 text-primary animate-truck-drive" />
+                  </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">8</div>
-                  <p className="text-xs text-muted-foreground">
+                  <div className="text-2xl font-bold text-gradient">8</div>
+                  <p className="text-xs text-muted-foreground flex items-center">
+                    <div className="w-2 h-2 bg-success rounded-full mr-2"></div>
                     All vehicles operational
                   </p>
                 </CardContent>
               </Card>
 
-              <Card>
+              <Card className="logistics-card hover-lift">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">Today's Rounds</CardTitle>
-                  <MapPin className="h-4 w-4 text-muted-foreground" />
+                  <MapPin className="h-4 w-4 text-primary animate-float" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">24</div>
+                  <div className="text-2xl font-bold text-gradient">24</div>
                   <p className="text-xs text-muted-foreground">
-                    18 completed, 6 in progress
+                    <span className="delivery-status status-delivered mr-1">18 completed</span>
+                    <span className="delivery-status status-in-progress">6 in progress</span>
                   </p>
                 </CardContent>
               </Card>
 
-              <Card>
+              <Card className="logistics-card hover-lift logistics-glow">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">Pending Actions</CardTitle>
-                  <Bell className="h-4 w-4 text-muted-foreground" />
+                  <Bell className="h-4 w-4 text-warning animate-pulse" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">3</div>
+                  <div className="text-2xl font-bold text-warning">3</div>
                   <p className="text-xs text-muted-foreground">
                     Require your attention
                   </p>
@@ -101,47 +108,65 @@ const Dashboard = () => {
               </Card>
             </div>
 
-            {/* Quick Actions */}
+            {/* Quick Actions with Enhanced Styling */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              <Card>
+              <Card className="logistics-card hover-lift click-shrink group">
                 <CardHeader>
-                  <CardTitle>Driver Management</CardTitle>
+                  <CardTitle className="flex items-center">
+                    <Users className="h-5 w-5 text-primary mr-2 truck-animation" />
+                    Driver Management
+                  </CardTitle>
                   <CardDescription>
                     Add, edit, and manage your driver workforce
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <Button className="w-full" onClick={() => window.location.href = '/admin/drivers'}>
+                  <Button 
+                    className="logistics-button w-full group-hover:shadow-glow" 
+                    onClick={() => window.location.href = '/admin/drivers'}
+                  >
                     <Users className="h-4 w-4 mr-2" />
                     Manage Drivers
                   </Button>
                 </CardContent>
               </Card>
 
-              <Card>
+              <Card className="logistics-card hover-lift click-shrink group">
                 <CardHeader>
-                  <CardTitle>Vehicle Management</CardTitle>
+                  <CardTitle className="flex items-center">
+                    <Truck className="h-5 w-5 text-primary mr-2 animate-truck-drive" />
+                    Vehicle Management
+                  </CardTitle>
                   <CardDescription>
                     Track and maintain your fleet of vehicles
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <Button className="w-full" onClick={() => window.location.href = '/admin/vans'}>
+                  <Button 
+                    className="logistics-button w-full group-hover:shadow-glow" 
+                    onClick={() => window.location.href = '/admin/vans'}
+                  >
                     <Truck className="h-4 w-4 mr-2" />
                     Manage Vehicles
                   </Button>
                 </CardContent>
               </Card>
 
-              <Card>
+              <Card className="logistics-card hover-lift click-shrink group">
                 <CardHeader>
-                  <CardTitle>Schedule & Rounds</CardTitle>
+                  <CardTitle className="flex items-center">
+                    <Calendar className="h-5 w-5 text-primary mr-2 animate-float" />
+                    Schedule & Rounds
+                  </CardTitle>
                   <CardDescription>
                     Plan and assign delivery rounds
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <Button className="w-full" onClick={() => window.location.href = '/admin/schedule'}>
+                  <Button 
+                    className="logistics-button w-full group-hover:shadow-glow" 
+                    onClick={() => window.location.href = '/admin/schedule'}
+                  >
                     <Calendar className="h-4 w-4 mr-2" />
                     View Schedule
                   </Button>
@@ -152,70 +177,82 @@ const Dashboard = () => {
         )}
 
         {isDriver && (
-          <div className="space-y-8">
+          <div className="space-y-8 animate-fade-in">
             <div>
-              <h2 className="text-3xl font-bold mb-2">Driver Dashboard</h2>
+              <h2 className="text-3xl font-bold mb-2 text-gradient">Driver Dashboard</h2>
               <p className="text-muted-foreground">
                 Your daily logistics operations
               </p>
             </div>
 
-            {/* Driver Quick Actions */}
+            {/* Driver Quick Actions with Enhanced Effects */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Card>
+              <Card className="logistics-card hover-lift click-shrink group">
                 <CardHeader>
-                  <CardTitle>Start of Day</CardTitle>
+                  <CardTitle className="flex items-center">
+                    <Calendar className="h-5 w-5 text-primary mr-2 animate-float" />
+                    Start of Day
+                  </CardTitle>
                   <CardDescription>
                     Log your parcel count and vehicle check
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <Button className="w-full">
+                  <Button className="logistics-button w-full group-hover:shadow-glow">
                     <Calendar className="h-4 w-4 mr-2" />
                     Start My Day
                   </Button>
                 </CardContent>
               </Card>
 
-              <Card>
+              <Card className="logistics-card hover-lift click-shrink group">
                 <CardHeader>
-                  <CardTitle>End of Day</CardTitle>
+                  <CardTitle className="flex items-center">
+                    <MapPin className="h-5 w-5 text-primary mr-2 animate-float" />
+                    End of Day
+                  </CardTitle>
                   <CardDescription>
                     Complete your day and log deliveries
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <Button className="w-full">
+                  <Button className="logistics-button w-full group-hover:shadow-glow">
                     <MapPin className="h-4 w-4 mr-2" />
                     End My Day
                   </Button>
                 </CardContent>
               </Card>
 
-              <Card>
+              <Card className="logistics-card hover-lift click-shrink group">
                 <CardHeader>
-                  <CardTitle>Vehicle Check</CardTitle>
+                  <CardTitle className="flex items-center">
+                    <Truck className="h-5 w-5 text-primary mr-2 animate-truck-drive" />
+                    Vehicle Check
+                  </CardTitle>
                   <CardDescription>
                     Perform and log your vehicle inspection
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <Button className="w-full">
+                  <Button className="logistics-button w-full group-hover:shadow-glow">
                     <Truck className="h-4 w-4 mr-2" />
                     Vehicle Check
                   </Button>
                 </CardContent>
               </Card>
 
-              <Card>
+              <Card className="logistics-card hover-lift click-shrink group">
                 <CardHeader>
-                  <CardTitle>Incident Report</CardTitle>
+                  <CardTitle className="flex items-center">
+                    <Bell className="h-5 w-5 text-warning mr-2 animate-pulse" />
+                    Incident Report
+                  </CardTitle>
                   <CardDescription>
                     Report any incidents or issues
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <Button className="w-full" variant="outline">
+                  <Button className="w-full border-warning/30 text-warning hover:bg-warning/10" variant="outline">
                     <Bell className="h-4 w-4 mr-2" />
                     Report Incident
                   </Button>
@@ -223,27 +260,38 @@ const Dashboard = () => {
               </Card>
             </div>
 
-            {/* Today's Summary */}
-            <Card>
+            {/* Today's Summary with Enhanced Styling */}
+            <Card className="logistics-card bg-gradient-dark">
               <CardHeader>
-                <CardTitle>Today's Summary</CardTitle>
+                <CardTitle className="flex items-center text-gradient">
+                  <Truck className="h-5 w-5 text-primary mr-2 animate-truck-drive" />
+                  Today's Summary
+                </CardTitle>
                 <CardDescription>
                   Overview of your current shift
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-primary">24</div>
+                  <div className="text-center p-4 rounded-lg bg-card/50 hover-lift">
+                    <div className="text-2xl font-bold text-gradient">24</div>
                     <p className="text-sm text-muted-foreground">Parcels Assigned</p>
+                    <div className="w-full bg-muted rounded-full h-2 mt-2">
+                      <div className="bg-gradient-primary h-2 rounded-full w-3/4 route-indicator"></div>
+                    </div>
                   </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-accent">18</div>
+                  <div className="text-center p-4 rounded-lg bg-card/50 hover-lift">
+                    <div className="text-2xl font-bold text-success">18</div>
                     <p className="text-sm text-muted-foreground">Delivered</p>
+                    <div className="delivery-status status-delivered mt-2">75% Complete</div>
                   </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-success">£120</div>
+                  <div className="text-center p-4 rounded-lg bg-card/50 hover-lift">
+                    <div className="text-2xl font-bold text-gradient">£120</div>
                     <p className="text-sm text-muted-foreground">Estimated Pay</p>
+                    <div className="flex items-center justify-center mt-2">
+                      <div className="w-2 h-2 bg-success rounded-full mr-2 animate-pulse"></div>
+                      <span className="text-xs text-success">On track</span>
+                    </div>
                   </div>
                 </div>
               </CardContent>
