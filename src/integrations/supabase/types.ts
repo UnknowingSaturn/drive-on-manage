@@ -195,9 +195,61 @@ export type Database = {
           },
         ]
       }
+      driver_invitations: {
+        Row: {
+          accepted_at: string | null
+          company_id: string
+          created_at: string
+          created_by: string
+          driver_profile_id: string | null
+          email: string
+          expires_at: string
+          first_name: string
+          hourly_rate: number | null
+          id: string
+          invite_token: string
+          last_name: string
+          phone: string | null
+          status: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          company_id: string
+          created_at?: string
+          created_by: string
+          driver_profile_id?: string | null
+          email: string
+          expires_at?: string
+          first_name: string
+          hourly_rate?: number | null
+          id?: string
+          invite_token: string
+          last_name: string
+          phone?: string | null
+          status?: string
+        }
+        Update: {
+          accepted_at?: string | null
+          company_id?: string
+          created_at?: string
+          created_by?: string
+          driver_profile_id?: string | null
+          email?: string
+          expires_at?: string
+          first_name?: string
+          hourly_rate?: number | null
+          id?: string
+          invite_token?: string
+          last_name?: string
+          phone?: string | null
+          status?: string
+        }
+        Relationships: []
+      }
       driver_profiles: {
         Row: {
           assigned_van_id: string | null
+          avatar_url: string | null
           company_id: string
           created_at: string
           driving_license_document: string | null
@@ -207,6 +259,8 @@ export type Database = {
           id: string
           insurance_document: string | null
           license_expiry: string | null
+          onboarding_completed_at: string | null
+          onboarding_progress: Json | null
           parcel_rate: number | null
           right_to_work_document: string | null
           status: string | null
@@ -215,6 +269,7 @@ export type Database = {
         }
         Insert: {
           assigned_van_id?: string | null
+          avatar_url?: string | null
           company_id: string
           created_at?: string
           driving_license_document?: string | null
@@ -224,6 +279,8 @@ export type Database = {
           id?: string
           insurance_document?: string | null
           license_expiry?: string | null
+          onboarding_completed_at?: string | null
+          onboarding_progress?: Json | null
           parcel_rate?: number | null
           right_to_work_document?: string | null
           status?: string | null
@@ -232,6 +289,7 @@ export type Database = {
         }
         Update: {
           assigned_van_id?: string | null
+          avatar_url?: string | null
           company_id?: string
           created_at?: string
           driving_license_document?: string | null
@@ -241,6 +299,8 @@ export type Database = {
           id?: string
           insurance_document?: string | null
           license_expiry?: string | null
+          onboarding_completed_at?: string | null
+          onboarding_progress?: Json | null
           parcel_rate?: number | null
           right_to_work_document?: string | null
           status?: string | null
@@ -525,7 +585,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      generate_invite_token: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
     }
     Enums: {
       [_ in never]: never
