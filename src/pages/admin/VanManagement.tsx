@@ -12,6 +12,8 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format, differenceInDays, parseISO } from 'date-fns';
+import { SidebarProvider, SidebarTrigger, SidebarInset } from '@/components/ui/sidebar';
+import { AppSidebar } from '@/components/AppSidebar';
 
 const VanManagement = () => {
   const { profile } = useAuth();
@@ -136,12 +138,27 @@ const VanManagement = () => {
   }
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold">Van Management</h1>
-          <p className="text-muted-foreground">Manage your fleet of delivery vehicles</p>
-        </div>
+    <SidebarProvider>
+      <div className="min-h-screen flex w-full bg-background">
+        <AppSidebar />
+        
+        <SidebarInset className="flex-1">
+          <header className="border-b bg-card sticky top-0 z-10">
+            <div className="flex items-center px-4 py-4">
+              <SidebarTrigger className="mr-4" />
+              <div>
+                <h1 className="text-xl font-semibold text-foreground">Van Management</h1>
+                <p className="text-sm text-muted-foreground">Manage your fleet of delivery vehicles</p>
+              </div>
+            </div>
+          </header>
+
+          <main className="p-6 space-y-6">
+            <div className="flex justify-between items-center">
+              <div>
+                <h2 className="text-2xl font-bold">Fleet Overview</h2>
+                <p className="text-muted-foreground">Vehicle management dashboard</p>
+              </div>
         
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
@@ -346,7 +363,10 @@ const VanManagement = () => {
           )}
         </CardContent>
       </Card>
-    </div>
+          </main>
+        </SidebarInset>
+      </div>
+    </SidebarProvider>
   );
 };
 

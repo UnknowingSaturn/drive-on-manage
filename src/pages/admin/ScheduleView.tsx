@@ -8,6 +8,8 @@ import { Calendar, ChevronLeft, ChevronRight, User, MapPin } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { format, startOfWeek, addDays, addWeeks, subWeeks } from 'date-fns';
+import { SidebarProvider, SidebarTrigger, SidebarInset } from '@/components/ui/sidebar';
+import { AppSidebar } from '@/components/AppSidebar';
 
 const ScheduleView = () => {
   const { profile } = useAuth();
@@ -97,12 +99,27 @@ const ScheduleView = () => {
   };
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold">Schedule View</h1>
-          <p className="text-muted-foreground">Manage weekly round assignments</p>
-        </div>
+    <SidebarProvider>
+      <div className="min-h-screen flex w-full bg-background">
+        <AppSidebar />
+        
+        <SidebarInset className="flex-1">
+          <header className="border-b bg-card sticky top-0 z-10">
+            <div className="flex items-center px-4 py-4">
+              <SidebarTrigger className="mr-4" />
+              <div>
+                <h1 className="text-xl font-semibold text-foreground">Schedule View</h1>
+                <p className="text-sm text-muted-foreground">Manage weekly round assignments</p>
+              </div>
+            </div>
+          </header>
+
+          <main className="p-6 space-y-6">
+            <div className="flex justify-between items-center">
+              <div>
+                <h2 className="text-2xl font-bold">Weekly Planning</h2>
+                <p className="text-muted-foreground">Driver assignment schedule</p>
+              </div>
         
         <div className="flex items-center space-x-4">
           <Button variant="outline" onClick={() => navigateWeek('prev')}>
@@ -256,7 +273,10 @@ const ScheduleView = () => {
           </div>
         </CardContent>
       </Card>
-    </div>
+          </main>
+        </SidebarInset>
+      </div>
+    </SidebarProvider>
   );
 };
 
