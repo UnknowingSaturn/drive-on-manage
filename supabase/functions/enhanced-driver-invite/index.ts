@@ -59,15 +59,8 @@ serve(async (req) => {
       throw new Error('An active invitation already exists for this email');
     }
 
-    // Generate secure invite token
-    const { data: tokenData, error: tokenError } = await supabase
-      .rpc('generate_invite_token');
-
-    if (tokenError) {
-      throw new Error(`Failed to generate invite token: ${tokenError.message}`);
-    }
-
-    const inviteToken = tokenData;
+    // Generate secure invite token directly
+    const inviteToken = crypto.randomUUID().replace(/-/g, '') + Date.now().toString(36);
 
     // Create driver invitation record
     const { data: invitation, error: inviteError } = await supabase
