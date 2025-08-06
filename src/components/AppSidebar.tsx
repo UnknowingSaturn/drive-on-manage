@@ -7,7 +7,11 @@ import {
   FileText, 
   Settings,
   LogOut,
-  UserCircle 
+  UserCircle,
+  Clock,
+  CheckCircle2,
+  AlertTriangle,
+  MessageCircle
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -40,6 +44,11 @@ const adminItems = [
 const driverItems = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
   { title: "My Profile", url: "/driver/profile", icon: UserCircle },
+  { title: "Start of Day", url: "/driver/start-of-day", icon: Clock },
+  { title: "End of Day", url: "/driver/end-of-day", icon: CheckCircle2 },
+  { title: "Vehicle Check", url: "/driver/vehicle-check", icon: Truck },
+  { title: "Incident Report", url: "/driver/incident-report", icon: AlertTriangle },
+  { title: "News & Chat", url: "/driver/news-chat", icon: MessageCircle },
 ];
 
 export function AppSidebar() {
