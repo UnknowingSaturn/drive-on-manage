@@ -5,12 +5,94 @@ import { Button } from '@/components/ui/button';
 import { Truck, Users, MapPin, Calendar, Bell } from 'lucide-react';
 import { SidebarProvider, SidebarTrigger, SidebarInset } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/AppSidebar';
+import { useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 
 const Dashboard = () => {
   const { user, profile } = useAuth();
+  const navigate = useNavigate();
 
   const isAdmin = profile?.user_type === 'admin';
   const isDriver = profile?.user_type === 'driver';
+
+  // Fetch real-time data for admin dashboard
+  const { data: driversCount } = useQuery({
+    queryKey: ['active-drivers-count', profile?.company_id],
+    queryFn: async () => {
+      if (!profile?.company_id || !isAdmin) return 0;
+      const { count } = await supabase
+        .from('driver_profiles')
+        .select('*', { count: 'exact', head: true })
+        .eq('company_id', profile.company_id)
+        .eq('status', 'active');
+      return count || 0;
+    },
+    enabled: !!profile?.company_id && isAdmin,
+  });
+
+  const { data: vansCount } = useQuery({
+    queryKey: ['active-vans-count', profile?.company_id],
+    queryFn: async () => {
+      if (!profile?.company_id || !isAdmin) return 0;
+      const { count } = await supabase
+        .from('vans')
+        .select('*', { count: 'exact', head: true })
+        .eq('company_id', profile.company_id)
+        .eq('is_active', true);
+      return count || 0;
+    },
+    enabled: !!profile?.company_id && isAdmin,
+  });
+
+  const { data: roundsCount } = useQuery({
+    queryKey: ['active-rounds-count', profile?.company_id],
+    queryFn: async () => {
+      if (!profile?.company_id || !isAdmin) return 0;
+      const { count } = await supabase
+        .from('rounds')
+        .select('*', { count: 'exact', head: true })
+        .eq('company_id', profile.company_id)
+        .eq('is_active', true);
+      return count || 0;
+    },
+    enabled: !!profile?.company_id && isAdmin,
+  });
+
+  const { data: todayLogs } = useQuery({
+    queryKey: ['today-logs', profile?.company_id],
+    queryFn: async () => {
+      if (!profile?.company_id) return null;
+      const today = new Date().toISOString().split('T')[0];
+      
+      if (isAdmin) {
+        const { data } = await supabase
+          .from('daily_logs')
+          .select('*')
+          .eq('company_id', profile.company_id)
+          .eq('log_date', today);
+        return data || [];
+      } else if (isDriver) {
+        const { data: driverProfile } = await supabase
+          .from('driver_profiles')
+          .select('id')
+          .eq('user_id', user?.id)
+          .single();
+        
+        if (driverProfile) {
+          const { data } = await supabase
+            .from('daily_logs')
+            .select('*')
+            .eq('driver_id', driverProfile.id)
+            .eq('log_date', today)
+            .single();
+          return data;
+        }
+      }
+      return null;
+    },
+    enabled: !!profile?.company_id && !!user?.id,
+  });
 
   return (
     <SidebarProvider>
@@ -56,11 +138,11 @@ const Dashboard = () => {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-gradient">12</div>
-                  <p className="text-xs text-muted-foreground flex items-center">
+                  <div className="text-2xl font-bold text-gradient">{driversCount || 0}</div>
+                  <div className="text-xs text-muted-foreground flex items-center">
                     <div className="w-2 h-2 bg-success rounded-full mr-2 animate-pulse"></div>
-                    +2 from last month
-                  </p>
+                    Currently active
+                  </div>
                 </CardContent>
               </Card>
 
@@ -72,11 +154,11 @@ const Dashboard = () => {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-gradient">8</div>
-                  <p className="text-xs text-muted-foreground flex items-center">
+                  <div className="text-2xl font-bold text-gradient">{vansCount || 0}</div>
+                  <div className="text-xs text-muted-foreground flex items-center">
                     <div className="w-2 h-2 bg-success rounded-full mr-2"></div>
-                    All vehicles operational
-                  </p>
+                    Vehicles available
+                  </div>
                 </CardContent>
               </Card>
 
@@ -86,11 +168,10 @@ const Dashboard = () => {
                   <MapPin className="h-4 w-4 text-primary animate-float" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-gradient">24</div>
-                  <p className="text-xs text-muted-foreground">
-                    <span className="delivery-status status-delivered mr-1">18 completed</span>
-                    <span className="delivery-status status-in-progress">6 in progress</span>
-                  </p>
+                  <div className="text-2xl font-bold text-gradient">{roundsCount || 0}</div>
+                  <div className="text-xs text-muted-foreground">
+                    <span className="delivery-status status-delivered mr-1">Configured rounds</span>
+                  </div>
                 </CardContent>
               </Card>
 
@@ -100,10 +181,10 @@ const Dashboard = () => {
                   <Bell className="h-4 w-4 text-warning animate-pulse" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-warning">3</div>
-                  <p className="text-xs text-muted-foreground">
-                    Require your attention
-                  </p>
+                  <div className="text-2xl font-bold text-warning">{Array.isArray(todayLogs) ? todayLogs.filter(log => log.status === 'in_progress').length : 0}</div>
+                  <div className="text-xs text-muted-foreground">
+                    Active logs today
+                  </div>
                 </CardContent>
               </Card>
             </div>
@@ -123,7 +204,7 @@ const Dashboard = () => {
                 <CardContent>
                   <Button 
                     className="logistics-button w-full group-hover:shadow-glow" 
-                    onClick={() => window.location.href = '/admin/drivers'}
+                    onClick={() => navigate('/admin/drivers')}
                   >
                     <Users className="h-4 w-4 mr-2" />
                     Manage Drivers
@@ -144,7 +225,7 @@ const Dashboard = () => {
                 <CardContent>
                   <Button 
                     className="logistics-button w-full group-hover:shadow-glow" 
-                    onClick={() => window.location.href = '/admin/vans'}
+                    onClick={() => navigate('/admin/vans')}
                   >
                     <Truck className="h-4 w-4 mr-2" />
                     Manage Vehicles
@@ -165,7 +246,7 @@ const Dashboard = () => {
                 <CardContent>
                   <Button 
                     className="logistics-button w-full group-hover:shadow-glow" 
-                    onClick={() => window.location.href = '/admin/schedule'}
+                    onClick={() => navigate('/admin/schedule')}
                   >
                     <Calendar className="h-4 w-4 mr-2" />
                     View Schedule
@@ -274,23 +355,35 @@ const Dashboard = () => {
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="text-center p-4 rounded-lg bg-card/50 hover-lift">
-                    <div className="text-2xl font-bold text-gradient">24</div>
-                    <p className="text-sm text-muted-foreground">Parcels Assigned</p>
+                    <div className="text-2xl font-bold text-gradient">
+                      {todayLogs && !Array.isArray(todayLogs) ? todayLogs.sod_parcel_count || 0 : 0}
+                    </div>
+                    <div className="text-sm text-muted-foreground">Parcels Assigned</div>
                     <div className="w-full bg-muted rounded-full h-2 mt-2">
                       <div className="bg-gradient-primary h-2 rounded-full w-3/4 route-indicator"></div>
                     </div>
                   </div>
                   <div className="text-center p-4 rounded-lg bg-card/50 hover-lift">
-                    <div className="text-2xl font-bold text-success">18</div>
-                    <p className="text-sm text-muted-foreground">Delivered</p>
-                    <div className="delivery-status status-delivered mt-2">75% Complete</div>
+                    <div className="text-2xl font-bold text-success">
+                      {todayLogs && !Array.isArray(todayLogs) ? todayLogs.eod_delivered_count || 0 : 0}
+                    </div>
+                    <div className="text-sm text-muted-foreground">Delivered</div>
+                    <div className="delivery-status status-delivered mt-2">
+                      {todayLogs && !Array.isArray(todayLogs) && todayLogs.sod_parcel_count 
+                        ? Math.round((todayLogs.eod_delivered_count || 0) / todayLogs.sod_parcel_count * 100) 
+                        : 0}% Complete
+                    </div>
                   </div>
                   <div className="text-center p-4 rounded-lg bg-card/50 hover-lift">
-                    <div className="text-2xl font-bold text-gradient">£120</div>
-                    <p className="text-sm text-muted-foreground">Estimated Pay</p>
+                    <div className="text-2xl font-bold text-gradient">
+                      £{todayLogs && !Array.isArray(todayLogs) ? todayLogs.estimated_pay || '0' : '0'}
+                    </div>
+                    <div className="text-sm text-muted-foreground">Estimated Pay</div>
                     <div className="flex items-center justify-center mt-2">
                       <div className="w-2 h-2 bg-success rounded-full mr-2 animate-pulse"></div>
-                      <span className="text-xs text-success">On track</span>
+                      <span className="text-xs text-success">
+                        {todayLogs && !Array.isArray(todayLogs) ? todayLogs.status || 'Not started' : 'Not started'}
+                      </span>
                     </div>
                   </div>
                 </div>
