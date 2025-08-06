@@ -62,33 +62,27 @@ const DriverManagement = () => {
   // Invite driver mutation
   const inviteDriverMutation = useMutation({
     mutationFn: async (driverData: typeof formData) => {
-      // First create the auth user
-      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-        email: driverData.email,
-        password: Math.random().toString(36).slice(-8) + '!',
-        email_confirm: true,
-        user_metadata: {
-          first_name: driverData.firstName,
-          last_name: driverData.lastName,
-          user_type: 'driver'
+      const { data, error } = await supabase.functions.invoke('invite-driver', {
+        body: {
+          email: driverData.email,
+          firstName: driverData.firstName,
+          lastName: driverData.lastName,
+          phone: driverData.phone,
+          hourlyRate: driverData.hourlyRate,
+          companyId: profile?.company_id
         }
       });
 
-      if (authError) throw authError;
+      if (error) {
+        console.error('Function invoke error:', error);
+        throw new Error(error.message || 'Failed to invite driver');
+      }
 
-      // Then create the driver profile
-      const { error: profileError } = await supabase
-        .from('driver_profiles')
-        .insert({
-          user_id: authData.user.id,
-          company_id: profile?.company_id,
-          hourly_rate: parseFloat(driverData.hourlyRate) || null,
-          status: 'active'
-        });
+      if (!data?.success) {
+        throw new Error(data?.error || 'Failed to invite driver');
+      }
 
-      if (profileError) throw profileError;
-
-      return authData.user;
+      return data;
     },
     onSuccess: () => {
       toast({
