@@ -2,45 +2,41 @@ import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Truck, Users, MapPin, Calendar, Bell, LogOut } from 'lucide-react';
+import { Truck, Users, MapPin, Calendar, Bell } from 'lucide-react';
+import { SidebarProvider, SidebarTrigger, SidebarInset } from '@/components/ui/sidebar';
+import { AppSidebar } from '@/components/AppSidebar';
 
 const Dashboard = () => {
-  const { user, profile, signOut } = useAuth();
+  const { user, profile } = useAuth();
 
   const isAdmin = profile?.user_type === 'admin';
   const isDriver = profile?.user_type === 'driver';
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b bg-card">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <Truck className="h-8 w-8 text-primary" />
-              <div>
-                <h1 className="text-2xl font-bold text-foreground">LogiFlow</h1>
-                <p className="text-sm text-muted-foreground">
-                  Welcome back, {profile?.first_name || user?.email}
-                </p>
+    <SidebarProvider>
+      <div className="min-h-screen flex w-full bg-background">
+        <AppSidebar />
+        
+        <SidebarInset className="flex-1">
+          {/* Header */}
+          <header className="border-b bg-card sticky top-0 z-10">
+            <div className="flex items-center px-4 py-4">
+              <SidebarTrigger className="mr-4" />
+              <div className="flex items-center space-x-3">
+                <div>
+                  <h1 className="text-xl font-semibold text-foreground">
+                    {isAdmin ? 'Admin Dashboard' : 'Driver Dashboard'}
+                  </h1>
+                  <p className="text-sm text-muted-foreground">
+                    Welcome back, {profile?.first_name || user?.email}
+                  </p>
+                </div>
               </div>
             </div>
-            <div className="flex items-center space-x-4">
-              <Badge variant={isAdmin ? "default" : "secondary"}>
-                {isAdmin ? "Admin" : "Driver"}
-              </Badge>
-              <Button variant="outline" onClick={signOut}>
-                <LogOut className="h-4 w-4 mr-2" />
-                Sign Out
-              </Button>
-            </div>
-          </div>
-        </div>
-      </header>
+          </header>
 
-      {/* Main Content */}
-      <main className="container mx-auto px-4 py-8">
+          {/* Main Content */}
+          <main className="p-6">
         {isAdmin && (
           <div className="space-y-8">
             <div>
@@ -265,8 +261,10 @@ const Dashboard = () => {
             </CardHeader>
           </Card>
         )}
-      </main>
-    </div>
+          </main>
+        </SidebarInset>
+      </div>
+    </SidebarProvider>
   );
 };
 
