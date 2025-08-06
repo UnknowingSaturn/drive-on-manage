@@ -46,19 +46,28 @@ const EODReports = () => {
       // Fetch driver profiles and rounds separately
       const { data: drivers } = await supabase
         .from('driver_profiles')
-        .select('id, user_id, profiles!user_id(first_name, last_name)')
+        .select('id, user_id')
         .in('id', logs?.map(l => l.driver_id) || []);
+
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('user_id, first_name, last_name')
+        .in('user_id', drivers?.map(d => d.user_id) || []);
 
       const { data: rounds } = await supabase
         .from('rounds')
         .select('id, round_number')
         .in('id', logs?.map(l => l.round_id).filter(Boolean) || []);
 
-      return logs?.map(log => ({
-        ...log,
-        driver_profiles: drivers?.find(d => d.id === log.driver_id),
-        rounds: rounds?.find(r => r.id === log.round_id)
-      })) || [];
+      return logs?.map(log => {
+        const driver = drivers?.find(d => d.id === log.driver_id);
+        const profile = profiles?.find(p => p.user_id === driver?.user_id);
+        return {
+          ...log,
+          driver_profile: profile,
+          round: rounds?.find(r => r.id === log.round_id)
+        };
+      }) || [];
     },
     enabled: !!profile?.company_id
   });
@@ -109,8 +118,8 @@ const EODReports = () => {
 
     const csvData = dailyLogs.map(log => [
       format(new Date(log.log_date), 'dd/MM/yyyy'),
-      `${log.driver_profiles?.profiles?.first_name} ${log.driver_profiles?.profiles?.last_name}`,
-      log.rounds?.round_number || '-',
+      `${log.driver_profile?.first_name || ''} ${log.driver_profile?.last_name || ''}`.trim() || 'Unknown',
+      log.round?.round_number || '-',
       log.sod_parcel_count || 0,
       log.eod_delivered_count || 0,
       log.sod_parcel_count ? `${((log.eod_delivered_count || 0) / log.sod_parcel_count * 100).toFixed(1)}%` : '0%',
@@ -245,10 +254,10 @@ const EODReports = () => {
                       {format(new Date(log.log_date), 'dd/MM/yyyy')}
                     </TableCell>
                     <TableCell>
-                      {log.driver_profiles?.profiles?.first_name} {log.driver_profiles?.profiles?.last_name}
+                      {log.driver_profile?.first_name} {log.driver_profile?.last_name}
                     </TableCell>
                     <TableCell>
-                      {log.rounds?.round_number || '-'}
+                      {log.round?.round_number || '-'}
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center">
