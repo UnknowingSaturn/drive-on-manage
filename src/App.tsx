@@ -10,6 +10,7 @@ import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import NotFound from "./pages/NotFound";
 import DriverManagement from "./pages/admin/DriverManagement";
+import CompanyManagement from "./pages/admin/CompanyManagement";
 import VanManagement from "./pages/admin/VanManagement";
 import RoundManagement from "./pages/admin/RoundManagement";
 import ScheduleView from "./pages/admin/ScheduleView";
@@ -30,6 +31,11 @@ const App = () => (
             <Route path="/dashboard" element={
               <ProtectedRoute>
                 <Dashboard />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/companies" element={
+              <ProtectedRoute>
+                <CompanyManagement />
               </ProtectedRoute>
             } />
             <Route path="/admin/drivers" element={

@@ -11,7 +11,8 @@ import {
   Clock,
   CheckCircle2,
   AlertTriangle,
-  MessageCircle
+  MessageCircle,
+  Building2
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -34,6 +35,7 @@ import { Badge } from "@/components/ui/badge";
 
 const adminItems = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
+  { title: "Companies", url: "/admin/companies", icon: Building2 },
   { title: "Driver Management", url: "/admin/drivers", icon: Users },
   { title: "Van Management", url: "/admin/vans", icon: Truck },
   { title: "Round Management", url: "/admin/rounds", icon: MapPin },
