@@ -135,7 +135,8 @@ const DriverOnboarding = () => {
         .select('*')
         .eq('invite_token', token)
         .eq('status', 'pending')
-        .single();
+        .order('created_at', { ascending: false })
+        .maybeSingle();
 
       if (error || !inviteData) {
         throw new Error('Invalid or expired invitation link');

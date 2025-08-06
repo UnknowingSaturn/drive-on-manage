@@ -180,14 +180,23 @@ serve(async (req) => {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       } else {
-        // Update expired invitation to cancelled
-        console.log('Updating expired invitation to cancelled');
+        // Update expired invitation to expired status
+        console.log('Updating expired invitation to expired');
         await supabase
           .from('driver_invitations')
           .update({ status: 'expired' })
           .eq('id', existingInvite.id);
       }
     }
+
+    // Cancel any previous invitations for this email when creating a new one
+    console.log('Cancelling any previous invitations for this email...');
+    await supabase
+      .from('driver_invitations')
+      .update({ status: 'superseded' })
+      .eq('email', email.toLowerCase().trim())
+      .eq('company_id', companyId)
+      .in('status', ['pending', 'cancelled']);
 
     // Check for existing driver with same email
     console.log('Checking for existing driver profiles...');
