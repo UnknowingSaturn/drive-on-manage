@@ -3,5 +3,8 @@ project_id = "ttnlrnmdxkecomdylckl"
 [functions.invite-driver]
 verify_jwt = false
 
+[functions.enhanced-driver-invite]
+verify_jwt = false
+
 [functions.remove-driver]
 verify_jwt = false

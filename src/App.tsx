@@ -16,6 +16,7 @@ import VanManagement from "./pages/admin/VanManagement";
 import RoundManagement from "./pages/admin/RoundManagement";
 import ScheduleView from "./pages/admin/ScheduleView";
 import EODReports from "./pages/admin/EODReports";
+import DriverOnboarding from "./pages/DriverOnboarding";
 
 const queryClient = new QueryClient();
 
@@ -30,6 +31,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
+            <Route path="/onboarding" element={<DriverOnboarding />} />
             <Route path="/dashboard" element={
               <ProtectedRoute>
                 <Dashboard />

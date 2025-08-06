@@ -45,12 +45,13 @@ const DriverManagement = () => {
   });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
-  // Fetch drivers for the company
+  // Fetch drivers and invitations for the company
   const { data: drivers = [], isLoading, error } = useQuery({
     queryKey: ['drivers', profile?.company_id],
     queryFn: async () => {
       if (!profile?.company_id) return [];
       
+      // Fetch active driver profiles
       const { data: drivers, error: driversError } = await supabase
         .from('driver_profiles')
         .select('*')
@@ -59,7 +60,17 @@ const DriverManagement = () => {
 
       if (driversError) throw driversError;
 
-      // Fetch profile data separately
+      // Fetch pending invitations
+      const { data: invitations, error: invitationsError } = await supabase
+        .from('driver_invitations')
+        .select('*')
+        .eq('company_id', profile.company_id)
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false });
+
+      if (invitationsError) throw invitationsError;
+
+      // Fetch profile data for active drivers
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
         .select('user_id, first_name, last_name, email, phone, is_active')
@@ -67,13 +78,35 @@ const DriverManagement = () => {
 
       if (profilesError) throw profilesError;
 
-      // Combine the data
-      const data = drivers?.map(driver => ({
+      // Combine active drivers with their profiles
+      const activeDrivers = drivers?.map(driver => ({
         ...driver,
-        profiles: profiles?.find(p => p.user_id === driver.user_id)
+        type: 'active' as const,
+        profiles: profiles?.find(p => p.user_id === driver.user_id),
+        invitation_status: driver.onboarding_completed_at ? 'completed' : 'in_progress'
       })) || [];
 
-      return data;
+      // Add pending invitations as "drivers"
+      const pendingDrivers = invitations?.map(invite => ({
+        id: invite.id,
+        type: 'invitation' as const,
+        status: 'pending',
+        invitation_status: 'pending',
+        user_id: null,
+        company_id: invite.company_id,
+        hourly_rate: invite.hourly_rate,
+        created_at: invite.created_at,
+        expires_at: invite.expires_at,
+        profiles: {
+          first_name: invite.first_name,
+          last_name: invite.last_name,
+          email: invite.email,
+          phone: invite.phone,
+          is_active: false
+        }
+      })) || [];
+
+      return [...activeDrivers, ...pendingDrivers];
     },
     enabled: !!profile?.company_id,
     refetchInterval: 30000 // Refresh every 30 seconds for real-time updates
@@ -163,7 +196,7 @@ const DriverManagement = () => {
         }
       }
 
-      const { data, error } = await supabase.functions.invoke('invite-driver', {
+      const { data, error } = await supabase.functions.invoke('enhanced-driver-invite', {
         body: {
           ...sanitizedData,
           companyId: companyId
@@ -249,6 +282,33 @@ const DriverManagement = () => {
     onError: (error: any) => {
       toast({
         title: "Error removing driver",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Cancel invitation mutation
+  const cancelInvitationMutation = useMutation({
+    mutationFn: async (invitationId: string) => {
+      const { error } = await supabase
+        .from('driver_invitations')
+        .update({ status: 'cancelled' })
+        .eq('id', invitationId);
+
+      if (error) throw error;
+      return invitationId;
+    },
+    onSuccess: () => {
+      toast({
+        title: "Invitation cancelled",
+        description: "The driver invitation has been cancelled successfully.",
+      });
+      queryClient.invalidateQueries({ queryKey: ['drivers'] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error cancelling invitation",
         description: error.message,
         variant: "destructive",
       });
@@ -522,10 +582,22 @@ const DriverManagement = () => {
                         <TableRow key={driver.id}>
                           <TableCell className="font-medium">
                             <div>
-                              <div>{driver.profiles?.first_name} {driver.profiles?.last_name}</div>
+                              <div className="flex items-center space-x-2">
+                                <span>{driver.profiles?.first_name} {driver.profiles?.last_name}</span>
+                                {driver.type === 'invitation' && (
+                                  <Badge variant="outline" className="text-xs">
+                                    Pending Invite
+                                  </Badge>
+                                )}
+                              </div>
                               <div className="text-xs text-muted-foreground sm:hidden">
                                 {driver.profiles?.email}
                               </div>
+                              {driver.type === 'invitation' && driver.expires_at && (
+                                <div className="text-xs text-orange-600">
+                                  Expires: {new Date(driver.expires_at).toLocaleDateString()}
+                                </div>
+                              )}
                             </div>
                           </TableCell>
                           <TableCell className="hidden sm:table-cell">
@@ -538,48 +610,80 @@ const DriverManagement = () => {
                             {driver.hourly_rate ? `£${driver.hourly_rate}/hr` : '-'}
                           </TableCell>
                           <TableCell>
-                            <Badge variant={
-                              driver.status === 'active' ? 'default' : 
-                              driver.status === 'pending' ? 'secondary' : 
-                              'outline'
-                            }>
-                              {driver.status === 'active' && (
-                                <>
-                                  <UserCheck className="h-3 w-3 mr-1" />
-                                  Active
-                                </>
+                            <div className="flex items-center space-x-2">
+                              <Badge variant={
+                                driver.type === 'invitation' ? 'secondary' :
+                                driver.status === 'active' ? 'default' : 
+                                driver.status === 'pending' ? 'secondary' : 
+                                'outline'
+                              }>
+                                {driver.type === 'invitation' && (
+                                  <>
+                                    <Clock className="h-3 w-3 mr-1" />
+                                    Invited
+                                  </>
+                                )}
+                                {driver.type === 'active' && driver.status === 'active' && (
+                                  <>
+                                    <UserCheck className="h-3 w-3 mr-1" />
+                                    Active
+                                  </>
+                                )}
+                                {driver.type === 'active' && driver.status === 'pending' && (
+                                  <>
+                                    <Clock className="h-3 w-3 mr-1" />
+                                    Setup Required
+                                  </>
+                                )}
+                                {driver.type === 'active' && driver.status === 'inactive' && (
+                                  <>
+                                    <UserX className="h-3 w-3 mr-1" />
+                                    Inactive
+                                  </>
+                                )}
+                              </Badge>
+                              {driver.type === 'active' && !driver.onboarding_completed_at && (
+                                <Badge variant="outline" className="text-xs">
+                                  Onboarding
+                                </Badge>
                               )}
-                              {driver.status === 'pending' && (
-                                <>
-                                  <Clock className="h-3 w-3 mr-1" />
-                                  Pending
-                                </>
-                              )}
-                              {driver.status === 'inactive' && (
-                                <>
-                                  <UserX className="h-3 w-3 mr-1" />
-                                  Inactive
-                                </>
-                              )}
-                            </Badge>
+                            </div>
                           </TableCell>
                           <TableCell>
                             <div className="flex space-x-1">
-                              <Button variant="outline" size="sm" title="Edit driver">
-                                <Edit className="h-3 w-3" />
-                              </Button>
-                              <Button variant="outline" size="sm" title="Call driver">
-                                <Phone className="h-3 w-3" />
-                              </Button>
+                              {driver.type === 'active' && (
+                                <>
+                                  <Button variant="outline" size="sm" title="Edit driver">
+                                    <Edit className="h-3 w-3" />
+                                  </Button>
+                                  <Button variant="outline" size="sm" title="Call driver">
+                                    <Phone className="h-3 w-3" />
+                                  </Button>
+                                </>
+                              )}
                               <ConfirmDelete
-                                title={`Remove ${driver.profiles?.first_name} ${driver.profiles?.last_name}?`}
-                                description={
-                                  driver.status === 'pending' 
-                                    ? "This will cancel the pending invitation and remove the driver profile."
-                                    : "This will permanently remove the driver from your team. This action cannot be undone."
+                                title={
+                                  driver.type === 'invitation' 
+                                    ? `Cancel invitation for ${driver.profiles?.first_name} ${driver.profiles?.last_name}?`
+                                    : `Remove ${driver.profiles?.first_name} ${driver.profiles?.last_name}?`
                                 }
-                                onConfirm={() => deleteDriverMutation.mutate(driver.id)}
-                                disabled={deleteDriverMutation.isPending}
+                                description={
+                                  driver.type === 'invitation'
+                                    ? "This will cancel the pending invitation and remove it from your list."
+                                    : driver.status === 'pending' 
+                                      ? "This will cancel the pending setup and remove the driver profile."
+                                      : "This will permanently remove the driver from your team. This action cannot be undone."
+                                }
+                                onConfirm={() => {
+                                  if (driver.type === 'invitation') {
+                                    // Handle invitation cancellation
+                                    cancelInvitationMutation.mutate(driver.id);
+                                  } else {
+                                    // Handle driver removal
+                                    deleteDriverMutation.mutate(driver.id);
+                                  }
+                                }}
+                                disabled={deleteDriverMutation.isPending || cancelInvitationMutation.isPending}
                               />
                             </div>
                           </TableCell>
