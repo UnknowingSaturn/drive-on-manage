@@ -206,43 +206,43 @@ const DriverManagement = () => {
     },
   });
 
-  // Delete driver mutation with confirmation
+  // Delete driver mutation with comprehensive cleanup
   const deleteDriverMutation = useMutation({
     mutationFn: async (driverId: string) => {
       const { data: driverProfile, error: fetchError } = await supabase
         .from('driver_profiles')
-        .select('user_id, profiles!inner(first_name, last_name)')
+        .select('user_id, status, profiles!inner(first_name, last_name)')
         .eq('id', driverId)
         .single();
 
       if (fetchError) throw fetchError;
 
-      // Check if driver has any active logs
-      const { data: activeLogs } = await supabase
-        .from('daily_logs')
-        .select('id')
-        .eq('driver_id', driverId)
-        .eq('status', 'in_progress')
-        .limit(1);
+      // Use edge function for proper cleanup
+      const { data, error } = await supabase.functions.invoke('remove-driver', {
+        body: {
+          driverId: driverId,
+          cleanupUser: driverProfile.status === 'pending' // Clean up user account for pending invites
+        }
+      });
 
-      if (activeLogs && activeLogs.length > 0) {
-        throw new Error('Cannot remove driver with active daily logs. Please complete or cancel their current shift first.');
+      if (error) {
+        throw new Error(`Failed to remove driver: ${error.message || 'Unknown error'}`);
       }
 
-      // Delete the driver profile
-      const { error: profileError } = await supabase
-        .from('driver_profiles')
-        .delete()
-        .eq('id', driverId);
+      if (!data?.success) {
+        throw new Error(data?.error || 'Failed to remove driver');
+      }
 
-      if (profileError) throw profileError;
-
-      return driverId;
+      return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      const message = data.cleanedUp 
+        ? "Driver removed and account cleaned up successfully"
+        : "Driver removed successfully";
+      
       toast({
         title: "Driver removed successfully",
-        description: "The driver has been removed from your team.",
+        description: message,
       });
       queryClient.invalidateQueries({ queryKey: ['drivers'] });
     },
