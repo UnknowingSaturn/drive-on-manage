@@ -142,15 +142,25 @@ const DriverManagement = () => {
         throw new Error('No company assigned to your profile. Please contact support.');
       }
 
-      // Check for duplicate email
-      const { data: existingDriver } = await supabase
-        .from('profiles')
-        .select('email')
-        .eq('email', sanitizedData.email)
-        .maybeSingle();
+      // Check for duplicate driver profile (not just email)
+      const { data: existingDriverProfile } = await supabase
+        .from('driver_profiles')
+        .select('id, user_id')
+        .eq('company_id', companyId)
+        .limit(1);
 
-      if (existingDriver) {
-        throw new Error('A user with this email already exists');
+      // Check if any existing driver has this email
+      if (existingDriverProfile && existingDriverProfile.length > 0) {
+        const userIds = existingDriverProfile.map(d => d.user_id);
+        const { data: profilesWithEmail } = await supabase
+          .from('profiles')
+          .select('user_id')
+          .eq('email', sanitizedData.email)
+          .in('user_id', userIds);
+
+        if (profilesWithEmail && profilesWithEmail.length > 0) {
+          throw new Error('A driver with this email already exists in your company');
+        }
       }
 
       const { data, error } = await supabase.functions.invoke('invite-driver', {
