@@ -14,7 +14,512 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      announcements: {
+        Row: {
+          company_id: string
+          content: string
+          created_at: string
+          created_by: string
+          expires_at: string | null
+          id: string
+          is_active: boolean
+          priority: string | null
+          target_audience: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          content: string
+          created_at?: string
+          created_by: string
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          priority?: string | null
+          target_audience?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          content?: string
+          created_at?: string
+          created_by?: string
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          priority?: string | null
+          target_audience?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "announcements_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      companies: {
+        Row: {
+          address: string | null
+          created_at: string
+          email: string | null
+          id: string
+          is_active: boolean
+          name: string
+          phone: string | null
+          subscription_tier: string | null
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          phone?: string | null
+          subscription_tier?: string | null
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          phone?: string | null
+          subscription_tier?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      daily_logs: {
+        Row: {
+          actual_pay: number | null
+          company_id: string
+          created_at: string
+          driver_id: string
+          eod_delivered_count: number | null
+          eod_notes: string | null
+          eod_screenshot_url: string | null
+          eod_timestamp: string | null
+          estimated_pay: number | null
+          id: string
+          log_date: string
+          round_id: string | null
+          sod_mileage: number | null
+          sod_notes: string | null
+          sod_parcel_count: number | null
+          sod_timestamp: string | null
+          status: string | null
+          updated_at: string
+          van_id: string | null
+        }
+        Insert: {
+          actual_pay?: number | null
+          company_id: string
+          created_at?: string
+          driver_id: string
+          eod_delivered_count?: number | null
+          eod_notes?: string | null
+          eod_screenshot_url?: string | null
+          eod_timestamp?: string | null
+          estimated_pay?: number | null
+          id?: string
+          log_date?: string
+          round_id?: string | null
+          sod_mileage?: number | null
+          sod_notes?: string | null
+          sod_parcel_count?: number | null
+          sod_timestamp?: string | null
+          status?: string | null
+          updated_at?: string
+          van_id?: string | null
+        }
+        Update: {
+          actual_pay?: number | null
+          company_id?: string
+          created_at?: string
+          driver_id?: string
+          eod_delivered_count?: number | null
+          eod_notes?: string | null
+          eod_screenshot_url?: string | null
+          eod_timestamp?: string | null
+          estimated_pay?: number | null
+          id?: string
+          log_date?: string
+          round_id?: string | null
+          sod_mileage?: number | null
+          sod_notes?: string | null
+          sod_parcel_count?: number | null
+          sod_timestamp?: string | null
+          status?: string | null
+          updated_at?: string
+          van_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "daily_logs_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "daily_logs_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "driver_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "daily_logs_round_id_fkey"
+            columns: ["round_id"]
+            isOneToOne: false
+            referencedRelation: "rounds"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "daily_logs_van_id_fkey"
+            columns: ["van_id"]
+            isOneToOne: false
+            referencedRelation: "vans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      driver_profiles: {
+        Row: {
+          assigned_van_id: string | null
+          company_id: string
+          created_at: string
+          driving_license_document: string | null
+          driving_license_number: string | null
+          employee_id: string | null
+          hourly_rate: number | null
+          id: string
+          insurance_document: string | null
+          license_expiry: string | null
+          parcel_rate: number | null
+          right_to_work_document: string | null
+          status: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          assigned_van_id?: string | null
+          company_id: string
+          created_at?: string
+          driving_license_document?: string | null
+          driving_license_number?: string | null
+          employee_id?: string | null
+          hourly_rate?: number | null
+          id?: string
+          insurance_document?: string | null
+          license_expiry?: string | null
+          parcel_rate?: number | null
+          right_to_work_document?: string | null
+          status?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          assigned_van_id?: string | null
+          company_id?: string
+          created_at?: string
+          driving_license_document?: string | null
+          driving_license_number?: string | null
+          employee_id?: string | null
+          hourly_rate?: number | null
+          id?: string
+          insurance_document?: string | null
+          license_expiry?: string | null
+          parcel_rate?: number | null
+          right_to_work_document?: string | null
+          status?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "driver_profiles_assigned_van_id_fkey"
+            columns: ["assigned_van_id"]
+            isOneToOne: false
+            referencedRelation: "vans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "driver_profiles_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      incident_reports: {
+        Row: {
+          admin_notes: string | null
+          company_id: string
+          created_at: string
+          description: string
+          driver_id: string
+          id: string
+          incident_date: string
+          incident_type: string
+          location: string | null
+          photos: string[] | null
+          status: string | null
+          updated_at: string
+        }
+        Insert: {
+          admin_notes?: string | null
+          company_id: string
+          created_at?: string
+          description: string
+          driver_id: string
+          id?: string
+          incident_date?: string
+          incident_type: string
+          location?: string | null
+          photos?: string[] | null
+          status?: string | null
+          updated_at?: string
+        }
+        Update: {
+          admin_notes?: string | null
+          company_id?: string
+          created_at?: string
+          description?: string
+          driver_id?: string
+          id?: string
+          incident_date?: string
+          incident_type?: string
+          location?: string | null
+          photos?: string[] | null
+          status?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "incident_reports_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "incident_reports_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "driver_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          company_id: string | null
+          created_at: string
+          email: string
+          first_name: string | null
+          id: string
+          is_active: boolean
+          last_name: string | null
+          phone: string | null
+          updated_at: string
+          user_id: string
+          user_type: string
+        }
+        Insert: {
+          company_id?: string | null
+          created_at?: string
+          email: string
+          first_name?: string | null
+          id?: string
+          is_active?: boolean
+          last_name?: string | null
+          phone?: string | null
+          updated_at?: string
+          user_id: string
+          user_type: string
+        }
+        Update: {
+          company_id?: string | null
+          created_at?: string
+          email?: string
+          first_name?: string | null
+          id?: string
+          is_active?: boolean
+          last_name?: string | null
+          phone?: string | null
+          updated_at?: string
+          user_id?: string
+          user_type?: string
+        }
+        Relationships: []
+      }
+      rounds: {
+        Row: {
+          base_rate: number | null
+          company_id: string
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          parcel_rate: number | null
+          round_number: string
+          updated_at: string
+        }
+        Insert: {
+          base_rate?: number | null
+          company_id: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          parcel_rate?: number | null
+          round_number: string
+          updated_at?: string
+        }
+        Update: {
+          base_rate?: number | null
+          company_id?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          parcel_rate?: number | null
+          round_number?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rounds_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vans: {
+        Row: {
+          company_id: string
+          created_at: string
+          id: string
+          is_active: boolean
+          make: string | null
+          model: string | null
+          mot_expiry: string | null
+          registration: string
+          service_due: string | null
+          updated_at: string
+          year: number | null
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          make?: string | null
+          model?: string | null
+          mot_expiry?: string | null
+          registration: string
+          service_due?: string | null
+          updated_at?: string
+          year?: number | null
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          make?: string | null
+          model?: string | null
+          mot_expiry?: string | null
+          registration?: string
+          service_due?: string | null
+          updated_at?: string
+          year?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vans_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vehicle_checks: {
+        Row: {
+          check_date: string
+          created_at: string
+          driver_id: string
+          exterior_condition: string | null
+          fuel_level: number | null
+          id: string
+          interior_condition: string | null
+          issues_reported: string | null
+          mileage: number | null
+          photos: string[] | null
+          status: string | null
+          van_id: string
+        }
+        Insert: {
+          check_date?: string
+          created_at?: string
+          driver_id: string
+          exterior_condition?: string | null
+          fuel_level?: number | null
+          id?: string
+          interior_condition?: string | null
+          issues_reported?: string | null
+          mileage?: number | null
+          photos?: string[] | null
+          status?: string | null
+          van_id: string
+        }
+        Update: {
+          check_date?: string
+          created_at?: string
+          driver_id?: string
+          exterior_condition?: string | null
+          fuel_level?: number | null
+          id?: string
+          interior_condition?: string | null
+          issues_reported?: string | null
+          mileage?: number | null
+          photos?: string[] | null
+          status?: string | null
+          van_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vehicle_checks_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "driver_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vehicle_checks_van_id_fkey"
+            columns: ["van_id"]
+            isOneToOne: false
+            referencedRelation: "vans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
