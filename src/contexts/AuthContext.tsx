@@ -113,8 +113,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signIn = async (email: string, password: string) => {
     try {
+      // Import security functions
+      const { cleanupAuthState, rateLimiter, sanitizeInput } = await import('@/lib/security');
+      
+      // Rate limiting
+      const rateLimitKey = `login_${sanitizeInput(email)}`;
+      if (!rateLimiter.isAllowed(rateLimitKey, 5, 300000)) { // 5 attempts per 5 minutes
+        throw new Error('Too many login attempts. Please try again later.');
+      }
+      
+      // Clean up any existing auth state
+      cleanupAuthState();
+      
       const { error } = await supabase.auth.signInWithPassword({
-        email,
+        email: sanitizeInput(email),
         password,
       });
 
@@ -124,6 +136,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           title: "Sign In Failed",
           description: error.message,
         });
+      } else {
+        // Reset rate limit on successful login
+        rateLimiter.reset(rateLimitKey);
       }
 
       return { error };
@@ -180,11 +195,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signOut = async () => {
     try {
-      await supabase.auth.signOut();
+      // Import cleanup function
+      const { cleanupAuthState } = await import('@/lib/security');
+      
+      // Clean up auth state first
+      cleanupAuthState();
+      
+      // Attempt global sign out
+      try {
+        await supabase.auth.signOut({ scope: 'global' });
+      } catch (err) {
+        console.warn('Global signout failed, proceeding with cleanup');
+      }
+      
       toast({
         title: "Signed Out",
         description: "You have been successfully signed out.",
       });
+      
+      // Force page reload for clean state
+      window.location.href = '/auth';
     } catch (error: any) {
       toast({
         variant: "destructive",

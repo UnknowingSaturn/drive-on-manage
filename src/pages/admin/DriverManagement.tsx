@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,18 +7,35 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, Mail, Phone, UserCheck, UserX, Edit, Trash2, Clock } from 'lucide-react';
+import { Plus, Mail, Phone, UserCheck, UserX, Edit, Trash2, Clock, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { SidebarProvider, SidebarTrigger, SidebarInset } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/AppSidebar';
+import { ConfirmDelete } from '@/components/ConfirmDelete';
+import { SmartSearch } from '@/components/SmartSearch';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Progress } from '@/components/ui/progress';
+import { validateForm, sanitizeInput, emailSchema, nameSchema, phoneSchema, hourlyRateSchema } from '@/lib/security';
+import { z } from 'zod';
+
+// Validation schema for driver invitation
+const driverInviteSchema = z.object({
+  email: emailSchema,
+  firstName: nameSchema,
+  lastName: nameSchema,
+  phone: phoneSchema,
+  hourlyRate: z.string().optional()
+});
 
 const DriverManagement = () => {
   const { profile } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [showFormErrors, setShowFormErrors] = useState(false);
+  const [filteredDrivers, setFilteredDrivers] = useState<any[]>([]);
   const [formData, setFormData] = useState({
     email: '',
     firstName: '',
@@ -26,9 +43,10 @@ const DriverManagement = () => {
     phone: '',
     hourlyRate: ''
   });
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   // Fetch drivers for the company
-  const { data: drivers, isLoading } = useQuery({
+  const { data: drivers = [], isLoading, error } = useQuery({
     queryKey: ['drivers', profile?.company_id],
     queryFn: async () => {
       if (!profile?.company_id) return [];
@@ -36,7 +54,8 @@ const DriverManagement = () => {
       const { data: drivers, error: driversError } = await supabase
         .from('driver_profiles')
         .select('*')
-        .eq('company_id', profile.company_id);
+        .eq('company_id', profile.company_id)
+        .order('created_at', { ascending: false });
 
       if (driversError) throw driversError;
 
@@ -56,70 +75,99 @@ const DriverManagement = () => {
 
       return data;
     },
-    enabled: !!profile?.company_id
+    enabled: !!profile?.company_id,
+    refetchInterval: 30000 // Refresh every 30 seconds for real-time updates
   });
 
-  // Invite driver mutation
+  // Set initial filtered data
+  React.useEffect(() => {
+    setFilteredDrivers(drivers);
+  }, [drivers]);
+
+  // Real-time form validation
+  const validateField = (field: string, value: string) => {
+    const fieldSchema = {
+      email: emailSchema,
+      firstName: nameSchema,
+      lastName: nameSchema,
+      phone: phoneSchema,
+      hourlyRate: z.string().optional()
+    }[field];
+
+    if (fieldSchema) {
+      try {
+        fieldSchema.parse(value);
+        setFormErrors(prev => ({ ...prev, [field]: '' }));
+      } catch (error) {
+        if (error instanceof z.ZodError) {
+          setFormErrors(prev => ({ ...prev, [field]: error.errors[0].message }));
+        }
+      }
+    }
+  };
+
+  // Invite driver mutation with enhanced security
   const inviteDriverMutation = useMutation({
     mutationFn: async (driverData: typeof formData) => {
-      console.log('=== DEBUG: Starting driver invitation ===');
-      console.log('Current profile:', profile);
-      
-      // Get fresh profile data in case it was updated
+      // Validate all form data
+      const validation = validateForm(driverData, driverInviteSchema);
+      if (!validation.success) {
+        setFormErrors(validation.errors || {});
+        setShowFormErrors(true);
+        throw new Error('Please fix the form errors before submitting');
+      }
+
+      // Sanitize inputs
+      const sanitizedData = {
+        email: sanitizeInput(driverData.email),
+        firstName: sanitizeInput(driverData.firstName),
+        lastName: sanitizeInput(driverData.lastName),
+        phone: sanitizeInput(driverData.phone),
+        hourlyRate: driverData.hourlyRate
+      };
+
+      // Get fresh profile data
       const { data: freshProfile, error: profileError } = await supabase
         .from('profiles')
         .select('company_id, user_id')
         .eq('user_id', profile?.user_id)
         .maybeSingle();
 
-      console.log('Fresh profile data:', freshProfile);
-      console.log('Profile error:', profileError);
-
       if (profileError) {
-        console.error('Profile fetch error:', profileError);
         throw new Error('Failed to fetch profile data: ' + profileError.message);
       }
 
       const companyId = freshProfile?.company_id || profile?.company_id;
-      console.log('Using company ID:', companyId);
-
       if (!companyId) {
-        throw new Error('No company assigned to your profile. Please go to Companies page and create/assign a company first.');
+        throw new Error('No company assigned to your profile. Please contact support.');
       }
 
-      console.log('Calling edge function with data:', {
-        email: driverData.email,
-        firstName: driverData.firstName,
-        lastName: driverData.lastName,
-        phone: driverData.phone,
-        hourlyRate: driverData.hourlyRate,
-        companyId: companyId
-      });
+      // Check for duplicate email
+      const { data: existingDriver } = await supabase
+        .from('profiles')
+        .select('email')
+        .eq('email', sanitizedData.email)
+        .maybeSingle();
+
+      if (existingDriver) {
+        throw new Error('A user with this email already exists');
+      }
 
       const { data, error } = await supabase.functions.invoke('invite-driver', {
         body: {
-          email: driverData.email,
-          firstName: driverData.firstName,
-          lastName: driverData.lastName,
-          phone: driverData.phone,
-          hourlyRate: driverData.hourlyRate,
+          ...sanitizedData,
           companyId: companyId
         }
       });
 
-      console.log('Edge function response:', { data, error });
-
       if (error) {
-        console.error('Function invoke error:', error);
-        throw new Error(`Edge function error: ${error.message || 'Failed to invoke function'}`);
+        throw new Error(`Invitation failed: ${error.message || 'Unknown error'}`);
       }
 
       if (!data?.success) {
-        console.error('Function returned error:', data);
-        throw new Error(data?.error || 'Function completed but returned error');
+        throw new Error(data?.error || 'Failed to send invitation');
       }
 
-      console.log('=== DEBUG: Driver invitation successful ===');
       return data;
     },
     onSuccess: () => {
@@ -135,6 +183,8 @@ const DriverManagement = () => {
         phone: '',
         hourlyRate: ''
       });
+      setFormErrors({});
+      setShowFormErrors(false);
       queryClient.invalidateQueries({ queryKey: ['drivers'] });
     },
     onError: (error: any) => {
@@ -146,17 +196,28 @@ const DriverManagement = () => {
     },
   });
 
-  // Delete driver mutation
+  // Delete driver mutation with confirmation
   const deleteDriverMutation = useMutation({
     mutationFn: async (driverId: string) => {
-      // First get the driver profile to get user_id
       const { data: driverProfile, error: fetchError } = await supabase
         .from('driver_profiles')
-        .select('user_id')
+        .select('user_id, profiles!inner(first_name, last_name)')
         .eq('id', driverId)
         .single();
 
       if (fetchError) throw fetchError;
+
+      // Check if driver has any active logs
+      const { data: activeLogs } = await supabase
+        .from('daily_logs')
+        .select('id')
+        .eq('driver_id', driverId)
+        .eq('status', 'in_progress')
+        .limit(1);
+
+      if (activeLogs && activeLogs.length > 0) {
+        throw new Error('Cannot remove driver with active daily logs. Please complete or cancel their current shift first.');
+      }
 
       // Delete the driver profile
       const { error: profileError } = await supabase
@@ -166,8 +227,6 @@ const DriverManagement = () => {
 
       if (profileError) throw profileError;
 
-      // Note: Auth user deletion would require service role privileges
-      // For now we just remove the driver profile
       return driverId;
     },
     onSuccess: () => {
@@ -188,15 +247,62 @@ const DriverManagement = () => {
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+    if (showFormErrors) {
+      validateField(field, value);
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setShowFormErrors(true);
     inviteDriverMutation.mutate(formData);
   };
 
+  // Statistics
+  const stats = useMemo(() => {
+    const total = drivers.length;
+    const active = drivers.filter(d => d.status === 'active').length;
+    const pending = drivers.filter(d => d.status === 'pending').length;
+    const inactive = drivers.filter(d => d.status === 'inactive').length;
+    
+    return { total, active, pending, inactive };
+  }, [drivers]);
+
   if (isLoading) {
-    return <div className="p-6">Loading...</div>;
+    return (
+      <SidebarProvider>
+        <div className="min-h-screen flex w-full bg-background">
+          <AppSidebar />
+          <SidebarInset className="flex-1">
+            <div className="flex items-center justify-center h-full">
+              <div className="text-center space-y-4">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+                <p>Loading driver data...</p>
+                <Progress value={66} className="w-48" />
+              </div>
+            </div>
+          </SidebarInset>
+        </div>
+      </SidebarProvider>
+    );
+  }
+
+  if (error) {
+    return (
+      <SidebarProvider>
+        <div className="min-h-screen flex w-full bg-background">
+          <AppSidebar />
+          <SidebarInset className="flex-1 p-6">
+            <Alert className="max-w-md mx-auto mt-20">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                Failed to load driver data. Please refresh the page or contact support.
+              </AlertDescription>
+            </Alert>
+          </SidebarInset>
+        </div>
+      </SidebarProvider>
+    );
   }
 
   return (
@@ -208,23 +314,35 @@ const DriverManagement = () => {
           <header className="border-b bg-card sticky top-0 z-10">
             <div className="flex items-center px-4 py-4">
               <SidebarTrigger className="mr-4" />
-              <div>
+              <div className="flex-1">
                 <h1 className="text-xl font-semibold text-foreground">Driver Management</h1>
-                <p className="text-sm text-muted-foreground">Manage your driver workforce</p>
+                <p className="text-sm text-muted-foreground">
+                  Manage your driver workforce • {stats.total} total drivers
+                </p>
+              </div>
+              <div className="flex items-center space-x-4 text-sm">
+                <div className="flex items-center space-x-1">
+                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                  <span>{stats.active} Active</span>
+                </div>
+                <div className="flex items-center space-x-1">
+                  <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
+                  <span>{stats.pending} Pending</span>
+                </div>
               </div>
             </div>
           </header>
 
           <main className="p-6 space-y-6">
-            <div className="flex justify-between items-center">
-              <div>
+            <div className="flex justify-between items-start">
+              <div className="space-y-1">
                 <h2 className="text-2xl font-bold">Team Overview</h2>
-                <p className="text-muted-foreground">Current driver workforce</p>
+                <p className="text-muted-foreground">Manage drivers and track their status</p>
               </div>
         
               <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogTrigger asChild>
-                  <Button>
+                  <Button className="shrink-0">
                     <Plus className="h-4 w-4 mr-2" />
                     Invite Driver
                   </Button>
@@ -239,34 +357,55 @@ const DriverManagement = () => {
                   <form onSubmit={handleSubmit} className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <Label htmlFor="firstName">First Name</Label>
+                        <Label htmlFor="firstName">First Name <span className="text-destructive">*</span></Label>
                         <Input
                           id="firstName"
                           value={formData.firstName}
                           onChange={(e) => handleInputChange('firstName', e.target.value)}
+                          className={formErrors.firstName ? 'border-destructive' : ''}
                           required
+                          aria-describedby={formErrors.firstName ? 'firstName-error' : undefined}
                         />
+                        {formErrors.firstName && (
+                          <p id="firstName-error" className="text-sm text-destructive mt-1">
+                            {formErrors.firstName}
+                          </p>
+                        )}
                       </div>
                       <div>
-                        <Label htmlFor="lastName">Last Name</Label>
+                        <Label htmlFor="lastName">Last Name <span className="text-destructive">*</span></Label>
                         <Input
                           id="lastName"
                           value={formData.lastName}
                           onChange={(e) => handleInputChange('lastName', e.target.value)}
+                          className={formErrors.lastName ? 'border-destructive' : ''}
                           required
+                          aria-describedby={formErrors.lastName ? 'lastName-error' : undefined}
                         />
+                        {formErrors.lastName && (
+                          <p id="lastName-error" className="text-sm text-destructive mt-1">
+                            {formErrors.lastName}
+                          </p>
+                        )}
                       </div>
                     </div>
                     
                     <div>
-                      <Label htmlFor="email">Email Address</Label>
+                      <Label htmlFor="email">Email Address <span className="text-destructive">*</span></Label>
                       <Input
                         id="email"
                         type="email"
                         value={formData.email}
                         onChange={(e) => handleInputChange('email', e.target.value)}
+                        className={formErrors.email ? 'border-destructive' : ''}
                         required
+                        aria-describedby={formErrors.email ? 'email-error' : undefined}
                       />
+                      {formErrors.email && (
+                        <p id="email-error" className="text-sm text-destructive mt-1">
+                          {formErrors.email}
+                        </p>
+                      )}
                     </div>
                     
                     <div>
@@ -276,125 +415,181 @@ const DriverManagement = () => {
                         type="tel"
                         value={formData.phone}
                         onChange={(e) => handleInputChange('phone', e.target.value)}
+                        className={formErrors.phone ? 'border-destructive' : ''}
+                        placeholder="+44 123 456 7890"
+                        aria-describedby={formErrors.phone ? 'phone-error' : undefined}
                       />
+                      {formErrors.phone && (
+                        <p id="phone-error" className="text-sm text-destructive mt-1">
+                          {formErrors.phone}
+                        </p>
+                      )}
                     </div>
                     
                     <div>
-                      <Label htmlFor="hourlyRate">Rate (£)</Label>
+                      <Label htmlFor="hourlyRate">Hourly Rate (£)</Label>
                       <Input
                         id="hourlyRate"
                         type="number"
                         step="0.01"
+                        min="0"
+                        max="1000"
                         value={formData.hourlyRate}
                         onChange={(e) => handleInputChange('hourlyRate', e.target.value)}
                         placeholder="Enter hourly rate"
+                        aria-describedby={formErrors.hourlyRate ? 'hourlyRate-error' : undefined}
                       />
+                      {formErrors.hourlyRate && (
+                        <p id="hourlyRate-error" className="text-sm text-destructive mt-1">
+                          {formErrors.hourlyRate}
+                        </p>
+                      )}
                     </div>
                     
-                    <Button type="submit" className="w-full" disabled={inviteDriverMutation.isPending}>
-                      <Mail className="h-4 w-4 mr-2" />
-                      {inviteDriverMutation.isPending ? 'Sending Invite...' : 'Send Invite'}
+                    <Button 
+                      type="submit" 
+                      className="w-full" 
+                      disabled={inviteDriverMutation.isPending}
+                    >
+                      {inviteDriverMutation.isPending ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2"></div>
+                          Sending Invite...
+                        </>
+                      ) : (
+                        <>
+                          <Mail className="h-4 w-4 mr-2" />
+                          Send Invite
+                        </>
+                      )}
                     </Button>
                   </form>
                 </DialogContent>
               </Dialog>
             </div>
 
+            {/* Smart Search */}
+            <SmartSearch
+              data={drivers}
+              searchFields={['profiles.first_name', 'profiles.last_name', 'profiles.email', 'profiles.phone']}
+              onFilter={setFilteredDrivers}
+              placeholder="Search drivers by name, email, or phone..."
+              filterOptions={[
+                {
+                  label: 'Status',
+                  field: 'status',
+                  options: [
+                    { value: 'active', label: 'Active' },
+                    { value: 'pending', label: 'Pending Setup' },
+                    { value: 'inactive', label: 'Inactive' }
+                  ]
+                }
+              ]}
+            />
+
             <Card>
               <CardHeader>
                 <CardTitle>Driver Workforce</CardTitle>
-                <CardDescription>Manage your current drivers and pending invitations</CardDescription>
+                <CardDescription>
+                  {filteredDrivers.length} of {drivers.length} drivers shown
+                </CardDescription>
               </CardHeader>
               <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Email</TableHead>
-                      <TableHead>Mobile</TableHead>
-                      <TableHead>Rate</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {drivers?.map((driver) => (
-                      <TableRow key={driver.id}>
-                        <TableCell className="font-medium">
-                          {driver.profiles?.first_name} {driver.profiles?.last_name}
-                        </TableCell>
-                        <TableCell>{driver.profiles?.email}</TableCell>
-                        <TableCell>{driver.profiles?.phone || '-'}</TableCell>
-                        <TableCell>
-                          {driver.hourly_rate ? `£${driver.hourly_rate}/hr` : '-'}
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={
-                            driver.status === 'active' ? 'default' : 
-                            driver.status === 'pending' ? 'secondary' : 
-                            'outline'
-                          }>
-                            {driver.status === 'active' && (
-                              <>
-                                <UserCheck className="h-3 w-3 mr-1" />
-                                Active
-                              </>
-                            )}
-                            {driver.status === 'pending' && (
-                              <>
-                                <Clock className="h-3 w-3 mr-1" />
-                                Pending Setup
-                              </>
-                            )}
-                            {driver.status === 'inactive' && (
-                              <>
-                                <UserX className="h-3 w-3 mr-1" />
-                                Inactive
-                              </>
-                            )}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex space-x-2">
-                            <Button variant="outline" size="sm">
-                              <Edit className="h-3 w-3" />
-                            </Button>
-                            <Button variant="outline" size="sm">
-                              <Phone className="h-3 w-3" />
-                            </Button>
-                            {driver.status === 'pending' ? (
-                              <Button 
-                                variant="outline" 
-                                size="sm"
-                                onClick={() => deleteDriverMutation.mutate(driver.id)}
-                                disabled={deleteDriverMutation.isPending}
-                                className="text-destructive hover:text-destructive"
-                                title="Cancel invitation"
-                              >
-                                <UserX className="h-3 w-3" />
-                              </Button>
-                            ) : (
-                              <Button 
-                                variant="outline" 
-                                size="sm"
-                                onClick={() => deleteDriverMutation.mutate(driver.id)}
-                                disabled={deleteDriverMutation.isPending}
-                                className="text-destructive hover:text-destructive"
-                                title="Remove driver"
-                              >
-                                <Trash2 className="h-3 w-3" />
-                              </Button>
-                            )}
-                          </div>
-                        </TableCell>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Email</TableHead>
+                        <TableHead className="hidden sm:table-cell">Mobile</TableHead>
+                        <TableHead className="hidden md:table-cell">Rate</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Actions</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredDrivers.map((driver) => (
+                        <TableRow key={driver.id}>
+                          <TableCell className="font-medium">
+                            <div>
+                              <div>{driver.profiles?.first_name} {driver.profiles?.last_name}</div>
+                              <div className="text-xs text-muted-foreground sm:hidden">
+                                {driver.profiles?.email}
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell className="hidden sm:table-cell">
+                            {driver.profiles?.email}
+                          </TableCell>
+                          <TableCell className="hidden sm:table-cell">
+                            {driver.profiles?.phone || '-'}
+                          </TableCell>
+                          <TableCell className="hidden md:table-cell">
+                            {driver.hourly_rate ? `£${driver.hourly_rate}/hr` : '-'}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={
+                              driver.status === 'active' ? 'default' : 
+                              driver.status === 'pending' ? 'secondary' : 
+                              'outline'
+                            }>
+                              {driver.status === 'active' && (
+                                <>
+                                  <UserCheck className="h-3 w-3 mr-1" />
+                                  Active
+                                </>
+                              )}
+                              {driver.status === 'pending' && (
+                                <>
+                                  <Clock className="h-3 w-3 mr-1" />
+                                  Pending
+                                </>
+                              )}
+                              {driver.status === 'inactive' && (
+                                <>
+                                  <UserX className="h-3 w-3 mr-1" />
+                                  Inactive
+                                </>
+                              )}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex space-x-1">
+                              <Button variant="outline" size="sm" title="Edit driver">
+                                <Edit className="h-3 w-3" />
+                              </Button>
+                              <Button variant="outline" size="sm" title="Call driver">
+                                <Phone className="h-3 w-3" />
+                              </Button>
+                              <ConfirmDelete
+                                title={`Remove ${driver.profiles?.first_name} ${driver.profiles?.last_name}?`}
+                                description={
+                                  driver.status === 'pending' 
+                                    ? "This will cancel the pending invitation and remove the driver profile."
+                                    : "This will permanently remove the driver from your team. This action cannot be undone."
+                                }
+                                onConfirm={() => deleteDriverMutation.mutate(driver.id)}
+                                disabled={deleteDriverMutation.isPending}
+                              />
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
                 
-                {drivers?.length === 0 && (
+                {filteredDrivers.length === 0 && drivers.length > 0 && (
                   <div className="text-center py-8 text-muted-foreground">
-                    No drivers found. Start by inviting your first driver.
+                    No drivers match your search criteria.
+                  </div>
+                )}
+                
+                {drivers.length === 0 && (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <UserX className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <h3 className="text-lg font-medium mb-2">No drivers yet</h3>
+                    <p>Start by inviting your first driver to the team.</p>
                   </div>
                 )}
               </CardContent>
