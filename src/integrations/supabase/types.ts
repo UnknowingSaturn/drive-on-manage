@@ -978,6 +978,26 @@ export type Database = {
         }
         Returns: Json
       }
+      create_company_test: {
+        Args: {
+          company_name: string
+          company_email: string
+          company_phone?: string
+          company_address?: string
+          sub_tier?: string
+        }
+        Returns: {
+          id: string
+          name: string
+          email: string
+          phone: string
+          address: string
+          subscription_tier: string
+          is_active: boolean
+          created_at: string
+          updated_at: string
+        }[]
+      }
       generate_invite_token: {
         Args: Record<PropertyKey, never>
         Returns: string

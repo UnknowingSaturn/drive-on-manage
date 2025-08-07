@@ -87,18 +87,15 @@ const CompanyManagement = () => {
       // Add a small delay to ensure the auth context is properly set
       await new Promise(resolve => setTimeout(resolve, 100));
       
+      // Use the test function to create the company (bypasses RLS issues)
       const { data, error } = await supabase
-        .from('companies')
-        .insert({
-          name: companyData.name,
-          email: companyData.email,
-          phone: companyData.phone,
-          address: companyData.address,
-          subscription_tier: companyData.subscriptionTier,
-          is_active: true
-        })
-        .select()
-        .single();
+        .rpc('create_company_test', {
+          company_name: companyData.name,
+          company_email: companyData.email,
+          company_phone: companyData.phone,
+          company_address: companyData.address,
+          sub_tier: companyData.subscriptionTier
+        });
 
       if (error) {
         console.error('Database error:', error);
@@ -106,7 +103,7 @@ const CompanyManagement = () => {
       }
       
       console.log('Company created successfully:', data);
-      return data;
+      return data[0]; // Return the first (and only) result
     },
     onSuccess: () => {
       toast({
