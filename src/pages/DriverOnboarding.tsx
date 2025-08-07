@@ -270,8 +270,11 @@ const DriverOnboarding = () => {
     if (!invitation) return;
 
     try {
+      let userId: string;
+
       // Create user account if not exists
       if (!user) {
+        console.log('Creating new user account...');
         const { data: authData, error: authError } = await supabase.auth.signUp({
           email: invitation.email,
           password: formData.password,
@@ -286,6 +289,7 @@ const DriverOnboarding = () => {
         });
 
         if (authError) {
+          console.error('Auth error:', authError);
           throw authError;
         }
 
@@ -293,18 +297,32 @@ const DriverOnboarding = () => {
           throw new Error('Failed to create user account');
         }
 
-        // Wait for auth state to update
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        userId = authData.user.id;
+        console.log('User created with ID:', userId);
+
+        // Wait for auth state to update and get fresh session
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        // Get the current session to ensure we're properly authenticated
+        const { data: sessionData } = await supabase.auth.getSession();
+        if (!sessionData.session?.user) {
+          throw new Error('Failed to establish authenticated session');
+        }
+      } else {
+        userId = user.id;
+        console.log('Using existing user ID:', userId);
       }
+
       // Create driver profile
+      console.log('Creating driver profile...');
       const { error: profileError } = await supabase
         .from('driver_profiles')
         .insert({
-          user_id: user.id,
+          user_id: userId,
           company_id: invitation.company_id,
           hourly_rate: invitation.hourly_rate,
           driving_license_number: formData.licenseNumber,
-          license_expiry: formData.licenseExpiry,
+          license_expiry: formData.licenseExpiry || null,
           status: 'active',
           onboarding_completed_at: new Date().toISOString(),
           onboarding_progress: {
