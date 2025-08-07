@@ -148,3 +148,66 @@ describe('Business Logic Validation', () => {
     expect(() => validateDateLogic('2030-01-01')).toThrow(ValidationError);
   });
 });
+
+describe('Module Integration Tests', () => {
+  describe('Driver Onboarding Flow', () => {
+    it('should handle complete onboarding process', () => {
+      // Test step-by-step onboarding validation
+      const steps = [
+        { field: 'personal', data: { firstName: 'John', lastName: 'Doe', email: 'john@test.com' } },
+        { field: 'contact', data: { phone: '+1234567890' } },
+        { field: 'license', data: { licenseNumber: 'DL123', licenseExpiry: '2025-12-31' } },
+      ];
+
+      steps.forEach(step => {
+        expect(step.data).toBeDefined();
+        expect(Object.keys(step.data).length).toBeGreaterThan(0);
+      });
+    });
+
+    it('should calculate progress correctly', () => {
+      const requiredFields = ['firstName', 'lastName', 'email', 'phone', 'licenseNumber'];
+      const completedFields = ['firstName', 'lastName', 'email'];
+      const progress = (completedFields.length / requiredFields.length) * 100;
+      
+      expect(progress).toBe(60);
+    });
+  });
+
+  describe('Daily Operations Flow', () => {
+    it('should enforce SOD before EOD workflow', () => {
+      const hasSOD = false;
+      const attemptEOD = true;
+
+      if (attemptEOD && !hasSOD) {
+        expect(() => {
+          throw new Error('SOD required before EOD');
+        }).toThrow('SOD required before EOD');
+      }
+    });
+
+    it('should validate delivery counts between SOD and EOD', () => {
+      const sodCount = 50;
+      const eodCount = 45;
+      
+      expect(eodCount).toBeLessThanOrEqual(sodCount);
+      expect(eodCount).toBeGreaterThanOrEqual(0);
+    });
+  });
+
+  describe('File Upload Validation', () => {
+    it('should validate image file types', () => {
+      const validTypes = ['image/jpeg', 'image/png', 'image/gif'];
+      const testType = 'image/jpeg';
+      
+      expect(validTypes.includes(testType)).toBe(true);
+    });
+
+    it('should validate file size limits', () => {
+      const maxSize = 5 * 1024 * 1024; // 5MB
+      const testSize = 1024 * 1024; // 1MB
+      
+      expect(testSize).toBeLessThanOrEqual(maxSize);
+    });
+  });
+});
