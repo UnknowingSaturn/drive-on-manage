@@ -271,10 +271,14 @@ const DriverOnboarding = () => {
     setLoading(true);
 
     try {
+      console.log('Starting onboarding for email:', invitation.email);
+      
       // Always try to create/sign in the user first
       let authResult;
+      let finalUserId;
       
       if (!user) {
+        console.log('No existing user, creating new account...');
         // Try to sign up
         authResult = await supabase.auth.signUp({
           email: invitation.email,
@@ -289,63 +293,97 @@ const DriverOnboarding = () => {
           }
         });
 
+        console.log('Sign up result:', authResult);
+
         if (authResult.error) {
+          console.log('Sign up error:', authResult.error.message);
           if (authResult.error.message?.includes('User already registered')) {
+            console.log('User exists, trying to sign in...');
             // User exists, try to sign in instead
             authResult = await supabase.auth.signInWithPassword({
               email: invitation.email,
               password: formData.password,
             });
+            console.log('Sign in result:', authResult);
           }
           
           if (authResult.error) {
             throw new Error(`Authentication failed: ${authResult.error.message}`);
           }
         }
+
+        if (!authResult.data?.user) {
+          throw new Error('Failed to authenticate - no user data returned');
+        }
+
+        finalUserId = authResult.data.user.id;
+        console.log('Authentication successful, user ID:', finalUserId);
+
+        // Wait for session to be established
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // Verify session
+        const { data: sessionCheck } = await supabase.auth.getSession();
+        console.log('Session check after auth:', sessionCheck.session ? 'Active' : 'None');
+        
       } else {
-        authResult = { data: { user, session: null } };
+        console.log('Using existing user:', user.id);
+        finalUserId = user.id;
       }
 
-      if (!authResult.data.user) {
-        throw new Error('Authentication failed');
+      // Double check user exists in database before creating profile
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      console.log('Current authenticated user:', currentUser?.id);
+      
+      if (!currentUser) {
+        throw new Error('User not authenticated properly');
       }
-
-      const userId = authResult.data.user.id;
 
       // Create driver profile directly
-      const { data: profileData, error: profileError } = await supabase
+      console.log('Creating driver profile with user_id:', finalUserId);
+      const profileData = {
+        user_id: finalUserId,
+        company_id: invitation.company_id,
+        hourly_rate: invitation.hourly_rate,
+        driving_license_number: formData.licenseNumber,
+        license_expiry: formData.licenseExpiry || null,
+        status: 'active',
+        onboarding_completed_at: new Date().toISOString(),
+        onboarding_progress: {
+          personal_info: true,
+          account_setup: true,
+          documents_uploaded: true,
+          terms_accepted: true,
+        },
+      };
+
+      console.log('Inserting profile data:', profileData);
+      const { data: profileInsertData, error: profileError } = await supabase
         .from('driver_profiles')
-        .insert({
-          user_id: userId,
-          company_id: invitation.company_id,
-          hourly_rate: invitation.hourly_rate,
-          driving_license_number: formData.licenseNumber,
-          license_expiry: formData.licenseExpiry || null,
-          status: 'active',
-          onboarding_completed_at: new Date().toISOString(),
-          onboarding_progress: {
-            personal_info: true,
-            account_setup: true,
-            documents_uploaded: true,
-            terms_accepted: true,
-          },
-        })
+        .insert(profileData)
         .select()
         .single();
 
       if (profileError) {
+        console.error('Profile creation error:', profileError);
         throw new Error(`Profile creation failed: ${profileError.message}`);
       }
 
+      console.log('Driver profile created successfully:', profileInsertData);
+
       // Update invitation status
-      await supabase
+      const { error: inviteError } = await supabase
         .from('driver_invitations')
         .update({
           status: 'accepted',
           accepted_at: new Date().toISOString(),
-          driver_profile_id: profileData.id,
+          driver_profile_id: profileInsertData.id,
         })
         .eq('id', invitation.id);
+
+      if (inviteError) {
+        console.warn('Failed to update invitation:', inviteError);
+      }
 
       toast({
         title: "Welcome to the team! 🎉",
