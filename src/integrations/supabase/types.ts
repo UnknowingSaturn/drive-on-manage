@@ -603,6 +603,70 @@ export type Database = {
           },
         ]
       }
+      schedules: {
+        Row: {
+          company_id: string
+          created_at: string
+          created_by: string
+          driver_id: string
+          driver_rate: number | null
+          id: string
+          round_id: string
+          scheduled_date: string
+          status: string
+          updated_at: string
+          week_start_date: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          created_by: string
+          driver_id: string
+          driver_rate?: number | null
+          id?: string
+          round_id: string
+          scheduled_date: string
+          status?: string
+          updated_at?: string
+          week_start_date: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          created_by?: string
+          driver_id?: string
+          driver_rate?: number | null
+          id?: string
+          round_id?: string
+          scheduled_date?: string
+          status?: string
+          updated_at?: string
+          week_start_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_schedules_company"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_schedules_driver"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "driver_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_schedules_round"
+            columns: ["round_id"]
+            isOneToOne: false
+            referencedRelation: "rounds"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sod_logs: {
         Row: {
           company_id: string
