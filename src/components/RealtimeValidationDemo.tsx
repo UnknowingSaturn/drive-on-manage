@@ -2,7 +2,7 @@ import React from 'react';
 import { useRealtimeValidation } from '@/hooks/useRealtimeValidation';
 import { PageLayout, DashboardLayout } from '@/components/PageLayout';
 import { MobileCard } from '@/components/MobileLayout';
-import { ErrorMessage, ErrorType, formatError } from '@/components/ErrorBoundary';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
@@ -52,10 +52,9 @@ export function RealtimeValidationDemo({ companyId, driverId }: RealtimeValidati
         });
       }
     } catch (error) {
-      const formattedError = formatError(error, ErrorType.VALIDATION, 'vehicle-check');
       toast({
         title: "Validation Error",
-        description: formattedError.message,
+        description: error instanceof Error ? error.message : 'Vehicle availability check failed',
         variant: "destructive"
       });
     }
@@ -75,10 +74,9 @@ export function RealtimeValidationDemo({ companyId, driverId }: RealtimeValidati
         });
       }
     } catch (error) {
-      const formattedError = formatError(error, ErrorType.VALIDATION, 'duplicate-check');
       toast({
         title: "Validation Error", 
-        description: formattedError.message,
+        description: error instanceof Error ? error.message : 'Duplicate entry check failed',
         variant: "destructive"
       });
     }
@@ -98,10 +96,9 @@ export function RealtimeValidationDemo({ companyId, driverId }: RealtimeValidati
         });
       }
     } catch (error) {
-      const formattedError = formatError(error, ErrorType.VALIDATION, 'parcel-validation');
       toast({
         title: "Validation Error",
-        description: formattedError.message, 
+        description: error instanceof Error ? error.message : 'Parcel count validation failed', 
         variant: "destructive"
       });
     }
@@ -140,10 +137,10 @@ export function RealtimeValidationDemo({ companyId, driverId }: RealtimeValidati
           {validationResults.errors.length > 0 && (
             <div className="space-y-2">
               {validationResults.errors.map((error, index) => (
-                <ErrorMessage 
-                  key={index}
-                  error={formatError(error, ErrorType.VALIDATION)}
-                />
+                <div key={index} className="flex items-start gap-2 p-2 bg-destructive/10 border border-destructive/20 rounded">
+                  <AlertTriangle className="h-4 w-4 text-destructive mt-0.5" />
+                  <p className="text-sm text-destructive-foreground">{error}</p>
+                </div>
               ))}
             </div>
           )}

@@ -148,9 +148,11 @@ const DriverManagement = () => {
     enabled: !!profile?.company_id
   });
 
-  // Set initial filtered data - fix infinite loop by removing unnecessary useEffect
+  // Set initial filtered data when drivers change
   React.useEffect(() => {
-    setFilteredDrivers(drivers);
+    if (drivers && drivers !== filteredDrivers) {
+      setFilteredDrivers(drivers);
+    }
   }, [drivers]);
 
   // Real-time form validation
