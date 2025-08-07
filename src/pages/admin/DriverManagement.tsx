@@ -53,7 +53,6 @@ const DriverManagement = () => {
     lastName: '',
     phone: '',
     parcelRate: '',
-    parcelRate: '',
     coverRate: '',
     status: '',
     assignedVanId: ''
@@ -114,6 +113,7 @@ const DriverManagement = () => {
         user_id: null,
         company_id: invite.company_id,
         parcel_rate: (invite as any).parcel_rate || (invite as any).hourly_rate,
+        cover_rate: (invite as any).cover_rate,
         created_at: invite.created_at,
         expires_at: invite.expires_at,
         profiles: {
@@ -159,16 +159,14 @@ const DriverManagement = () => {
 
   // Real-time form validation
   const validateField = (field: string, value: string) => {
-    const editSchema = z.object({
-      parcelRate: z.string().optional(),
-      coverRate: z.string().optional()
-    });
-    
     const fieldSchema = {
       email: emailSchema,
       firstName: nameSchema,
       lastName: nameSchema,
       phone: phoneSchema,
+      parcelRate: parcelRateSchema,
+      coverRate: parcelRateSchema
+    }[field];
 
     if (fieldSchema) {
       try {
@@ -746,21 +744,34 @@ const DriverManagement = () => {
                       />
                     </div>
                     
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="editParcelRate">Parcel Rate (£)</Label>
-                        <Input
-                          id="editParcelRate"
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          max="100"
-                          value={editFormData.parcelRate}
-                          onChange={(e) => setEditFormData(prev => ({ ...prev, parcelRate: e.target.value }))}
-                          placeholder="Enter parcel rate"
-                        />
-                      </div>
-                    </div>
+                     <div className="grid grid-cols-2 gap-4">
+                       <div>
+                         <Label htmlFor="editParcelRate">Base Parcel Rate (£)</Label>
+                         <Input
+                           id="editParcelRate"
+                           type="number"
+                           step="0.01"
+                           min="0"
+                           max="100"
+                           value={editFormData.parcelRate}
+                           onChange={(e) => setEditFormData(prev => ({ ...prev, parcelRate: e.target.value }))}
+                           placeholder="Enter base parcel rate"
+                         />
+                       </div>
+                       <div>
+                         <Label htmlFor="editCoverRate">Cover Parcel Rate (£)</Label>
+                         <Input
+                           id="editCoverRate"
+                           type="number"
+                           step="0.01"
+                           min="0"
+                           max="100"
+                           value={editFormData.coverRate}
+                           onChange={(e) => setEditFormData(prev => ({ ...prev, coverRate: e.target.value }))}
+                           placeholder="Enter cover parcel rate"
+                         />
+                       </div>
+                     </div>
                     
                     <div className="grid grid-cols-2 gap-4">
                       <div>

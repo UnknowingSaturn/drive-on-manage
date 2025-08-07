@@ -23,7 +23,8 @@ const RoundManagement = () => {
     roundNumber: '',
     description: '',
     baseRate: '',
-    parcelRate: ''
+    parcelRate: '',
+    routeRate: '' // New field for route-specific rate
   });
 
   // Fetch rounds for the company
@@ -55,6 +56,7 @@ const RoundManagement = () => {
           description: roundData.description,
           base_rate: roundData.baseRate ? parseFloat(roundData.baseRate) : null,
           parcel_rate: roundData.parcelRate ? parseFloat(roundData.parcelRate) : null,
+          rate: roundData.routeRate ? parseFloat(roundData.routeRate) : null, // Route-specific override rate
           company_id: profile?.company_id
         });
 
@@ -70,7 +72,8 @@ const RoundManagement = () => {
         roundNumber: '',
         description: '',
         baseRate: '',
-        parcelRate: ''
+        parcelRate: '',
+        routeRate: ''
       });
       queryClient.invalidateQueries({ queryKey: ['rounds'] });
     },
@@ -181,6 +184,22 @@ const RoundManagement = () => {
                 </div>
               </div>
               
+              <div>
+                <Label htmlFor="routeRate">Route Parcel Rate (£)</Label>
+                <Input
+                  id="routeRate"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={formData.routeRate}
+                  onChange={(e) => handleInputChange('routeRate', e.target.value)}
+                  placeholder="Override rate for this route"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  If set, this rate overrides driver base rates for this route
+                </p>
+              </div>
+              
               <Button type="submit" className="w-full" disabled={addRoundMutation.isPending}>
                 <MapPin className="h-4 w-4 mr-2" />
                 {addRoundMutation.isPending ? 'Creating...' : 'Create Round'}
@@ -242,7 +261,7 @@ const RoundManagement = () => {
                 <TableHead>Round Number</TableHead>
                 <TableHead>Description</TableHead>
                 <TableHead>Base Rate</TableHead>
-                <TableHead>Parcel Rate</TableHead>
+                <TableHead>Route Rate</TableHead>
                 <TableHead>Created</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
@@ -259,9 +278,20 @@ const RoundManagement = () => {
                   <TableCell>
                     {round.base_rate ? `£${round.base_rate}` : '-'}
                   </TableCell>
-                  <TableCell>
-                    {round.parcel_rate ? `£${round.parcel_rate}` : '-'}
-                  </TableCell>
+                           <TableCell>
+                             {round.rate ? (
+                               <div className="font-medium text-primary">
+                                 £{round.rate}/parcel
+                                 <div className="text-xs text-muted-foreground">
+                                   Overrides driver rates
+                                 </div>
+                               </div>
+                             ) : (
+                               <div className="text-muted-foreground text-sm">
+                                 Uses driver base rates
+                               </div>
+                             )}
+                           </TableCell>
                   <TableCell>
                     {new Date(round.created_at).toLocaleDateString()}
                   </TableCell>
