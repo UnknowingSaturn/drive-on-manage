@@ -43,7 +43,8 @@ const CompanyManagement = () => {
         data, 
         error, 
         dataLength: data?.length,
-        firstCompany: data?.[0] 
+        firstCompany: data?.[0],
+        allCompanies: JSON.stringify(data, null, 2)
       });
       
       if (error) {
@@ -160,6 +161,14 @@ const CompanyManagement = () => {
       default: return 'outline';
     }
   };
+
+  // Add logging to debug rendering
+  console.log('Companies in render:', companies, 'Length:', companies?.length);
+  if (companies) {
+    companies.forEach((company, index) => {
+      console.log(`Company ${index}:`, company);
+    });
+  }
 
   if (isLoading) {
     return (
