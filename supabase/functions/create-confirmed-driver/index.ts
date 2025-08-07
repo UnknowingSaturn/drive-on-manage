@@ -7,6 +7,16 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 }
 
+interface CreateDriverRequest {
+  email: string;
+  password: string;
+  userData: {
+    first_name: string;
+    last_name: string;
+    user_type: 'driver';
+  };
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -14,16 +24,16 @@ serve(async (req) => {
   }
 
   try {
-    const requestBody = await req.json()
+    const requestBody: CreateDriverRequest = await req.json()
     console.log('Request payload received:', JSON.stringify(requestBody, null, 2))
     
     const { email, password, userData } = requestBody
 
-    if (!email || !password) {
-      console.error('Missing required fields: email or password')
+    if (!email || !password || !userData) {
+      console.error('Missing required fields')
       return new Response(
         JSON.stringify({ 
-          error: 'Missing required fields: email and password are required',
+          error: 'Missing required fields: email, password, and userData are required',
           success: false 
         }),
         {
@@ -33,8 +43,10 @@ serve(async (req) => {
       )
     }
 
-    console.log('Creating admin client...')
-    const supabaseAdmin = createClient(
+    console.log('Processing driver creation request for:', email);
+
+    // Create Supabase admin client
+    const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
       {
@@ -45,99 +57,198 @@ serve(async (req) => {
       }
     )
 
-    console.log('Attempting to create user with email:', email)
+    // Get invitation details to extract company_id and rates
+    const { data: invitation, error: invitationError } = await supabase
+      .from('driver_invitations')
+      .select('*')
+      .eq('email', email)
+      .eq('status', 'pending')
+      .maybeSingle();
+
+    if (invitationError) {
+      console.error('Error fetching invitation:', invitationError);
+      throw new Error('Failed to fetch invitation details: ' + invitationError.message);
+    }
+
+    if (!invitation) {
+      console.error('No valid invitation found for email:', email);
+      throw new Error('No valid invitation found for this email address');
+    }
+
+    console.log('Found invitation:', invitation);
+
+    // Extract rates (support both old hourly_rate and new parcel_rate)
+    const parcelRate = invitation.parcel_rate || invitation.hourly_rate || 0;
+    const coverRate = invitation.cover_rate || parcelRate;
+
+    // Check if user already exists
+    const { data: existingUser, error: checkError } = await supabase.auth.admin.getUserByEmail(email);
     
-    // Check if user already exists first
-    const { data: existingUser, error: checkError } = await supabaseAdmin.auth.admin.getUserByEmail(email)
+    let userId: string;
     
     if (existingUser && existingUser.user) {
-      console.log('User already exists:', existingUser.user.id)
+      console.log('User already exists:', existingUser.user.id);
+      userId = existingUser.user.id;
       
       // If user exists but is not confirmed, confirm them
       if (!existingUser.user.email_confirmed_at) {
-        console.log('User exists but not confirmed, confirming...')
-        const { data: confirmedUser, error: confirmError } = await supabaseAdmin.auth.admin.updateUserById(
+        console.log('User exists but not confirmed, confirming...');
+        const { error: confirmError } = await supabase.auth.admin.updateUserById(
           existingUser.user.id,
           { email_confirm: true }
-        )
+        );
         
         if (confirmError) {
-          console.error('Error confirming existing user:', confirmError)
-          throw confirmError
+          console.error('Error confirming existing user:', confirmError);
+          throw new Error('Failed to confirm existing user: ' + confirmError.message);
         }
-        
-        return new Response(
-          JSON.stringify({ 
-            user: confirmedUser.user, 
-            success: true, 
-            message: 'User confirmed successfully' 
-          }),
-          {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            status: 200,
-          }
-        )
       }
-      
-      // User exists and is confirmed
-      return new Response(
-        JSON.stringify({ 
-          error: 'A user with this email address has already been registered',
-          success: false,
-          code: 'email_exists'
-        }),
-        {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 409, // Conflict status for existing resource
-        }
-      )
+    } else {
+      // Create new user account with confirmed email
+      console.log('Creating new user account...');
+      const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
+        email,
+        password,
+        user_metadata: userData,
+        email_confirm: true // Bypass email confirmation
+      });
+
+      if (authError) {
+        console.error('Error creating user:', authError);
+        throw new Error('Failed to create user account: ' + authError.message);
+      }
+
+      if (!authUser.user) {
+        throw new Error('User creation failed - no user returned');
+      }
+
+      console.log('User created successfully:', authUser.user.id);
+      userId = authUser.user.id;
     }
 
-    // Create new user with email already confirmed
-    console.log('Creating new user...')
-    const { data: user, error: signUpError } = await supabaseAdmin.auth.admin.createUser({
-      email,
-      password,
-      email_confirm: true, // This bypasses email confirmation
-      user_metadata: userData || {}
-    })
+    // Check if profile already exists
+    const { data: existingProfile } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('user_id', userId)
+      .maybeSingle();
 
-    if (signUpError) {
-      console.error('User creation error:', signUpError)
-      throw signUpError
+    if (!existingProfile) {
+      // Create profile entry
+      const profileData = {
+        user_id: userId,
+        email: email,
+        first_name: userData.first_name,
+        last_name: userData.last_name,
+        user_type: 'driver' as const,
+        company_id: invitation.company_id,
+        is_active: true
+      };
+
+      console.log('Creating profile:', profileData);
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .insert(profileData);
+
+      if (profileError) {
+        console.error('Error creating profile:', profileError);
+        throw new Error('Failed to create user profile: ' + profileError.message);
+      }
+    } else {
+      console.log('Profile already exists for user:', userId);
     }
 
-    console.log('User created successfully:', user?.user?.id)
+    // Check if driver profile already exists
+    const { data: existingDriverProfile } = await supabase
+      .from('driver_profiles')
+      .select('*')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    let driverProfileId: string;
+
+    if (!existingDriverProfile) {
+      // Create driver profile entry with rates
+      const driverProfileData = {
+        user_id: userId,
+        company_id: invitation.company_id,
+        parcel_rate: parcelRate,
+        cover_rate: coverRate,
+        status: 'pending'
+      };
+
+      console.log('Creating driver profile:', driverProfileData);
+      const { data: driverProfile, error: driverError } = await supabase
+        .from('driver_profiles')
+        .insert(driverProfileData)
+        .select()
+        .single();
+
+      if (driverError) {
+        console.error('Error creating driver profile:', driverError);
+        throw new Error('Failed to create driver profile: ' + driverError.message);
+      }
+
+      driverProfileId = driverProfile.id;
+    } else {
+      console.log('Driver profile already exists for user:', userId);
+      driverProfileId = existingDriverProfile.id;
+    }
+
+    // Update invitation status
+    const { error: updateError } = await supabase
+      .from('driver_invitations')
+      .update({
+        status: 'accepted',
+        accepted_at: new Date().toISOString(),
+        driver_profile_id: driverProfileId
+      })
+      .eq('id', invitation.id);
+
+    if (updateError) {
+      console.error('Error updating invitation:', updateError);
+      // Don't throw error here, user is already created
+    }
+
+    console.log('Driver onboarding completed successfully');
 
     return new Response(
-      JSON.stringify({ 
-        user: user.user, 
+      JSON.stringify({
         success: true,
-        message: 'User created successfully without email confirmation required'
+        message: 'Driver account created successfully',
+        user: {
+          id: userId,
+          email: email,
+          driver_profile_id: driverProfileId
+        }
       }),
       {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200,
-      },
-    )
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      }
+    );
+
   } catch (error) {
-    console.error('Error in create-confirmed-driver:', error)
+    console.error('Error in create-confirmed-driver:', error);
     
-    let statusCode = 400
-    let errorMessage = error.message || 'Unknown error occurred'
-    let errorCode = 'unknown_error'
+    let statusCode = 400;
+    let errorMessage = error.message || 'Unknown error occurred';
+    let errorCode = 'unknown_error';
     
     // Handle specific error types
     if (error.message?.includes('already been registered')) {
-      statusCode = 409
-      errorCode = 'email_exists'
-      errorMessage = 'A user with this email address has already been registered'
+      statusCode = 409;
+      errorCode = 'email_exists';
+      errorMessage = 'A user with this email address has already been registered';
     } else if (error.message?.includes('invalid') || error.message?.includes('validation')) {
-      statusCode = 400
-      errorCode = 'validation_error'
+      statusCode = 400;
+      errorCode = 'validation_error';
     } else if (error.message?.includes('rate limit')) {
-      statusCode = 429
-      errorCode = 'rate_limit'
+      statusCode = 429;
+      errorCode = 'rate_limit';
+    } else if (error.message?.includes('No valid invitation')) {
+      statusCode = 404;
+      errorCode = 'invitation_not_found';
     }
     
     return new Response(
@@ -145,12 +256,12 @@ serve(async (req) => {
         error: errorMessage,
         success: false,
         code: errorCode,
-        details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+        details: Deno.env.get('NODE_ENV') === 'development' ? error.stack : undefined
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: statusCode,
       },
-    )
+    );
   }
 })
