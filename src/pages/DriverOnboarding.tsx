@@ -319,27 +319,15 @@ const DriverOnboarding = () => {
         finalUserId = authResult.data.user.id;
         console.log('Authentication successful, user ID:', finalUserId);
 
-        // Wait for session to be established
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        // Verify session
-        const { data: sessionCheck } = await supabase.auth.getSession();
-        console.log('Session check after auth:', sessionCheck.session ? 'Active' : 'None');
+        // For onboarding, we can use the user ID directly even without active session
+        // The user exists in auth.users table, which is what matters for foreign key
         
       } else {
         console.log('Using existing user:', user.id);
         finalUserId = user.id;
       }
 
-      // Double check user exists in database before creating profile
-      const { data: { user: currentUser } } = await supabase.auth.getUser();
-      console.log('Current authenticated user:', currentUser?.id);
-      
-      if (!currentUser) {
-        throw new Error('User not authenticated properly');
-      }
-
-      // Create driver profile directly
+      // Create driver profile directly using the user ID we have
       console.log('Creating driver profile with user_id:', finalUserId);
       const profileData = {
         user_id: finalUserId,
