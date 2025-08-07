@@ -1,8 +1,8 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Truck, Users, MapPin, Calendar, Bell } from 'lucide-react';
+import { Truck, Users, MapPin, Calendar, Bell, Clock, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { SidebarProvider, SidebarTrigger, SidebarInset } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/AppSidebar';
 import { useNavigate } from 'react-router-dom';
@@ -16,83 +16,70 @@ const Dashboard = () => {
   const isAdmin = profile?.user_type === 'admin';
   const isDriver = profile?.user_type === 'driver';
 
-  // Fetch real-time data for admin dashboard
-  const { data: driversCount } = useQuery({
-    queryKey: ['active-drivers-count', profile?.company_id],
-    queryFn: async () => {
-      if (!profile?.company_id || !isAdmin) return 0;
-      const { count } = await supabase
-        .from('driver_profiles')
-        .select('*', { count: 'exact', head: true })
-        .eq('company_id', profile.company_id)
-        .eq('status', 'active');
-      return count || 0;
-    },
-    enabled: !!profile?.company_id && isAdmin,
-  });
+  // Redirect admins to admin dashboard
+  useEffect(() => {
+    if (isAdmin) {
+      navigate('/admin/dashboard', { replace: true });
+    }
+  }, [isAdmin, navigate]);
 
-  const { data: vansCount } = useQuery({
-    queryKey: ['active-vans-count', profile?.company_id],
+  // Get today's SOD log for drivers
+  const { data: todaySOD } = useQuery({
+    queryKey: ['today-sod-log', user?.id],
     queryFn: async () => {
-      if (!profile?.company_id || !isAdmin) return 0;
-      const { count } = await supabase
-        .from('vans')
-        .select('*', { count: 'exact', head: true })
-        .eq('company_id', profile.company_id)
-        .eq('is_active', true);
-      return count || 0;
-    },
-    enabled: !!profile?.company_id && isAdmin,
-  });
-
-  const { data: roundsCount } = useQuery({
-    queryKey: ['active-rounds-count', profile?.company_id],
-    queryFn: async () => {
-      if (!profile?.company_id || !isAdmin) return 0;
-      const { count } = await supabase
-        .from('rounds')
-        .select('*', { count: 'exact', head: true })
-        .eq('company_id', profile.company_id)
-        .eq('is_active', true);
-      return count || 0;
-    },
-    enabled: !!profile?.company_id && isAdmin,
-  });
-
-  const { data: todayLogs } = useQuery({
-    queryKey: ['today-logs', profile?.company_id],
-    queryFn: async () => {
-      if (!profile?.company_id) return null;
-      const today = new Date().toISOString().split('T')[0];
+      if (!user?.id || !isDriver) return null;
       
-      if (isAdmin) {
+      const { data: driverProfile } = await supabase
+        .from('driver_profiles')
+        .select('id')
+        .eq('user_id', user.id)
+        .single();
+      
+      if (driverProfile) {
+        const today = new Date().toISOString().split('T')[0];
         const { data } = await supabase
-          .from('daily_logs')
+          .from('sod_logs')
           .select('*')
-          .eq('company_id', profile.company_id)
-          .eq('log_date', today);
-        return data || [];
-      } else if (isDriver) {
-        const { data: driverProfile } = await supabase
-          .from('driver_profiles')
-          .select('id')
-          .eq('user_id', user?.id)
-          .single();
-        
-        if (driverProfile) {
-          const { data } = await supabase
-            .from('daily_logs')
-            .select('*')
-            .eq('driver_id', driverProfile.id)
-            .eq('log_date', today)
-            .single();
-          return data;
-        }
+          .eq('driver_id', driverProfile.id)
+          .eq('log_date', today)
+          .maybeSingle();
+        return data;
       }
       return null;
     },
-    enabled: !!profile?.company_id && !!user?.id,
+    enabled: !!user?.id && isDriver,
   });
+
+  // Get today's EOD report for drivers
+  const { data: todayEOD } = useQuery({
+    queryKey: ['today-eod-report', user?.id],
+    queryFn: async () => {
+      if (!user?.id || !isDriver) return null;
+      
+      const { data: driverProfile } = await supabase
+        .from('driver_profiles')
+        .select('id')
+        .eq('user_id', user.id)
+        .single();
+      
+      if (driverProfile) {
+        const today = new Date().toISOString().split('T')[0];
+        const { data } = await supabase
+          .from('eod_reports')
+          .select('*')
+          .eq('driver_id', driverProfile.id)
+          .eq('log_date', today)
+          .maybeSingle();
+        return data;
+      }
+      return null;
+    },
+    enabled: !!user?.id && isDriver,
+  });
+
+  if (isAdmin) {
+    return null; // Will redirect to admin dashboard
+  }
 
   return (
     <SidebarProvider>
@@ -105,158 +92,20 @@ const Dashboard = () => {
             <div className="flex items-center px-4 py-4">
               <SidebarTrigger className="mr-4" />
               <div className="flex items-center space-x-3">
-                <div>
-                  <h1 className="text-xl font-semibold text-foreground">
-                    {isAdmin ? 'Admin Dashboard' : 'Driver Dashboard'}
-                  </h1>
-                  <p className="text-sm text-muted-foreground">
-                    Welcome back, {profile?.first_name || user?.email}
-                  </p>
-                </div>
+                 <div>
+                   <h1 className="text-xl font-semibold text-foreground">
+                     Driver Dashboard
+                   </h1>
+                   <p className="text-sm text-muted-foreground">
+                     Welcome back, {profile?.first_name || user?.email}
+                   </p>
+                 </div>
               </div>
             </div>
           </header>
 
           {/* Main Content */}
           <main className="p-6">
-        {isAdmin && (
-          <div className="space-y-8">
-            <div>
-              <h2 className="text-3xl font-bold mb-2">Admin Dashboard</h2>
-              <p className="text-muted-foreground">
-                Manage your logistics operations from here
-              </p>
-            </div>
-
-            {/* Admin Overview Cards with Logistics Effects */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <Card className="logistics-card hover-lift">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Active Drivers</CardTitle>
-                  <div className="truck-animation">
-                    <Users className="h-4 w-4 text-primary" />
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-gradient">{driversCount || 0}</div>
-                  <div className="text-xs text-muted-foreground flex items-center">
-                    <div className="w-2 h-2 bg-success rounded-full mr-2 animate-pulse"></div>
-                    Currently active
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="logistics-card hover-lift route-indicator">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Active Vans</CardTitle>
-                  <div className="truck-animation">
-                    <Truck className="h-4 w-4 text-primary animate-truck-drive" />
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-gradient">{vansCount || 0}</div>
-                  <div className="text-xs text-muted-foreground flex items-center">
-                    <div className="w-2 h-2 bg-success rounded-full mr-2"></div>
-                    Vehicles available
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="logistics-card hover-lift">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Today's Rounds</CardTitle>
-                  <MapPin className="h-4 w-4 text-primary animate-float" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-gradient">{roundsCount || 0}</div>
-                  <div className="text-xs text-muted-foreground">
-                    <span className="delivery-status status-delivered mr-1">Configured rounds</span>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="logistics-card hover-lift logistics-glow">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Pending Actions</CardTitle>
-                  <Bell className="h-4 w-4 text-warning animate-pulse" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-warning">{Array.isArray(todayLogs) ? todayLogs.filter(log => log.status === 'in_progress').length : 0}</div>
-                  <div className="text-xs text-muted-foreground">
-                    Active logs today
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Quick Actions with Enhanced Styling */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              <Card className="logistics-card hover-lift click-shrink group">
-                <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <Users className="h-5 w-5 text-primary mr-2 truck-animation" />
-                    Driver Management
-                  </CardTitle>
-                  <CardDescription>
-                    Add, edit, and manage your driver workforce
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Button 
-                    className="logistics-button w-full group-hover:shadow-glow" 
-                    onClick={() => navigate('/admin/drivers')}
-                  >
-                    <Users className="h-4 w-4 mr-2" />
-                    Manage Drivers
-                  </Button>
-                </CardContent>
-              </Card>
-
-              <Card className="logistics-card hover-lift click-shrink group">
-                <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <Truck className="h-5 w-5 text-primary mr-2 animate-truck-drive" />
-                    Vehicle Management
-                  </CardTitle>
-                  <CardDescription>
-                    Track and maintain your fleet of vehicles
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Button 
-                    className="logistics-button w-full group-hover:shadow-glow" 
-                    onClick={() => navigate('/admin/vans')}
-                  >
-                    <Truck className="h-4 w-4 mr-2" />
-                    Manage Vehicles
-                  </Button>
-                </CardContent>
-              </Card>
-
-              <Card className="logistics-card hover-lift click-shrink group">
-                <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <Calendar className="h-5 w-5 text-primary mr-2 animate-float" />
-                    Schedule & Rounds
-                  </CardTitle>
-                  <CardDescription>
-                    Plan and assign delivery rounds
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Button 
-                    className="logistics-button w-full group-hover:shadow-glow" 
-                    onClick={() => navigate('/admin/schedule')}
-                  >
-                    <Calendar className="h-4 w-4 mr-2" />
-                    View Schedule
-                  </Button>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-        )}
-
         {isDriver && (
           <div className="space-y-8 animate-fade-in">
             <div>
@@ -266,22 +115,98 @@ const Dashboard = () => {
               </p>
             </div>
 
+            {/* Today's Status */}
+            <Card className="logistics-card bg-gradient-dark">
+              <CardHeader>
+                <CardTitle className="flex items-center text-gradient">
+                  <Truck className="h-5 w-5 text-primary mr-2 animate-truck-drive" />
+                  Today's Status
+                </CardTitle>
+                <CardDescription>
+                  Overview of your current shift
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="text-center p-4 rounded-lg bg-card/50 hover-lift">
+                    <div className="text-2xl font-bold text-gradient">
+                      {todaySOD?.parcel_count || 0}
+                    </div>
+                    <div className="text-sm text-muted-foreground">Parcels Assigned</div>
+                    <div className="flex items-center justify-center mt-2">
+                      {todaySOD ? (
+                        <div className="flex items-center text-success">
+                          <CheckCircle2 className="h-3 w-3 mr-1" />
+                          <span className="text-xs">Day Started</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center text-muted-foreground">
+                          <Clock className="h-3 w-3 mr-1" />
+                          <span className="text-xs">Not Started</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  
+                  <div className="text-center p-4 rounded-lg bg-card/50 hover-lift">
+                    <div className="text-2xl font-bold text-success">
+                      {todayEOD?.parcels_delivered || 0}
+                    </div>
+                    <div className="text-sm text-muted-foreground">Delivered</div>
+                    <div className="flex items-center justify-center mt-2">
+                      {todayEOD ? (
+                        <div className="flex items-center text-success">
+                          <CheckCircle2 className="h-3 w-3 mr-1" />
+                          <span className="text-xs">Day Completed</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center text-muted-foreground">
+                          <Clock className="h-3 w-3 mr-1" />
+                          <span className="text-xs">In Progress</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  
+                  <div className="text-center p-4 rounded-lg bg-card/50 hover-lift">
+                    <div className="text-2xl font-bold text-gradient">
+                      £{todayEOD?.estimated_pay?.toFixed(2) || '0.00'}
+                    </div>
+                    <div className="text-sm text-muted-foreground">Estimated Pay</div>
+                    <div className="flex items-center justify-center mt-2">
+                      <div className="w-2 h-2 bg-success rounded-full mr-2 animate-pulse"></div>
+                      <span className="text-xs text-success">
+                        {todayEOD?.status || 'Pending'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
             {/* Driver Quick Actions with Enhanced Effects */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <Card className="logistics-card hover-lift click-shrink group">
                 <CardHeader>
                   <CardTitle className="flex items-center">
-                    <Calendar className="h-5 w-5 text-primary mr-2 animate-float" />
+                    <Clock className="h-5 w-5 text-primary mr-2" />
                     Start of Day
+                    {todaySOD && (
+                      <CheckCircle2 className="h-4 w-4 text-success ml-2" />
+                    )}
                   </CardTitle>
                   <CardDescription>
                     Log your parcel count and vehicle check
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <Button className="logistics-button w-full group-hover:shadow-glow">
-                    <Calendar className="h-4 w-4 mr-2" />
-                    Start My Day
+                  <Button 
+                    className="logistics-button w-full group-hover:shadow-glow"
+                    onClick={() => navigate('/driver/start-of-day')}
+                    disabled={!!todaySOD}
+                  >
+                    <Clock className="h-4 w-4 mr-2" />
+                    {todaySOD ? 'Day Started' : 'Start My Day'}
                   </Button>
                 </CardContent>
               </Card>
@@ -289,17 +214,24 @@ const Dashboard = () => {
               <Card className="logistics-card hover-lift click-shrink group">
                 <CardHeader>
                   <CardTitle className="flex items-center">
-                    <MapPin className="h-5 w-5 text-primary mr-2 animate-float" />
+                    <CheckCircle2 className="h-5 w-5 text-primary mr-2" />
                     End of Day
+                    {todayEOD && (
+                      <CheckCircle2 className="h-4 w-4 text-success ml-2" />
+                    )}
                   </CardTitle>
                   <CardDescription>
                     Complete your day and log deliveries
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <Button className="logistics-button w-full group-hover:shadow-glow">
-                    <MapPin className="h-4 w-4 mr-2" />
-                    End My Day
+                  <Button 
+                    className="logistics-button w-full group-hover:shadow-glow"
+                    onClick={() => navigate('/driver/end-of-day')}
+                    disabled={!todaySOD || !!todayEOD}
+                  >
+                    <CheckCircle2 className="h-4 w-4 mr-2" />
+                    {todayEOD ? 'Day Completed' : 'End My Day'}
                   </Button>
                 </CardContent>
               </Card>
@@ -315,7 +247,10 @@ const Dashboard = () => {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <Button className="logistics-button w-full group-hover:shadow-glow">
+                  <Button 
+                    className="logistics-button w-full group-hover:shadow-glow"
+                    onClick={() => navigate('/driver/vehicle-check')}
+                  >
                     <Truck className="h-4 w-4 mr-2" />
                     Vehicle Check
                   </Button>
@@ -325,7 +260,7 @@ const Dashboard = () => {
               <Card className="logistics-card hover-lift click-shrink group">
                 <CardHeader>
                   <CardTitle className="flex items-center">
-                    <Bell className="h-5 w-5 text-warning mr-2 animate-pulse" />
+                    <AlertTriangle className="h-5 w-5 text-warning mr-2" />
                     Incident Report
                   </CardTitle>
                   <CardDescription>
@@ -333,62 +268,17 @@ const Dashboard = () => {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <Button className="w-full border-warning/30 text-warning hover:bg-warning/10" variant="outline">
-                    <Bell className="h-4 w-4 mr-2" />
+                  <Button 
+                    className="w-full border-warning/30 text-warning hover:bg-warning/10" 
+                    variant="outline"
+                    onClick={() => navigate('/driver/incident-report')}
+                  >
+                    <AlertTriangle className="h-4 w-4 mr-2" />
                     Report Incident
                   </Button>
                 </CardContent>
               </Card>
             </div>
-
-            {/* Today's Summary with Enhanced Styling */}
-            <Card className="logistics-card bg-gradient-dark">
-              <CardHeader>
-                <CardTitle className="flex items-center text-gradient">
-                  <Truck className="h-5 w-5 text-primary mr-2 animate-truck-drive" />
-                  Today's Summary
-                </CardTitle>
-                <CardDescription>
-                  Overview of your current shift
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="text-center p-4 rounded-lg bg-card/50 hover-lift">
-                    <div className="text-2xl font-bold text-gradient">
-                      {todayLogs && !Array.isArray(todayLogs) ? todayLogs.sod_parcel_count || 0 : 0}
-                    </div>
-                    <div className="text-sm text-muted-foreground">Parcels Assigned</div>
-                    <div className="w-full bg-muted rounded-full h-2 mt-2">
-                      <div className="bg-gradient-primary h-2 rounded-full w-3/4 route-indicator"></div>
-                    </div>
-                  </div>
-                  <div className="text-center p-4 rounded-lg bg-card/50 hover-lift">
-                    <div className="text-2xl font-bold text-success">
-                      {todayLogs && !Array.isArray(todayLogs) ? todayLogs.eod_delivered_count || 0 : 0}
-                    </div>
-                    <div className="text-sm text-muted-foreground">Delivered</div>
-                    <div className="delivery-status status-delivered mt-2">
-                      {todayLogs && !Array.isArray(todayLogs) && todayLogs.sod_parcel_count 
-                        ? Math.round((todayLogs.eod_delivered_count || 0) / todayLogs.sod_parcel_count * 100) 
-                        : 0}% Complete
-                    </div>
-                  </div>
-                  <div className="text-center p-4 rounded-lg bg-card/50 hover-lift">
-                    <div className="text-2xl font-bold text-gradient">
-                      £{todayLogs && !Array.isArray(todayLogs) ? todayLogs.estimated_pay || '0' : '0'}
-                    </div>
-                    <div className="text-sm text-muted-foreground">Estimated Pay</div>
-                    <div className="flex items-center justify-center mt-2">
-                      <div className="w-2 h-2 bg-success rounded-full mr-2 animate-pulse"></div>
-                      <span className="text-xs text-success">
-                        {todayLogs && !Array.isArray(todayLogs) ? todayLogs.status || 'Not started' : 'Not started'}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
           </div>
         )}
 
