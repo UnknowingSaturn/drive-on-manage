@@ -81,51 +81,57 @@ serve(async (req) => {
     const parcelRate = invitation.parcel_rate || invitation.hourly_rate || 0;
     const coverRate = invitation.cover_rate || parcelRate;
 
-    // Check if user already exists by trying to list users with email filter
-    const { data: users, error: listError } = await supabase.auth.admin.listUsers({
-      page: 1,
-      perPage: 1
-    });
-    
-    let existingUser = null;
-    if (users && users.users) {
-      existingUser = users.users.find(user => user.email === email);
-    }
-    
+    // Try to create user first, handle existing user case
     let userId: string;
     
-    if (existingUser) {
-      console.log('User already exists:', existingUser.id);
-      userId = existingUser.id;
-      
-      // If user exists but is not confirmed, confirm them
-      if (!existingUser.email_confirmed_at) {
-        console.log('User exists but not confirmed, confirming...');
-        const { error: confirmError } = await supabase.auth.admin.updateUserById(
-          existingUser.id,
-          { email_confirm: true }
-        );
-        
-        if (confirmError) {
-          console.error('Error confirming existing user:', confirmError);
-          throw new Error('Failed to confirm existing user: ' + confirmError.message);
-        }
-      }
-    } else {
-      // Create new user account with confirmed email
-      console.log('Creating new user account...');
-      const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
-        email,
-        password,
-        user_metadata: userData,
-        email_confirm: true // Bypass email confirmation
-      });
+    console.log('Creating new user account...');
+    const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
+      email,
+      password,
+      user_metadata: userData,
+      email_confirm: true // Bypass email confirmation
+    });
 
-      if (authError) {
+    if (authError) {
+      // If user already exists, try to find them and get their ID
+      if (authError.message?.includes('already been registered') || authError.message?.includes('email_exists')) {
+        console.log('User already exists, finding existing user...');
+        
+        // List all users and find by email (this is a workaround since getUserByEmail doesn't exist)
+        const { data: usersList, error: listError } = await supabase.auth.admin.listUsers();
+        
+        if (listError) {
+          console.error('Error listing users:', listError);
+          throw new Error('Failed to find existing user: ' + listError.message);
+        }
+        
+        const existingUser = usersList.users?.find(user => user.email === email);
+        
+        if (!existingUser) {
+          throw new Error('User exists but could not be found');
+        }
+        
+        console.log('Found existing user:', existingUser.id);
+        userId = existingUser.id;
+        
+        // If user exists but is not confirmed, confirm them
+        if (!existingUser.email_confirmed_at) {
+          console.log('User exists but not confirmed, confirming...');
+          const { error: confirmError } = await supabase.auth.admin.updateUserById(
+            existingUser.id,
+            { email_confirm: true }
+          );
+          
+          if (confirmError) {
+            console.error('Error confirming existing user:', confirmError);
+            throw new Error('Failed to confirm existing user: ' + confirmError.message);
+          }
+        }
+      } else {
         console.error('Error creating user:', authError);
         throw new Error('Failed to create user account: ' + authError.message);
       }
-
+    } else {
       if (!authUser.user) {
         throw new Error('User creation failed - no user returned');
       }
