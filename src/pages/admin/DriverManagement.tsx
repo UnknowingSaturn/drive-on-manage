@@ -498,6 +498,7 @@ const DriverManagement = () => {
   };
 
   const openEditDialog = (driver: any) => {
+    console.log('Edit button clicked for driver:', driver);
     setSelectedDriver(driver);
     setEditFormData({
       firstName: driver.profiles?.first_name || '',
@@ -509,6 +510,7 @@ const DriverManagement = () => {
       status: driver.status || 'pending',
       assignedVanId: driver.assigned_van_id || ''
     });
+    console.log('Setting dialog open to true');
     setIsEditDialogOpen(true);
   };
 
