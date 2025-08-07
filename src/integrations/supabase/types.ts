@@ -921,9 +921,40 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      audit_rls_coverage: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          table_name: string
+          rls_enabled: boolean
+          policy_count: number
+          security_status: string
+        }[]
+      }
       generate_invite_token: {
         Args: Record<PropertyKey, never>
         Returns: string
+      }
+      get_cleanup_recommendations: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
+      get_validation_summary: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
+      identify_cleanup_candidates: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          bucket_name: string
+          file_path: string
+          file_age_days: number
+          file_size: number
+          should_cleanup: boolean
+        }[]
+      }
+      test_validation_system: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
       }
     }
     Enums: {
