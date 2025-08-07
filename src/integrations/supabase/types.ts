@@ -1086,7 +1086,6 @@ export type Database = {
           company_email: string
           company_phone?: string
           company_address?: string
-          sub_tier?: string
         }
         Returns: {
           id: string
@@ -1094,7 +1093,6 @@ export type Database = {
           email: string
           phone: string
           address: string
-          subscription_tier: string
           is_active: boolean
           created_at: string
           updated_at: string

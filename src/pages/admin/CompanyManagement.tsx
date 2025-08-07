@@ -107,8 +107,7 @@ const CompanyManagement = () => {
           company_name: companyData.name,
           company_email: companyData.email,
           company_phone: companyData.phone,
-          company_address: companyData.address,
-          sub_tier: 'basic'
+          company_address: companyData.address
         });
 
       if (error) {

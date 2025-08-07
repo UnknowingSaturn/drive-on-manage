@@ -1,11 +1,120 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { AlertCircle, TrendingUp, TrendingDown, DollarSign, Download, BarChart3 } from 'lucide-react';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { TrendingUp, TrendingDown, DollarSign, Download, BarChart3, Package, Users } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { format, startOfMonth, endOfMonth } from 'date-fns';
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
+import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+
+const COLORS = ['hsl(var(--primary))', 'hsl(var(--muted))', 'hsl(var(--secondary))', 'hsl(var(--accent))'];
 
 export const ProfitLoss = () => {
+  const { profile } = useAuth();
+  const [selectedPeriod, setSelectedPeriod] = useState({
+    start: format(startOfMonth(new Date()), 'yyyy-MM-dd'),
+    end: format(endOfMonth(new Date()), 'yyyy-MM-dd')
+  });
+
+  // Fetch P&L data
+  const { data: plData, isLoading } = useQuery({
+    queryKey: ['profit-loss', profile?.company_id, selectedPeriod],
+    queryFn: async () => {
+      if (!profile?.company_id) return null;
+      
+      // Get EOD reports for revenue calculation
+      const { data: eodReports, error: eodError } = await supabase
+        .from('eod_reports')
+        .select('parcels_delivered')
+        .eq('company_id', profile.company_id)
+        .eq('status', 'approved')
+        .gte('log_date', selectedPeriod.start)
+        .lte('log_date', selectedPeriod.end);
+
+      if (eodError) throw eodError;
+
+      // Get driver payments (wages)
+      const { data: payments, error: paymentsError } = await supabase
+        .from('payments')
+        .select('total_pay')
+        .eq('company_id', profile.company_id)
+        .gte('period_start', selectedPeriod.start)
+        .lte('period_end', selectedPeriod.end);
+
+      if (paymentsError) throw paymentsError;
+
+      // Get operating costs
+      const { data: operatingCosts, error: costsError } = await supabase
+        .from('operating_costs')
+        .select('*')
+        .eq('company_id', profile.company_id)
+        .gte('date', selectedPeriod.start)
+        .lte('date', selectedPeriod.end);
+
+      if (costsError) throw costsError;
+
+      // Calculate metrics
+      const totalParcels = eodReports?.reduce((sum, report) => sum + (report.parcels_delivered || 0), 0) || 0;
+      const totalRevenue = totalParcels * 0.50; // £0.50 per parcel
+      const totalWages = payments?.reduce((sum, payment) => sum + (payment.total_pay || 0), 0) || 0;
+      const totalOperatingCosts = operatingCosts?.reduce((sum, cost) => sum + (cost.amount || 0), 0) || 0;
+      
+      const grossProfit = totalRevenue - totalWages;
+      const netProfit = grossProfit - totalOperatingCosts;
+      const profitMargin = totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0;
+
+      // Group operating costs by category
+      const costsByCategory = operatingCosts?.reduce((acc: any, cost) => {
+        if (!acc[cost.category]) {
+          acc[cost.category] = 0;
+        }
+        acc[cost.category] += cost.amount;
+        return acc;
+      }, {}) || {};
+
+      return {
+        totalRevenue,
+        totalWages,
+        totalOperatingCosts,
+        grossProfit,
+        netProfit,
+        profitMargin,
+        totalParcels,
+        costsByCategory,
+        operatingCosts: operatingCosts || []
+      };
+    },
+    enabled: !!profile?.company_id
+  });
+
+  // Prepare chart data
+  const revenueVsCostsData = [
+    { name: 'Revenue', value: plData?.totalRevenue || 0 },
+    { name: 'Wages', value: plData?.totalWages || 0 },
+    { name: 'Operating Costs', value: plData?.totalOperatingCosts || 0 }
+  ];
+
+  const costBreakdownData = Object.entries(plData?.costsByCategory || {}).map(([category, amount]) => ({
+    name: category.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()),
+    value: amount as number
+  }));
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="text-center py-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p>Loading profit & loss data...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -14,22 +123,37 @@ export const ProfitLoss = () => {
           <h2 className="text-2xl font-bold">Profit & Loss</h2>
           <p className="text-muted-foreground">Financial performance overview</p>
         </div>
-        <Button disabled variant="outline">
-          <Download className="h-4 w-4 mr-2" />
-          Export Report
-        </Button>
+        
+        {/* Period Selection */}
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <Label htmlFor="pl-period-start">From:</Label>
+            <Input
+              id="pl-period-start"
+              type="date"
+              value={selectedPeriod.start}
+              onChange={(e) => setSelectedPeriod(prev => ({ ...prev, start: e.target.value }))}
+              className="w-auto"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <Label htmlFor="pl-period-end">To:</Label>
+            <Input
+              id="pl-period-end"
+              type="date"
+              value={selectedPeriod.end}
+              onChange={(e) => setSelectedPeriod(prev => ({ ...prev, end: e.target.value }))}
+              className="w-auto"
+            />
+          </div>
+          <Button variant="outline">
+            <Download className="h-4 w-4 mr-2" />
+            Export Report
+          </Button>
+        </div>
       </div>
 
-      {/* Migration Required Alert */}
-      <Alert>
-        <AlertCircle className="h-4 w-4" />
-        <AlertDescription>
-          <strong>Database migration required:</strong> The P&L reporting system requires the database migration to be applied first. 
-          Please run the migration I created earlier to enable this feature.
-        </AlertDescription>
-      </Alert>
-
-      {/* Key Metrics Placeholder */}
+      {/* Key Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -37,8 +161,8 @@ export const ProfitLoss = () => {
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-muted-foreground">£--</div>
-            <p className="text-xs text-muted-foreground">awaiting migration</p>
+            <div className="text-2xl font-bold">£{plData?.totalRevenue.toFixed(2) || '0.00'}</div>
+            <p className="text-xs text-muted-foreground">{plData?.totalParcels || 0} parcels</p>
           </CardContent>
         </Card>
         
@@ -48,19 +172,25 @@ export const ProfitLoss = () => {
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-muted-foreground">£--</div>
-            <p className="text-xs text-muted-foreground">awaiting migration</p>
+            <div className="text-2xl font-bold">£{((plData?.totalWages || 0) + (plData?.totalOperatingCosts || 0)).toFixed(2)}</div>
+            <p className="text-xs text-muted-foreground">wages + operating</p>
           </CardContent>
         </Card>
         
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Net Profit</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            {(plData?.netProfit || 0) >= 0 ? (
+              <TrendingUp className="h-4 w-4 text-green-600" />
+            ) : (
+              <TrendingDown className="h-4 w-4 text-red-600" />
+            )}
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-muted-foreground">£--</div>
-            <p className="text-xs text-muted-foreground">awaiting migration</p>
+            <div className={`text-2xl font-bold ${(plData?.netProfit || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+              £{plData?.netProfit.toFixed(2) || '0.00'}
+            </div>
+            <p className="text-xs text-muted-foreground">after all costs</p>
           </CardContent>
         </Card>
         
@@ -70,51 +200,91 @@ export const ProfitLoss = () => {
             <BarChart3 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-muted-foreground">--%</div>
-            <p className="text-xs text-muted-foreground">awaiting migration</p>
+            <div className={`text-2xl font-bold ${(plData?.profitMargin || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+              {plData?.profitMargin.toFixed(1) || '0.0'}%
+            </div>
+            <p className="text-xs text-muted-foreground">profit margin</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Charts Placeholder */}
+      {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
-            <CardTitle>Revenue vs Costs Trend</CardTitle>
-            <CardDescription>Monthly comparison chart (coming soon)</CardDescription>
+            <CardTitle>Revenue vs Costs</CardTitle>
+            <CardDescription>Comparison of revenue and expenses</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="h-[300px] flex items-center justify-center border border-dashed rounded-lg">
-              <div className="text-center text-muted-foreground">
-                <BarChart3 className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>Chart will appear after migration</p>
-              </div>
-            </div>
+            <ChartContainer
+              config={{
+                revenue: { label: "Revenue", color: "hsl(var(--primary))" },
+                wages: { label: "Wages", color: "hsl(var(--secondary))" },
+                operating: { label: "Operating Costs", color: "hsl(var(--muted))" }
+              }}
+              className="h-[300px]"
+            >
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={revenueVsCostsData}>
+                  <XAxis dataKey="name" />
+                  <YAxis />
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <Bar dataKey="value" fill="hsl(var(--primary))" />
+                </BarChart>
+              </ResponsiveContainer>
+            </ChartContainer>
           </CardContent>
         </Card>
         
         <Card>
           <CardHeader>
             <CardTitle>Cost Breakdown</CardTitle>
-            <CardDescription>Distribution pie chart (coming soon)</CardDescription>
+            <CardDescription>Operating costs by category</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="h-[300px] flex items-center justify-center border border-dashed rounded-lg">
-              <div className="text-center text-muted-foreground">
-                <BarChart3 className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>Chart will appear after migration</p>
+            {costBreakdownData.length > 0 ? (
+              <ChartContainer
+                config={{}}
+                className="h-[300px]"
+              >
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={costBreakdownData}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                      outerRadius={80}
+                      fill="#8884d8"
+                      dataKey="value"
+                    >
+                      {costBreakdownData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </ChartContainer>
+            ) : (
+              <div className="h-[300px] flex items-center justify-center border border-dashed rounded-lg">
+                <div className="text-center text-muted-foreground">
+                  <BarChart3 className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>No operating costs data available</p>
+                </div>
               </div>
-            </div>
+            )}
           </CardContent>
         </Card>
       </div>
 
-      {/* P&L Statement Preview */}
+      {/* P&L Statement */}
       <Card>
         <CardHeader>
-          <CardTitle>Profit & Loss Statement Preview</CardTitle>
+          <CardTitle>Profit & Loss Statement</CardTitle>
           <CardDescription>
-            Sample P&L format that will be generated after migration
+            Detailed financial breakdown for {format(new Date(selectedPeriod.start), 'MMM dd')} - {format(new Date(selectedPeriod.end), 'MMM dd, yyyy')}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -125,8 +295,13 @@ export const ProfitLoss = () => {
                 <TableCell></TableCell>
               </TableRow>
               <TableRow>
-                <TableCell className="pl-8">Total Revenue</TableCell>
-                <TableCell className="font-semibold text-muted-foreground">£--</TableCell>
+                <TableCell className="pl-8">
+                  <div className="flex items-center space-x-2">
+                    <Package className="h-4 w-4 text-primary" />
+                    <span>Parcel Revenue ({plData?.totalParcels || 0} parcels @ £0.50)</span>
+                  </div>
+                </TableCell>
+                <TableCell className="font-semibold">£{plData?.totalRevenue.toFixed(2) || '0.00'}</TableCell>
               </TableRow>
               
               <TableRow>
@@ -134,86 +309,49 @@ export const ProfitLoss = () => {
                 <TableCell></TableCell>
               </TableRow>
               <TableRow>
-                <TableCell className="pl-8">Driver Payments</TableCell>
-                <TableCell className="text-muted-foreground">£--</TableCell>
+                <TableCell className="pl-8">
+                  <div className="flex items-center space-x-2">
+                    <Users className="h-4 w-4 text-primary" />
+                    <span>Driver Wages</span>
+                  </div>
+                </TableCell>
+                <TableCell>£{plData?.totalWages.toFixed(2) || '0.00'}</TableCell>
               </TableRow>
               <TableRow>
                 <TableCell className="font-medium">GROSS PROFIT</TableCell>
-                <TableCell className="font-semibold text-muted-foreground">£--</TableCell>
+                <TableCell className={`font-semibold ${(plData?.grossProfit || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  £{plData?.grossProfit.toFixed(2) || '0.00'}
+                </TableCell>
               </TableRow>
               
               <TableRow>
                 <TableCell className="font-medium">OPERATING EXPENSES</TableCell>
                 <TableCell></TableCell>
               </TableRow>
-              <TableRow>
-                <TableCell className="pl-8">Fuel</TableCell>
-                <TableCell className="text-muted-foreground">£--</TableCell>
-              </TableRow>
-              <TableRow>
-                <TableCell className="pl-8">Insurance</TableCell>
-                <TableCell className="text-muted-foreground">£--</TableCell>
-              </TableRow>
-              <TableRow>
-                <TableCell className="pl-8">Maintenance</TableCell>
-                <TableCell className="text-muted-foreground">£--</TableCell>
-              </TableRow>
-              <TableRow>
-                <TableCell className="pl-8">Admin Wages</TableCell>
-                <TableCell className="text-muted-foreground">£--</TableCell>
-              </TableRow>
+              
+              {/* Operating costs by category */}
+              {Object.entries(plData?.costsByCategory || {}).map(([category, amount]) => (
+                <TableRow key={category}>
+                  <TableCell className="pl-8">
+                    {category.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                  </TableCell>
+                  <TableCell>£{(amount as number).toFixed(2)}</TableCell>
+                </TableRow>
+              ))}
+              
               <TableRow>
                 <TableCell className="pl-8 font-medium">Total Operating Expenses</TableCell>
-                <TableCell className="font-semibold text-muted-foreground">£--</TableCell>
+                <TableCell className="font-semibold">£{plData?.totalOperatingCosts.toFixed(2) || '0.00'}</TableCell>
               </TableRow>
               
               <TableRow className="border-t-2">
                 <TableCell className="font-bold">NET PROFIT</TableCell>
-                <TableCell className="font-bold text-lg text-muted-foreground">£--</TableCell>
+                <TableCell className={`font-bold text-lg ${(plData?.netProfit || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  £{plData?.netProfit.toFixed(2) || '0.00'}
+                </TableCell>
               </TableRow>
             </TableBody>
           </Table>
-        </CardContent>
-      </Card>
-
-      {/* Features Preview */}
-      <Card>
-        <CardHeader>
-          <CardTitle>P&L Features</CardTitle>
-          <CardDescription>
-            What you'll get once the migration is applied
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="p-4 border rounded-lg">
-              <h4 className="font-medium mb-2">Dynamic P&L Dashboard</h4>
-              <p className="text-sm text-muted-foreground">
-                Real-time profit and loss calculations based on revenue and costs.
-              </p>
-            </div>
-            
-            <div className="p-4 border rounded-lg">
-              <h4 className="font-medium mb-2">Visual Charts</h4>
-              <p className="text-sm text-muted-foreground">
-                Interactive bar charts and pie charts for trend analysis.
-              </p>
-            </div>
-            
-            <div className="p-4 border rounded-lg">
-              <h4 className="font-medium mb-2">Period Filtering</h4>
-              <p className="text-sm text-muted-foreground">
-                Filter by month or year with easy navigation controls.
-              </p>
-            </div>
-            
-            <div className="p-4 border rounded-lg">
-              <h4 className="font-medium mb-2">Export Reports</h4>
-              <p className="text-sm text-muted-foreground">
-                Export P&L statements to CSV or PDF for accounting.
-              </p>
-            </div>
-          </div>
         </CardContent>
       </Card>
     </div>
