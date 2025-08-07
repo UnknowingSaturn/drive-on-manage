@@ -66,18 +66,23 @@ const DriverManagement = () => {
     queryFn: async () => {
       if (!profile?.company_id) return [];
       
-      // Fetch active driver profiles with van assignments and profile data
+      // Fetch active driver profiles with van assignments and profile data (use left join to include all drivers)
       const { data: drivers, error: driversError } = await supabase
         .from('driver_profiles')
         .select(`
           *,
           assigned_van:vans(id, registration, make, model),
-          profiles!inner(first_name, last_name, email, phone, is_active)
+          profiles(first_name, last_name, email, phone, is_active)
         `)
         .eq('company_id', profile.company_id)
         .order('created_at', { ascending: false });
 
-      if (driversError) throw driversError;
+      if (driversError) {
+        console.error('Error fetching drivers:', driversError);
+        throw driversError;
+      }
+
+      console.log('Fetched drivers:', drivers);
 
       // Fetch ALL invitations (including accepted ones to track status)
       const { data: allInvitations, error: invitationsError } = await supabase
@@ -87,7 +92,12 @@ const DriverManagement = () => {
         .in('status', ['pending', 'accepted'])
         .order('created_at', { ascending: false });
 
-      if (invitationsError) throw invitationsError;
+      if (invitationsError) {
+        console.error('Error fetching invitations:', invitationsError);
+        throw invitationsError;
+      }
+
+      console.log('Fetched invitations:', allInvitations);
 
       // Convert active drivers with their profiles
       const activeDrivers = drivers?.map(driver => ({
