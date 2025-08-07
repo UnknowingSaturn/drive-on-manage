@@ -48,14 +48,24 @@ const CompanyManagement = () => {
       console.log('Creating company with data:', companyData);
       console.log('Current user profile:', profile);
       
-      // Ensure we have a valid session before making the request
+      // Ensure we have a valid session and refresh it if needed
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       
-      if (sessionError || !session) {
+      if (sessionError || !session?.access_token) {
+        console.error('Session error:', sessionError);
         throw new Error('No valid session found. Please log in again.');
       }
       
       console.log('Valid session found:', session.user.id);
+      
+      // Explicitly set the session to ensure auth context is available
+      await supabase.auth.setSession({
+        access_token: session.access_token,
+        refresh_token: session.refresh_token
+      });
+      
+      // Add a small delay to ensure the auth context is properly set
+      await new Promise(resolve => setTimeout(resolve, 100));
       
       const { data, error } = await supabase
         .from('companies')
