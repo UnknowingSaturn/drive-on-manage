@@ -302,11 +302,25 @@ const DriverOnboarding = () => {
         authSession = authData.session;
         console.log('User created with ID:', userId);
 
+        // Ensure the session is properly set
+        if (authSession) {
+          await supabase.auth.setSession(authSession);
+          console.log('Auth session set successfully');
+        }
+
         // Wait a moment for the auth state to propagate
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise(resolve => setTimeout(resolve, 1500));
       } else {
         userId = user.id;
         console.log('Using existing user ID:', userId);
+      }
+
+      // Verify auth state before creating profile
+      const { data: { session: currentSession } } = await supabase.auth.getSession();
+      console.log('Current auth session before profile creation:', currentSession ? 'Present' : 'Missing');
+      
+      if (!currentSession) {
+        throw new Error('Authentication session lost. Please try again.');
       }
 
       // Create driver profile with enhanced error handling
