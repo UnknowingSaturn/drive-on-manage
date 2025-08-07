@@ -651,18 +651,18 @@ const DriverManagement = () => {
                     </div>
                     
                     <div>
-                       <Label htmlFor="parcelRate">Base Parcel Rate (£)</Label>
-                       <Input
-                         id="parcelRate"
-                         type="number"
-                         step="0.01"
-                         min="0"
-                         max="100"
-                         value={formData.parcelRate}
-                         onChange={(e) => handleInputChange('parcelRate', e.target.value)}
-                         placeholder="Enter base parcel rate"
-                         aria-describedby={formErrors.parcelRate ? 'parcelRate-error' : undefined}
-                       />
+                        <Label htmlFor="parcelRate">Parcel Rate (£)</Label>
+                        <Input
+                          id="parcelRate"
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          max="5000"
+                          value={formData.parcelRate}
+                          onChange={(e) => handleInputChange('parcelRate', e.target.value)}
+                          placeholder="Rate per parcel delivered (e.g. 1.50)"
+                          aria-describedby={formErrors.parcelRate ? 'parcelRate-error' : undefined}
+                        />
                        {formErrors.parcelRate && (
                          <p id="parcelRate-error" className="text-sm text-destructive mt-1">
                            {formErrors.parcelRate}
@@ -670,18 +670,18 @@ const DriverManagement = () => {
                        )}
                      </div>
                      <div>
-                       <Label htmlFor="coverRate">Cover Parcel Rate (£)</Label>
-                       <Input
-                         id="coverRate"
-                         type="number"
-                         step="0.01"
-                         min="0"
-                         max="100"
-                         value={formData.coverRate}
-                         onChange={(e) => handleInputChange('coverRate', e.target.value)}
-                         placeholder="Enter cover parcel rate"
-                         aria-describedby={formErrors.coverRate ? 'coverRate-error' : undefined}
-                       />
+                        <Label htmlFor="coverRate">Cover Parcel Rate (£)</Label>
+                        <Input
+                          id="coverRate"
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          max="5000"
+                          value={formData.coverRate}
+                          onChange={(e) => handleInputChange('coverRate', e.target.value)}
+                          placeholder="Rate per parcel when covering (e.g. 2.00)"
+                          aria-describedby={formErrors.coverRate ? 'coverRate-error' : undefined}
+                        />
                        {formErrors.coverRate && (
                          <p id="coverRate-error" className="text-sm text-destructive mt-1">
                            {formErrors.coverRate}
@@ -752,30 +752,30 @@ const DriverManagement = () => {
                     
                      <div className="grid grid-cols-2 gap-4">
                        <div>
-                         <Label htmlFor="editParcelRate">Base Parcel Rate (£)</Label>
-                         <Input
-                           id="editParcelRate"
-                           type="number"
-                           step="0.01"
-                           min="0"
-                           max="100"
-                           value={editFormData.parcelRate}
-                           onChange={(e) => setEditFormData(prev => ({ ...prev, parcelRate: e.target.value }))}
-                           placeholder="Enter base parcel rate"
-                         />
+                          <Label htmlFor="editParcelRate">Parcel Rate (£)</Label>
+                          <Input
+                            id="editParcelRate"
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            max="5000"
+                            value={editFormData.parcelRate}
+                            onChange={(e) => setEditFormData(prev => ({ ...prev, parcelRate: e.target.value }))}
+                            placeholder="Rate per parcel delivered (e.g. 1.50)"
+                          />
                        </div>
                        <div>
-                         <Label htmlFor="editCoverRate">Cover Parcel Rate (£)</Label>
-                         <Input
-                           id="editCoverRate"
-                           type="number"
-                           step="0.01"
-                           min="0"
-                           max="100"
-                           value={editFormData.coverRate}
-                           onChange={(e) => setEditFormData(prev => ({ ...prev, coverRate: e.target.value }))}
-                           placeholder="Enter cover parcel rate"
-                         />
+                          <Label htmlFor="editCoverRate">Cover Parcel Rate (£)</Label>
+                          <Input
+                            id="editCoverRate"
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            max="5000"
+                            value={editFormData.coverRate}
+                            onChange={(e) => setEditFormData(prev => ({ ...prev, coverRate: e.target.value }))}
+                            placeholder="Rate per parcel when covering (e.g. 2.00)"
+                          />
                        </div>
                      </div>
                     
