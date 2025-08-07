@@ -7,8 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Building2, Mail, Phone, MapPin, Crown, Edit, Trash2 } from 'lucide-react';
+import { Plus, Building2, Mail, Phone, MapPin, Edit, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -24,8 +23,7 @@ const CompanyManagement = () => {
     name: '',
     email: '',
     phone: '',
-    address: '',
-    subscriptionTier: 'basic'
+    address: ''
   });
 
   // Fetch companies
@@ -110,7 +108,7 @@ const CompanyManagement = () => {
           company_email: companyData.email,
           company_phone: companyData.phone,
           company_address: companyData.address,
-          sub_tier: companyData.subscriptionTier
+          sub_tier: 'basic'
         });
 
       if (error) {
@@ -131,8 +129,7 @@ const CompanyManagement = () => {
         name: '',
         email: '',
         phone: '',
-        address: '',
-        subscriptionTier: 'basic'
+        address: ''
       });
       queryClient.invalidateQueries({ queryKey: ['companies'] });
     },
@@ -154,13 +151,6 @@ const CompanyManagement = () => {
     createCompanyMutation.mutate(formData);
   };
 
-  const getSubscriptionBadgeVariant = (tier: string) => {
-    switch (tier) {
-      case 'premium': return 'default';
-      case 'pro': return 'secondary';
-      default: return 'outline';
-    }
-  };
 
   // Add logging to debug rendering
   console.log('Companies in render:', companies, 'Length:', companies?.length);
@@ -199,7 +189,7 @@ const CompanyManagement = () => {
               <SidebarTrigger className="mr-4" />
               <div>
                 <h1 className="text-xl font-semibold text-foreground">Company Management</h1>
-                <p className="text-sm text-muted-foreground">Manage companies and their subscriptions</p>
+                <p className="text-sm text-muted-foreground">Manage companies in the system</p>
               </div>
             </div>
           </header>
@@ -270,19 +260,6 @@ const CompanyManagement = () => {
                       />
                     </div>
                     
-                    <div>
-                      <Label htmlFor="subscriptionTier">Subscription Tier</Label>
-                      <Select value={formData.subscriptionTier} onValueChange={(value) => handleInputChange('subscriptionTier', value)}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select subscription tier" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="basic">Basic</SelectItem>
-                          <SelectItem value="pro">Pro</SelectItem>
-                          <SelectItem value="premium">Premium</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
                     
                     <Button type="submit" className="w-full" disabled={createCompanyMutation.isPending}>
                       <Building2 className="h-4 w-4 mr-2" />
@@ -305,7 +282,6 @@ const CompanyManagement = () => {
                       <TableHead>Company Name</TableHead>
                       <TableHead>Contact</TableHead>
                       <TableHead>Address</TableHead>
-                      <TableHead>Subscription</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Created</TableHead>
                       <TableHead>Actions</TableHead>
@@ -345,12 +321,6 @@ const CompanyManagement = () => {
                           ) : (
                             <span className="text-muted-foreground">-</span>
                           )}
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={getSubscriptionBadgeVariant(company.subscription_tier)}>
-                            <Crown className="h-3 w-3 mr-1" />
-                            {company.subscription_tier}
-                          </Badge>
                         </TableCell>
                         <TableCell>
                           <Badge variant={company.is_active ? 'default' : 'secondary'}>
