@@ -63,9 +63,16 @@ const CompanyManagement = () => {
         const { data: authTest, error: authTestError } = await supabase
           .rpc('test_auth_context');
         
-        console.log('Auth context test result:', authTest);
+        console.log('Auth context test result:', JSON.stringify(authTest, null, 2));
         if (authTestError) {
           console.error('Auth context test error:', authTestError);
+        }
+        
+        // Check if auth.uid() is null in database context
+        if (authTest && authTest[0] && authTest[0].current_uid === null) {
+          console.error('CRITICAL: auth.uid() is null in database context despite valid session');
+          console.log('Session user ID:', session.user.id);
+          console.log('JWT claims:', authTest[0].jwt_claims);
         }
       } catch (testError) {
         console.error('Failed to test auth context:', testError);
