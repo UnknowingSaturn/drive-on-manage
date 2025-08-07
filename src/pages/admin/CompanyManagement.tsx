@@ -48,19 +48,14 @@ const CompanyManagement = () => {
       console.log('Creating company with data:', companyData);
       console.log('Current user profile:', profile);
       
-      // Let's check the current user session
-      const { data: session } = await supabase.auth.getSession();
-      console.log('Current session:', session?.session?.user?.id);
+      // Ensure we have a valid session before making the request
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       
-      // Let's verify we can access profiles table
-      const { data: profileCheck, error: profileError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('user_id', session?.session?.user?.id)
-        .single();
+      if (sessionError || !session) {
+        throw new Error('No valid session found. Please log in again.');
+      }
       
-      console.log('Profile check result:', profileCheck);
-      console.log('Profile check error:', profileError);
+      console.log('Valid session found:', session.user.id);
       
       const { data, error } = await supabase
         .from('companies')
