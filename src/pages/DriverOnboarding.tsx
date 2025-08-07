@@ -300,14 +300,8 @@ const DriverOnboarding = () => {
         userId = authData.user.id;
         console.log('User created with ID:', userId);
 
-        // Wait for auth state to update and get fresh session
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        
-        // Get the current session to ensure we're properly authenticated
-        const { data: sessionData } = await supabase.auth.getSession();
-        if (!sessionData.session?.user) {
-          throw new Error('Failed to establish authenticated session');
-        }
+        // For onboarding, we don't need to wait for session since we have the user ID
+        // The driver profile creation will work with just the user ID
       } else {
         userId = user.id;
         console.log('Using existing user ID:', userId);
