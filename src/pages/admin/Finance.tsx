@@ -39,20 +39,35 @@ const Finance = () => {
       
       const { data, error } = await supabase
         .from('eod_reports')
-        .select(`
-          *,
-          driver:driver_profiles(
-            id,
-            hourly_rate,
-            parcel_rate,
-            profiles:profiles(first_name, last_name)
-          )
-        `)
+        .select('*')
         .eq('company_id', profile.company_id)
         .gte('log_date', format(periodStart, 'yyyy-MM-dd'))
         .lte('log_date', format(periodEnd, 'yyyy-MM-dd'))
         .eq('status', 'submitted')
         .order('log_date', { ascending: false });
+
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!profile?.company_id
+  });
+
+  // Fetch driver profiles separately for better performance
+  const { data: driverProfiles = [] } = useQuery({
+    queryKey: ['driver-profiles-finance', profile?.company_id],
+    queryFn: async () => {
+      if (!profile?.company_id) return [];
+      
+      const { data, error } = await supabase
+        .from('driver_profiles')
+        .select(`
+          id,
+          user_id,
+          hourly_rate,
+          parcel_rate,
+          profiles!inner(first_name, last_name)
+        `)
+        .eq('company_id', profile.company_id);
 
       if (error) throw error;
       return data || [];
@@ -68,14 +83,7 @@ const Finance = () => {
       
       const { data, error } = await supabase
         .from('payments')
-        .select(`
-          *,
-          driver:driver_profiles(
-            id,
-            profiles:profiles(first_name, last_name)
-          ),
-          eod_report:eod_reports(id, log_date, parcels_delivered)
-        `)
+        .select('*')
         .eq('company_id', profile.company_id)
         .gte('period_start', format(periodStart, 'yyyy-MM-dd'))
         .lte('period_end', format(periodEnd, 'yyyy-MM-dd'))
@@ -100,8 +108,9 @@ const Finance = () => {
         if (existingPayment) continue;
 
         // Get driver rates with fallback logic
-        const driverParcelRate = (report.driver as any)?.parcel_rate || 0.50; // Default £0.50 per parcel
-        const basePay = (report.driver as any)?.hourly_rate || 10.00; // Default £10/day base
+        const driver = driverProfiles.find(d => d.id === report.driver_id);
+        const driverParcelRate = driver?.parcel_rate || 0.50; // Default £0.50 per parcel
+        const basePay = driver?.hourly_rate || 10.00; // Default £10/day base
 
         const totalPay = (report.parcels_delivered * driverParcelRate) + basePay;
 
@@ -214,9 +223,10 @@ const Finance = () => {
   const paymentsByDriver = useMemo(() => {
     const grouped = payments.reduce((acc, payment) => {
       const driverId = payment.driver_id;
+      const driver = driverProfiles.find(d => d.id === driverId);
       if (!acc[driverId]) {
         acc[driverId] = {
-          driver: payment.driver,
+          driver,
           payments: [],
           totalPay: 0,
           totalParcels: 0,
@@ -231,7 +241,7 @@ const Finance = () => {
     }, {} as Record<string, any>);
 
     return Object.values(grouped);
-  }, [payments]);
+  }, [payments, driverProfiles]);
 
   // Statistics
   const stats = useMemo(() => {
@@ -244,17 +254,20 @@ const Finance = () => {
   }, [payments, paymentsByDriver]);
 
   const exportToCSV = () => {
-    const csvData = payments.map(payment => ({
-      'Driver Name': `${payment.driver?.profiles?.first_name} ${payment.driver?.profiles?.last_name}`,
-      'Period': `${format(new Date(payment.period_start), 'dd/MM/yyyy')} - ${format(new Date(payment.period_end), 'dd/MM/yyyy')}`,
-      'Base Pay': `£${payment.base_pay.toFixed(2)}`,
-      'Parcels Delivered': payment.parcel_count,
-      'Parcel Rate': `£${payment.parcel_rate.toFixed(2)}`,
-      'Total Pay': `£${payment.total_pay.toFixed(2)}`,
-      'Status': payment.status,
-      'Locked': payment.locked ? 'Yes' : 'No',
-      'Manually Adjusted': payment.manually_adjusted ? 'Yes' : 'No'
-    }));
+    const csvData = payments.map(payment => {
+      const driver = driverProfiles.find(d => d.id === payment.driver_id);
+      return {
+        'Driver Name': `${driver?.profiles?.first_name || ''} ${driver?.profiles?.last_name || ''}`,
+        'Period': `${format(new Date(payment.period_start), 'dd/MM/yyyy')} - ${format(new Date(payment.period_end), 'dd/MM/yyyy')}`,
+        'Base Pay': `£${payment.base_pay.toFixed(2)}`,
+        'Parcels Delivered': payment.parcel_count,
+        'Parcel Rate': `£${payment.parcel_rate.toFixed(2)}`,
+        'Total Pay': `£${payment.total_pay.toFixed(2)}`,
+        'Status': payment.status,
+        'Locked': payment.locked ? 'Yes' : 'No',
+        'Manually Adjusted': payment.manually_adjusted ? 'Yes' : 'No'
+      };
+    });
 
     const csv = [
       Object.keys(csvData[0] || {}).join(','),
@@ -547,13 +560,16 @@ const Finance = () => {
                         </TableHeader>
                         <TableBody>
                           {payments.map((payment) => (
-                            <TableRow key={payment.id}>
-                              <TableCell className="font-medium">
-                                {payment.driver?.profiles?.first_name} {payment.driver?.profiles?.last_name}
-                              </TableCell>
-                              <TableCell>
-                                {format(new Date(payment.eod_report?.log_date || ''), 'dd/MM/yyyy')}
-                              </TableCell>
+                             <TableRow key={payment.id}>
+                               <TableCell className="font-medium">
+                                 {(() => {
+                                   const driver = driverProfiles.find(d => d.id === payment.driver_id);
+                                   return `${driver?.profiles?.first_name || ''} ${driver?.profiles?.last_name || ''}`;
+                                 })()}
+                               </TableCell>
+                               <TableCell>
+                                 {format(new Date(payment.period_start), 'dd/MM/yyyy')}
+                               </TableCell>
                               <TableCell>{payment.parcel_count}</TableCell>
                               <TableCell>
                                 {editingPayment === payment.id ? (
