@@ -306,13 +306,17 @@ const DriverManagement = () => {
   // Delete driver mutation with comprehensive cleanup
   const deleteDriverMutation = useMutation({
     mutationFn: async (driverId: string) => {
+      // Simply get the driver profile without complex joins
       const { data: driverProfile, error: fetchError } = await supabase
         .from('driver_profiles')
-        .select('user_id, status, profiles!inner(first_name, last_name)')
+        .select('user_id, status')
         .eq('id', driverId)
         .single();
 
-      if (fetchError) throw fetchError;
+      if (fetchError) {
+        console.error('Error fetching driver profile:', fetchError);
+        throw new Error(`Failed to fetch driver profile: ${fetchError.message}`);
+      }
 
       // Use edge function for proper cleanup
       const { data, error } = await supabase.functions.invoke('remove-driver', {
@@ -323,10 +327,12 @@ const DriverManagement = () => {
       });
 
       if (error) {
+        console.error('Edge function error:', error);
         throw new Error(`Failed to remove driver: ${error.message || 'Unknown error'}`);
       }
 
       if (!data?.success) {
+        console.error('Edge function returned failure:', data);
         throw new Error(data?.error || 'Failed to remove driver');
       }
 
