@@ -39,7 +39,12 @@ const CompanyManagement = () => {
         .select('*')
         .order('created_at', { ascending: false });
 
-      console.log('Companies query result:', { data, error });
+      console.log('Companies query result:', { 
+        data, 
+        error, 
+        dataLength: data?.length,
+        firstCompany: data?.[0] 
+      });
       
       if (error) {
         console.error('Error fetching companies:', error);
