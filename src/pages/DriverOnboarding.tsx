@@ -130,6 +130,8 @@ const DriverOnboarding = () => {
     try {
       setLoading(true);
       
+      console.log('Looking for invitation with token:', token);
+      
       const { data: inviteData, error } = await supabase
         .from('driver_invitations')
         .select('*')
@@ -138,15 +140,31 @@ const DriverOnboarding = () => {
         .order('created_at', { ascending: false })
         .maybeSingle();
 
-      if (error || !inviteData) {
+      console.log('Invitation query result:', { inviteData, error });
+
+      if (error) {
+        console.error('Database error:', error);
+        throw new Error('Database error: ' + error.message);
+      }
+
+      if (!inviteData) {
+        console.log('No invitation found with token:', token);
+        // Try to find any invitation with this token to debug
+        const { data: anyInvite } = await supabase
+          .from('driver_invitations')
+          .select('*')
+          .eq('invite_token', token);
+        console.log('Any invitations with this token:', anyInvite);
         throw new Error('Invalid or expired invitation link');
       }
 
       // Check if invitation has expired
       if (new Date(inviteData.expires_at) < new Date()) {
+        console.log('Invitation has expired:', inviteData.expires_at);
         throw new Error('This invitation has expired');
       }
 
+      console.log('Valid invitation found:', inviteData);
       setInvitation(inviteData);
       
       // Pre-fill form with invitation data
@@ -159,6 +177,7 @@ const DriverOnboarding = () => {
       }));
       
     } catch (error: any) {
+      console.error('Error fetching invitation:', error);
       toast({
         title: "Invalid Invitation",
         description: error.message,
