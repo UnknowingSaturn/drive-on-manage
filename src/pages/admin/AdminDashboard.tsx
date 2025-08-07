@@ -2,6 +2,7 @@ import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/AppSidebar';
+import { MobileNav } from '@/components/MobileNav';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -204,40 +205,44 @@ const AdminDashboard = () => {
 
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex w-full bg-background">
+      <div className="min-h-screen flex w-full bg-background no-overflow">
         <AppSidebar />
         
-        <SidebarInset className="flex-1">
+        <SidebarInset className="flex-1 no-overflow">
           <header className="border-b bg-card sticky top-0 z-10">
-            <div className="flex items-center px-4 py-4">
-              <SidebarTrigger className="mr-4" />
-              <div>
-                <h1 className="text-xl font-semibold text-foreground">Admin Dashboard</h1>
-                <p className="text-sm text-muted-foreground">Overview of your logistics operations</p>
+            <div className="flex items-center justify-between mobile-padding py-3 md:py-4">
+              <div className="flex items-center space-x-3">
+                <SidebarTrigger className="mr-2 hidden md:flex" />
+                <MobileNav className="md:hidden" />
+                <div>
+                  <h1 className="mobile-heading font-semibold text-foreground">Admin Dashboard</h1>
+                  <p className="text-xs md:text-sm text-muted-foreground">Overview of your logistics operations</p>
+                </div>
               </div>
             </div>
           </header>
 
-          <main className="p-6 space-y-6">
+          <main className="mobile-padding py-4 md:py-6 space-y-4 md:space-y-6 no-overflow">
             {/* Welcome Section */}
-            <div className="flex justify-between items-center">
+            <div className="flex flex-col md:flex-row md:justify-between md:items-center space-y-4 md:space-y-0">
               <div>
-                <h2 className="text-3xl font-bold text-gradient">Welcome back, {profile?.first_name}!</h2>
-                <p className="text-muted-foreground mt-1">
+                <h2 className="mobile-heading font-bold text-gradient">Welcome back, {profile?.first_name}!</h2>
+                <p className="mobile-text text-muted-foreground mt-1">
                   Here's what's happening with your logistics operations today.
                 </p>
               </div>
               <Button 
                 onClick={() => navigate('/admin/reports')}
-                className="logistics-button"
+                className="logistics-button mobile-button w-full md:w-auto"
               >
                 <FileText className="h-4 w-4 mr-2" />
-                View Full Reports
+                <span className="hidden sm:inline">View Full Reports</span>
+                <span className="sm:hidden">Reports</span>
               </Button>
             </div>
 
             {/* Summary Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="mobile-grid gap-4 md:gap-6">
               <Card className="logistics-card hover-lift">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">Active Drivers</CardTitle>
@@ -317,7 +322,7 @@ const AdminDashboard = () => {
             </div>
 
             {/* Performance Overview */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
               <Card className="logistics-card bg-gradient-dark">
                 <CardHeader>
                   <CardTitle className="flex items-center text-gradient">
@@ -395,41 +400,41 @@ const AdminDashboard = () => {
                 <CardDescription>Common administrative tasks</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="mobile-grid gap-3 md:gap-4">
                   <Button 
                     variant="outline" 
-                    className="h-20 flex-col space-y-2 hover-lift"
+                    className="h-16 md:h-20 flex-col space-y-1 md:space-y-2 hover-lift mobile-button"
                     onClick={() => navigate('/admin/drivers')}
                   >
-                    <Users className="h-6 w-6" />
-                    <span>Manage Drivers</span>
+                    <Users className="h-5 w-5 md:h-6 md:w-6" />
+                    <span className="text-xs md:text-sm">Manage Drivers</span>
                   </Button>
                   
                   <Button 
                     variant="outline" 
-                    className="h-20 flex-col space-y-2 hover-lift"
+                    className="h-16 md:h-20 flex-col space-y-1 md:space-y-2 hover-lift mobile-button"
                     onClick={() => navigate('/admin/vans')}
                   >
-                    <Truck className="h-6 w-6" />
-                    <span>Manage Vans</span>
+                    <Truck className="h-5 w-5 md:h-6 md:w-6" />
+                    <span className="text-xs md:text-sm">Manage Vans</span>
                   </Button>
                   
                   <Button 
                     variant="outline" 
-                    className="h-20 flex-col space-y-2 hover-lift"
+                    className="h-16 md:h-20 flex-col space-y-1 md:space-y-2 hover-lift mobile-button"
                     onClick={() => navigate('/admin/rounds')}
                   >
-                    <MapPin className="h-6 w-6" />
-                    <span>Manage Rounds</span>
+                    <MapPin className="h-5 w-5 md:h-6 md:w-6" />
+                    <span className="text-xs md:text-sm">Manage Rounds</span>
                   </Button>
                   
                   <Button 
                     variant="outline" 
-                    className="h-20 flex-col space-y-2 hover-lift"
+                    className="h-16 md:h-20 flex-col space-y-1 md:space-y-2 hover-lift mobile-button"
                     onClick={() => navigate('/admin/schedule')}
                   >
-                    <Calendar className="h-6 w-6" />
-                    <span>View Schedule</span>
+                    <Calendar className="h-5 w-5 md:h-6 md:w-6" />
+                    <span className="text-xs md:text-sm">View Schedule</span>
                   </Button>
                 </div>
               </CardContent>

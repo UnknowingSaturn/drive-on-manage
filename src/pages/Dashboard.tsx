@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Truck, Users, MapPin, Calendar, Bell, Clock, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { SidebarProvider, SidebarTrigger, SidebarInset } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/AppSidebar';
+import { MobileNav } from '@/components/MobileNav';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -83,34 +84,35 @@ const Dashboard = () => {
 
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex w-full bg-background">
+      <div className="min-h-screen flex w-full bg-background no-overflow">
         <AppSidebar />
         
-        <SidebarInset className="flex-1">
+        <SidebarInset className="flex-1 no-overflow">
           {/* Header */}
           <header className="border-b bg-card sticky top-0 z-10">
-            <div className="flex items-center px-4 py-4">
-              <SidebarTrigger className="mr-4" />
+            <div className="flex items-center justify-between mobile-padding py-3 md:py-4">
               <div className="flex items-center space-x-3">
-                 <div>
-                   <h1 className="text-xl font-semibold text-foreground">
-                     Driver Dashboard
-                   </h1>
-                   <p className="text-sm text-muted-foreground">
-                     Welcome back, {profile?.first_name || user?.email}
-                   </p>
-                 </div>
+                <SidebarTrigger className="mr-2 hidden md:flex" />
+                <MobileNav className="md:hidden" />
+                <div>
+                  <h1 className="mobile-heading font-semibold text-foreground">
+                    Driver Dashboard
+                  </h1>
+                  <p className="text-xs md:text-sm text-muted-foreground">
+                    Welcome back, {profile?.first_name || user?.email}
+                  </p>
+                </div>
               </div>
             </div>
           </header>
 
           {/* Main Content */}
-          <main className="p-6">
+          <main className="mobile-padding py-4 md:py-6">
         {isDriver && (
-          <div className="space-y-8 animate-fade-in">
+          <div className="space-y-6 md:space-y-8 animate-fade-in">
             <div>
-              <h2 className="text-3xl font-bold mb-2 text-gradient">Driver Dashboard</h2>
-              <p className="text-muted-foreground">
+              <h2 className="mobile-heading font-bold mb-2 text-gradient">Driver Dashboard</h2>
+              <p className="mobile-text text-muted-foreground">
                 Your daily logistics operations
               </p>
             </div>
@@ -127,7 +129,7 @@ const Dashboard = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4">
                   <div className="text-center p-4 rounded-lg bg-card/50 hover-lift">
                     <div className="text-2xl font-bold text-gradient">
                       {todaySOD?.parcel_count || 0}
@@ -185,7 +187,7 @@ const Dashboard = () => {
             </Card>
 
             {/* Driver Quick Actions with Enhanced Effects */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
               <Card className="logistics-card hover-lift click-shrink group">
                 <CardHeader>
                   <CardTitle className="flex items-center">
@@ -201,7 +203,7 @@ const Dashboard = () => {
                 </CardHeader>
                 <CardContent>
                   <Button 
-                    className="logistics-button w-full group-hover:shadow-glow"
+                    className="logistics-button w-full group-hover:shadow-glow mobile-button"
                     onClick={() => navigate('/driver/start-of-day')}
                     disabled={!!todaySOD}
                   >
@@ -226,7 +228,7 @@ const Dashboard = () => {
                 </CardHeader>
                 <CardContent>
                   <Button 
-                    className="logistics-button w-full group-hover:shadow-glow"
+                    className="logistics-button w-full group-hover:shadow-glow mobile-button"
                     onClick={() => navigate('/driver/end-of-day')}
                     disabled={!todaySOD || !!todayEOD}
                   >
@@ -248,7 +250,7 @@ const Dashboard = () => {
                 </CardHeader>
                 <CardContent>
                   <Button 
-                    className="logistics-button w-full group-hover:shadow-glow"
+                    className="logistics-button w-full group-hover:shadow-glow mobile-button"
                     onClick={() => navigate('/driver/vehicle-check')}
                   >
                     <Truck className="h-4 w-4 mr-2" />
@@ -269,7 +271,7 @@ const Dashboard = () => {
                 </CardHeader>
                 <CardContent>
                   <Button 
-                    className="w-full border-warning/30 text-warning hover:bg-warning/10" 
+                    className="w-full border-warning/30 text-warning hover:bg-warning/10 mobile-button" 
                     variant="outline"
                     onClick={() => navigate('/driver/incident-report')}
                   >

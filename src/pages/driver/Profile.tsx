@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/AppSidebar';
+import { MobileNav } from '@/components/MobileNav';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -128,21 +129,24 @@ const DriverProfile = () => {
 
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex w-full bg-background">
+      <div className="min-h-screen flex w-full bg-background no-overflow">
         <AppSidebar />
         
-        <SidebarInset className="flex-1">
+        <SidebarInset className="flex-1 no-overflow">
           <header className="border-b bg-card sticky top-0 z-10">
-            <div className="flex items-center px-4 py-4">
-              <SidebarTrigger className="mr-4" />
-              <div>
-                <h1 className="text-xl font-semibold text-foreground">My Profile</h1>
-                <p className="text-sm text-muted-foreground">Manage your personal information and onboarding</p>
+            <div className="flex items-center justify-between mobile-padding py-3 md:py-4">
+              <div className="flex items-center space-x-3">
+                <SidebarTrigger className="mr-2 hidden md:flex" />
+                <MobileNav className="md:hidden" />
+                <div>
+                  <h1 className="mobile-heading font-semibold text-foreground">My Profile</h1>
+                  <p className="text-xs md:text-sm text-muted-foreground">Manage your personal information and onboarding</p>
+                </div>
               </div>
             </div>
           </header>
 
-          <main className="p-6 space-y-6">
+          <main className="mobile-padding py-4 md:py-6 space-y-4 md:space-y-6 no-overflow">
             {/* Onboarding Progress */}
             <Card className="logistics-card">
               <CardHeader>
@@ -186,11 +190,11 @@ const DriverProfile = () => {
               </CardContent>
             </Card>
 
-            <Tabs defaultValue="personal" className="space-y-6">
-              <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="personal">Personal Details</TabsTrigger>
-                <TabsTrigger value="documents">Documents</TabsTrigger>
-                <TabsTrigger value="employment">Employment</TabsTrigger>
+            <Tabs defaultValue="personal" className="space-y-4 md:space-y-6">
+              <TabsList className="grid w-full grid-cols-3 h-auto p-1">
+                <TabsTrigger value="personal" className="text-xs sm:text-sm mobile-button">Personal Details</TabsTrigger>
+                <TabsTrigger value="documents" className="text-xs sm:text-sm mobile-button">Documents</TabsTrigger>
+                <TabsTrigger value="employment" className="text-xs sm:text-sm mobile-button">Employment</TabsTrigger>
               </TabsList>
 
               <TabsContent value="personal" className="space-y-6">
@@ -206,7 +210,7 @@ const DriverProfile = () => {
                   </CardHeader>
                   <CardContent>
                     <form onSubmit={handleSubmit} className="space-y-4">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <Label htmlFor="firstName">First Name</Label>
                           <Input
@@ -249,7 +253,7 @@ const DriverProfile = () => {
 
                       <Button 
                         type="submit" 
-                        className="logistics-button"
+                        className="logistics-button mobile-button w-full sm:w-auto"
                         disabled={updateProfileMutation.isPending}
                       >
                         {updateProfileMutation.isPending ? 'Updating...' : 'Update Profile'}
@@ -296,7 +300,7 @@ const DriverProfile = () => {
                       </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <Label htmlFor="licenseNumber">License Number</Label>
                           <Input
@@ -377,7 +381,7 @@ const DriverProfile = () => {
                       />
                     </div>
                     
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label>Hourly Rate</Label>
                         <div className="text-lg font-semibold text-gradient">

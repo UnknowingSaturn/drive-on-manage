@@ -74,6 +74,7 @@ export function AppSidebar() {
     <Sidebar 
       variant="sidebar"
       collapsible="icon"
+      className="hidden md:flex"
     >
       <SidebarHeader className="border-b border-sidebar-border p-4 bg-gradient-dark">
         <div className="flex items-center space-x-3">

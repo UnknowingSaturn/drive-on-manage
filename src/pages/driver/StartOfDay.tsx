@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/AppSidebar';
+import { MobileNav } from '@/components/MobileNav';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -206,21 +207,24 @@ const StartOfDay = () => {
 
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex w-full bg-background">
+      <div className="min-h-screen flex w-full bg-background no-overflow">
         <AppSidebar />
         
-        <SidebarInset className="flex-1">
+        <SidebarInset className="flex-1 no-overflow">
           <header className="border-b bg-card sticky top-0 z-10">
-            <div className="flex items-center px-4 py-4">
-              <SidebarTrigger className="mr-4" />
-              <div>
-                <h1 className="text-xl font-semibold text-foreground">Start of Day</h1>
-                <p className="text-sm text-muted-foreground">Begin your delivery shift</p>
+            <div className="flex items-center justify-between mobile-padding py-3 md:py-4">
+              <div className="flex items-center space-x-3">
+                <SidebarTrigger className="mr-2 hidden md:flex" />
+                <MobileNav className="md:hidden" />
+                <div>
+                  <h1 className="mobile-heading font-semibold text-foreground">Start of Day</h1>
+                  <p className="text-xs md:text-sm text-muted-foreground">Begin your delivery shift</p>
+                </div>
               </div>
             </div>
           </header>
 
-          <main className="p-6 space-y-6">
+          <main className="mobile-padding py-4 md:py-6 space-y-4 md:space-y-6 no-overflow">
             {/* Status Card */}
             <Card className="logistics-card">
               <CardHeader>
@@ -308,7 +312,7 @@ const StartOfDay = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div>
                       <Label className="text-sm font-medium">Registration</Label>
                       <p className="text-lg font-semibold">{assignedVan.registration}</p>
@@ -358,7 +362,7 @@ const StartOfDay = () => {
                 <CardContent>
                   <form onSubmit={handleSubmit} className="space-y-6">
                     {/* Basic Information */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="parcelCount">
                           Parcel Count <span className="text-destructive">*</span>

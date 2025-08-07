@@ -182,4 +182,67 @@
   body {
     @apply bg-background text-foreground;
   }
+
+  /* Mobile-first responsive typography */
+  html {
+    font-size: 16px;
+  }
+
+  @media (max-width: 767px) {
+    html {
+      font-size: 15px;
+    }
+    
+    /* Mobile scroll behavior */
+    body {
+      overflow-x: hidden;
+      -webkit-overflow-scrolling: touch;
+    }
+  }
+}
+
+/* Mobile-specific utilities */
+@layer utilities {
+  /* Touch-friendly minimum sizes */
+  .touch-target {
+    @apply min-h-[44px] min-w-[44px];
+  }
+  
+  /* Mobile spacing */
+  .mobile-padding {
+    @apply px-4 sm:px-6;
+  }
+  
+  .mobile-margin {
+    @apply mx-4 sm:mx-6;
+  }
+  
+  /* Mobile typography */
+  .mobile-heading {
+    @apply text-lg sm:text-xl md:text-2xl lg:text-3xl;
+  }
+  
+  .mobile-text {
+    @apply text-sm sm:text-base;
+  }
+  
+  /* Mobile cards */
+  .mobile-card {
+    @apply rounded-lg sm:rounded-xl;
+  }
+  
+  /* Mobile grid responsive */
+  .mobile-grid {
+    @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4;
+  }
+  
+  /* Mobile buttons */
+  .mobile-button {
+    @apply min-h-[44px] px-4 py-2 text-sm sm:text-base;
+  }
+  
+  /* Prevent horizontal overflow */
+  .no-overflow {
+    @apply overflow-x-hidden w-full max-w-full;
+  }
 }

@@ -77,8 +77,8 @@ const Auth = () => {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen flex items-center justify-center bg-background mobile-padding py-6">
+      <div className="w-full max-w-md no-overflow">
         <div className="text-center mb-8">
           <div className="flex items-center justify-center mb-4">
             <Truck className="h-10 w-10 text-primary mr-2" />
@@ -112,6 +112,7 @@ const Auth = () => {
                       value={signInData.email}
                       onChange={(e) => setSignInData({ ...signInData, email: e.target.value })}
                       required
+                      className="touch-target"
                     />
                   </div>
                   <div className="space-y-2">
@@ -123,11 +124,12 @@ const Auth = () => {
                       value={signInData.password}
                       onChange={(e) => setSignInData({ ...signInData, password: e.target.value })}
                       required
+                      className="touch-target"
                     />
                   </div>
                   <Button 
                     type="submit" 
-                    className="w-full" 
+                    className="w-full mobile-button" 
                     disabled={isSubmitting}
                   >
                     {isSubmitting ? 'Signing In...' : 'Sign In'}
@@ -137,7 +139,7 @@ const Auth = () => {
 
               <TabsContent value="signup" className="space-y-4">
                 <form onSubmit={handleSignUp} className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="signup-firstname">First Name</Label>
                       <Input
@@ -146,6 +148,7 @@ const Auth = () => {
                         value={signUpData.firstName}
                         onChange={(e) => setSignUpData({ ...signUpData, firstName: e.target.value })}
                         required
+                        className="touch-target"
                       />
                     </div>
                     <div className="space-y-2">
@@ -156,6 +159,7 @@ const Auth = () => {
                         value={signUpData.lastName}
                         onChange={(e) => setSignUpData({ ...signUpData, lastName: e.target.value })}
                         required
+                        className="touch-target"
                       />
                     </div>
                   </div>
@@ -226,7 +230,7 @@ const Auth = () => {
 
                   <Button 
                     type="submit" 
-                    className="w-full" 
+                    className="w-full mobile-button" 
                     disabled={isSubmitting || signUpData.password !== signUpData.confirmPassword}
                   >
                     {isSubmitting ? 'Creating Account...' : 'Create Account'}
