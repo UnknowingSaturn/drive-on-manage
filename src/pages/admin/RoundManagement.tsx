@@ -23,7 +23,6 @@ const RoundManagement = () => {
   const [formData, setFormData] = useState({
     roundNumber: '',
     description: '',
-    baseRate: '',
     parcelRate: '',
     routeRate: '' // New field for route-specific rate
   });
@@ -55,7 +54,6 @@ const RoundManagement = () => {
         .insert({
           round_number: roundData.roundNumber,
           description: roundData.description,
-          base_rate: roundData.baseRate ? parseFloat(roundData.baseRate) : null,
           parcel_rate: roundData.parcelRate ? parseFloat(roundData.parcelRate) : null,
           rate: roundData.routeRate ? parseFloat(roundData.routeRate) : null, // Route-specific override rate
           company_id: profile?.company_id
@@ -72,7 +70,6 @@ const RoundManagement = () => {
       setFormData({
         roundNumber: '',
         description: '',
-        baseRate: '',
         parcelRate: '',
         routeRate: ''
       });
@@ -101,7 +98,6 @@ const RoundManagement = () => {
     setFormData({
       roundNumber: round.round_number || '',
       description: round.description || '',
-      baseRate: round.base_rate?.toString() || '',
       parcelRate: round.parcel_rate?.toString() || '',
       routeRate: round.rate?.toString() || ''
     });
@@ -177,29 +173,16 @@ const RoundManagement = () => {
                 />
               </div>
               
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="baseRate">Base Rate (£)</Label>
-                  <Input
-                    id="baseRate"
-                    type="number"
-                    step="0.01"
-                    value={formData.baseRate}
-                    onChange={(e) => handleInputChange('baseRate', e.target.value)}
-                    placeholder="Daily base rate"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="routeRate">Route Parcel Rate (£)</Label>
-                  <Input
-                    id="routeRate"
-                    type="number"
-                    step="0.01"
-                    value={formData.routeRate}
-                    onChange={(e) => handleInputChange('routeRate', e.target.value)}
-                    placeholder="Per parcel rate for this route"
-                  />
-                </div>
+              <div>
+                <Label htmlFor="routeRate">Route Parcel Rate (£)</Label>
+                <Input
+                  id="routeRate"
+                  type="number"
+                  step="0.01"
+                  value={formData.routeRate}
+                  onChange={(e) => handleInputChange('routeRate', e.target.value)}
+                  placeholder="Per parcel rate for this route"
+                />
               </div>
               
               <div>
@@ -231,13 +214,13 @@ const RoundManagement = () => {
         
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Avg Base Rate</CardTitle>
+            <CardTitle className="text-sm font-medium">Avg Route Rate</CardTitle>
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
               £{rounds?.length ? 
-                (rounds.reduce((sum, round) => sum + (round.base_rate || 0), 0) / rounds.length).toFixed(2) 
+                (rounds.reduce((sum, round) => sum + (round.rate || 0), 0) / rounds.length).toFixed(2) 
                 : '0.00'}
             </div>
           </CardContent>
@@ -269,7 +252,6 @@ const RoundManagement = () => {
               <TableRow>
                 <TableHead>Round Number</TableHead>
                 <TableHead>Description</TableHead>
-                <TableHead>Base Rate</TableHead>
                 <TableHead>Route Rate</TableHead>
                 <TableHead>Created</TableHead>
                 <TableHead>Actions</TableHead>
@@ -285,22 +267,19 @@ const RoundManagement = () => {
                     </div>
                   </TableCell>
                   <TableCell>
-                    {round.base_rate ? `£${round.base_rate}` : '-'}
+                    {round.rate ? (
+                      <div className="font-medium text-primary">
+                        £{round.rate}/parcel
+                        <div className="text-xs text-muted-foreground">
+                          Overrides driver rates
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-muted-foreground text-sm">
+                        Uses driver base rates
+                      </div>
+                    )}
                   </TableCell>
-                           <TableCell>
-                             {round.rate ? (
-                               <div className="font-medium text-primary">
-                                 £{round.rate}/parcel
-                                 <div className="text-xs text-muted-foreground">
-                                   Overrides driver rates
-                                 </div>
-                               </div>
-                             ) : (
-                               <div className="text-muted-foreground text-sm">
-                                 Uses driver base rates
-                               </div>
-                             )}
-                           </TableCell>
                   <TableCell>
                     {new Date(round.created_at).toLocaleDateString()}
                   </TableCell>
