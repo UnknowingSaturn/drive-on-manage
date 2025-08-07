@@ -66,46 +66,48 @@ const DriverManagement = () => {
     queryFn: async () => {
       if (!profile?.company_id) return [];
       
-      // Fetch active driver profiles with van assignments
+      // Fetch active driver profiles with van assignments and profile data
       const { data: drivers, error: driversError } = await supabase
         .from('driver_profiles')
         .select(`
           *,
-          assigned_van:vans(id, registration, make, model)
+          assigned_van:vans(id, registration, make, model),
+          profiles!inner(first_name, last_name, email, phone, is_active)
         `)
         .eq('company_id', profile.company_id)
         .order('created_at', { ascending: false });
 
       if (driversError) throw driversError;
 
-      // Fetch pending invitations
-      const { data: invitations, error: invitationsError } = await supabase
+      // Fetch ALL invitations (including accepted ones to track status)
+      const { data: allInvitations, error: invitationsError } = await supabase
         .from('driver_invitations')
         .select('*')
         .eq('company_id', profile.company_id)
-        .eq('status', 'pending')
+        .in('status', ['pending', 'accepted'])
         .order('created_at', { ascending: false });
 
       if (invitationsError) throw invitationsError;
 
-      // Fetch profile data for active drivers
-      const { data: profiles, error: profilesError } = await supabase
-        .from('profiles')
-        .select('user_id, first_name, last_name, email, phone, is_active')
-        .in('user_id', drivers?.map(d => d.user_id) || []);
-
-      if (profilesError) throw profilesError;
-
-      // Combine active drivers with their profiles
+      // Convert active drivers with their profiles
       const activeDrivers = drivers?.map(driver => ({
         ...driver,
         type: 'active' as const,
-        profiles: profiles?.find(p => p.user_id === driver.user_id),
-        invitation_status: driver.onboarding_completed_at ? 'completed' : 'in_progress'
+        profiles: driver.profiles, // Profile data is already joined
+        invitation_status: driver.onboarding_completed_at ? 'completed' : 'in_progress',
+        // Find the original invitation to get additional context
+        original_invitation: allInvitations?.find(inv => 
+          inv.driver_profile_id === driver.id || inv.email === driver.profiles?.email
+        )
       })) || [];
 
-      // Add pending invitations as "drivers"
-      const pendingDrivers = invitations?.map(invite => ({
+      // Only show PENDING invitations as separate entries (not yet onboarded)
+      const pendingInvitations = allInvitations?.filter(invite => 
+        invite.status === 'pending' &&
+        !activeDrivers.some(driver => driver.original_invitation?.id === invite.id)
+      ) || [];
+
+      const pendingDrivers = pendingInvitations.map(invite => ({
         id: invite.id,
         type: 'invitation' as const,
         status: 'pending',
@@ -123,7 +125,7 @@ const DriverManagement = () => {
           phone: invite.phone,
           is_active: false
         }
-      })) || [];
+      }));
 
       return [...activeDrivers, ...pendingDrivers];
     },

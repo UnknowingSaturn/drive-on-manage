@@ -188,7 +188,14 @@ serve(async (req) => {
         company_id: invitation.company_id,
         parcel_rate: parcelRate,
         cover_rate: coverRate,
-        status: 'pending'
+        status: 'active',
+        onboarding_completed_at: new Date().toISOString(),
+        onboarding_progress: {
+          personal_info: true,
+          account_setup: true,
+          documents_uploaded: false, // Will be updated when documents are uploaded
+          terms_accepted: true
+        }
       };
 
       console.log('Creating driver profile:', driverProfileData);
