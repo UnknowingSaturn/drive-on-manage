@@ -5,20 +5,34 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Package, TrendingUp, Download, Calendar, DollarSign, CheckCircle, AlertCircle } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { Package, TrendingUp, Download, Calendar, DollarSign, CheckCircle, AlertCircle, Eye, Edit, Camera, FileText } from 'lucide-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { format, subDays, startOfWeek, endOfWeek } from 'date-fns';
 import { SidebarProvider, SidebarTrigger, SidebarInset } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/AppSidebar';
+import { useToast } from '@/hooks/use-toast';
 
 const EODReports = () => {
   const { profile } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [timeFilter, setTimeFilter] = useState('week');
+  const [selectedReport, setSelectedReport] = useState<any>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editData, setEditData] = useState({
+    actual_pay: '',
+    admin_notes: '',
+    status: ''
+  });
 
-  // Fetch daily logs with driver information
-  const { data: dailyLogs, isLoading } = useQuery({
-    queryKey: ['daily-logs', profile?.company_id, timeFilter],
+  // Fetch EOD reports with driver information
+  const { data: eodReports, isLoading } = useQuery({
+    queryKey: ['eod-reports', profile?.company_id, timeFilter],
     queryFn: async () => {
       if (!profile?.company_id) return [];
       
@@ -36,38 +50,41 @@ const EODReports = () => {
           break;
       }
 
-      const { data: logs, error: logsError } = await supabase
-        .from('daily_logs')
+      const { data: reports, error: reportsError } = await supabase
+        .from('eod_reports')
         .select('*')
         .eq('company_id', profile.company_id)
         .gte('log_date', format(dateFilter, 'yyyy-MM-dd'))
         .order('log_date', { ascending: false });
 
-      if (logsError) throw logsError;
+      if (reportsError) throw reportsError;
 
-      // Fetch driver profiles and rounds separately
+      // Fetch driver profiles separately for better performance
       const { data: drivers } = await supabase
         .from('driver_profiles')
         .select('id, user_id')
-        .in('id', logs?.map(l => l.driver_id) || []);
+        .in('id', reports?.map(r => r.driver_id) || []);
 
       const { data: profiles } = await supabase
         .from('profiles')
         .select('user_id, first_name, last_name')
         .in('user_id', drivers?.map(d => d.user_id) || []);
 
-      const { data: rounds } = await supabase
-        .from('rounds')
-        .select('id, round_number')
-        .in('id', logs?.map(l => l.round_id).filter(Boolean) || []);
+      // Fetch van information
+      const { data: vans } = await supabase
+        .from('vans')
+        .select('id, registration, make, model')
+        .in('id', reports?.map(r => r.van_id).filter(Boolean) || []);
 
-      return logs?.map(log => {
-        const driver = drivers?.find(d => d.id === log.driver_id);
+      return reports?.map(report => {
+        const driver = drivers?.find(d => d.id === report.driver_id);
         const profile = profiles?.find(p => p.user_id === driver?.user_id);
+        const van = vans?.find(v => v.id === report.van_id);
+        
         return {
-          ...log,
+          ...report,
           driver_profile: profile,
-          round: rounds?.find(r => r.id === log.round_id)
+          van: van
         };
       }) || [];
     },
@@ -75,58 +92,93 @@ const EODReports = () => {
   });
 
   // Calculate summary statistics
-  const totalParcelsAssigned = dailyLogs?.reduce((sum, log) => sum + (log.sod_parcel_count || 0), 0) || 0;
-  const totalParcelsDelivered = dailyLogs?.reduce((sum, log) => sum + (log.eod_delivered_count || 0), 0) || 0;
-  const totalEstimatedPay = dailyLogs?.reduce((sum, log) => sum + (log.estimated_pay || 0), 0) || 0;
-  const deliveryRate = totalParcelsAssigned > 0 ? ((totalParcelsDelivered / totalParcelsAssigned) * 100).toFixed(1) : '0';
+  const totalParcelsDelivered = eodReports?.reduce((sum, report) => sum + (report.parcels_delivered || 0), 0) || 0;
+  const totalEstimatedPay = eodReports?.reduce((sum, report) => sum + (report.estimated_pay || 0), 0) || 0;
+  const totalActualPay = eodReports?.reduce((sum, report) => sum + (report.actual_pay || 0), 0) || 0;
+  const avgDeliveryCount = eodReports?.length ? Math.round(totalParcelsDelivered / eodReports.length) : 0;
 
-  const getStatusBadge = (log: any) => {
-    if (log.status === 'completed') {
-      return (
-        <Badge className="bg-success text-success-foreground">
-          <CheckCircle className="h-3 w-3 mr-1" />
-          Complete
-        </Badge>
-      );
+  // Update EOD report mutation
+  const updateReportMutation = useMutation({
+    mutationFn: async ({ reportId, updates }: { reportId: string, updates: any }) => {
+      const { error } = await supabase
+        .from('eod_reports')
+        .update({
+          actual_pay: updates.actual_pay ? parseFloat(updates.actual_pay) : null,
+          admin_notes: updates.admin_notes || null,
+          status: updates.status,
+          approved_by: profile?.user_id,
+          approved_at: new Date().toISOString()
+        })
+        .eq('id', reportId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({
+        title: "Report updated",
+        description: "EOD report has been successfully updated",
+      });
+      queryClient.invalidateQueries({ queryKey: ['eod-reports'] });
+      setIsEditDialogOpen(false);
+      setSelectedReport(null);
+    },
+    onError: (error) => {
+      toast({
+        title: "Error updating report",
+        description: error.message,
+        variant: "destructive",
+      });
     }
-    if (log.status === 'in_progress') {
-      return (
-        <Badge className="bg-warning text-warning-foreground">
-          <AlertCircle className="h-3 w-3 mr-1" />
-          In Progress
-        </Badge>
-      );
+  });
+
+  const getStatusBadge = (report: any) => {
+    switch (report.status) {
+      case 'approved':
+        return (
+          <Badge className="bg-success text-success-foreground">
+            <CheckCircle className="h-3 w-3 mr-1" />
+            Approved
+          </Badge>
+        );
+      case 'submitted':
+        return (
+          <Badge className="bg-warning text-warning-foreground">
+            <AlertCircle className="h-3 w-3 mr-1" />
+            Pending
+          </Badge>
+        );
+      default:
+        return (
+          <Badge variant="secondary">
+            {report.status}
+          </Badge>
+        );
     }
-    return (
-      <Badge variant="secondary">
-        {log.status}
-      </Badge>
-    );
   };
 
   const exportToCSV = () => {
-    if (!dailyLogs?.length) return;
+    if (!eodReports?.length) return;
 
     const headers = [
       'Date',
       'Driver',
-      'Round',
-      'Parcels Assigned',
+      'Van',
       'Parcels Delivered',
-      'Delivery Rate',
       'Estimated Pay',
-      'Status'
+      'Actual Pay',
+      'Status',
+      'Issues Reported'
     ];
 
-    const csvData = dailyLogs.map(log => [
-      format(new Date(log.log_date), 'dd/MM/yyyy'),
-      `${log.driver_profile?.first_name || ''} ${log.driver_profile?.last_name || ''}`.trim() || 'Unknown',
-      log.round?.round_number || '-',
-      log.sod_parcel_count || 0,
-      log.eod_delivered_count || 0,
-      log.sod_parcel_count ? `${((log.eod_delivered_count || 0) / log.sod_parcel_count * 100).toFixed(1)}%` : '0%',
-      log.estimated_pay ? `£${log.estimated_pay}` : '£0.00',
-      log.status
+    const csvData = eodReports.map(report => [
+      format(new Date(report.log_date), 'dd/MM/yyyy'),
+      `${report.driver_profile?.first_name || ''} ${report.driver_profile?.last_name || ''}`.trim() || 'Unknown',
+      report.van ? `${report.van.registration} (${report.van.make} ${report.van.model})` : '-',
+      report.parcels_delivered || 0,
+      report.estimated_pay ? `£${report.estimated_pay}` : '£0.00',
+      report.actual_pay ? `£${report.actual_pay}` : '-',
+      report.status,
+      report.issues_reported || '-'
     ]);
 
     const csv = [headers, ...csvData].map(row => row.join(',')).join('\n');
@@ -137,6 +189,24 @@ const EODReports = () => {
     a.download = `eod-reports-${format(new Date(), 'yyyy-MM-dd')}.csv`;
     a.click();
     window.URL.revokeObjectURL(url);
+  };
+
+  const handleEditReport = (report: any) => {
+    setSelectedReport(report);
+    setEditData({
+      actual_pay: report.actual_pay?.toString() || '',
+      admin_notes: report.admin_notes || '',
+      status: report.status || 'submitted'
+    });
+    setIsEditDialogOpen(true);
+  };
+
+  const handleSaveEdit = () => {
+    if (!selectedReport) return;
+    updateReportMutation.mutate({
+      reportId: selectedReport.id,
+      updates: editData
+    });
   };
 
   if (isLoading) {
@@ -188,26 +258,13 @@ const EODReports = () => {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Parcels Assigned</CardTitle>
+            <CardTitle className="text-sm font-medium">Total Delivered</CardTitle>
             <Package className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalParcelsAssigned}</div>
+            <div className="text-2xl font-bold">{totalParcelsDelivered}</div>
             <p className="text-xs text-muted-foreground">
               {timeFilter === 'today' ? 'Today' : timeFilter === 'week' ? 'This week' : 'Last 30 days'}
-            </p>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Parcels Delivered</CardTitle>
-            <CheckCircle className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-success">{totalParcelsDelivered}</div>
-            <p className="text-xs text-muted-foreground">
-              {deliveryRate}% delivery rate
             </p>
           </CardContent>
         </Card>
@@ -220,20 +277,33 @@ const EODReports = () => {
           <CardContent>
             <div className="text-2xl font-bold">£{totalEstimatedPay.toFixed(2)}</div>
             <p className="text-xs text-muted-foreground">
-              Pending payroll processing
+              Pending approval
             </p>
           </CardContent>
         </Card>
         
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Days</CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Actual Pay</CardTitle>
+            <CheckCircle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{dailyLogs?.length || 0}</div>
+            <div className="text-2xl font-bold text-success">£{totalActualPay.toFixed(2)}</div>
             <p className="text-xs text-muted-foreground">
-              Days with activity
+              Approved amounts
+            </p>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Reports</CardTitle>
+            <FileText className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{eodReports?.length || 0}</div>
+            <p className="text-xs text-muted-foreground">
+              Avg: {avgDeliveryCount} parcels/day
             </p>
           </CardContent>
         </Card>
@@ -241,8 +311,8 @@ const EODReports = () => {
 
       <Card>
         <CardHeader>
-          <CardTitle>Daily Performance Reports</CardTitle>
-          <CardDescription>End of day submissions and delivery tracking</CardDescription>
+          <CardTitle>End of Day Reports</CardTitle>
+          <CardDescription>Driver EOD submissions with screenshots and delivery summaries</CardDescription>
         </CardHeader>
         <CardContent>
           <Table>
@@ -250,73 +320,196 @@ const EODReports = () => {
               <TableRow>
                 <TableHead>Date</TableHead>
                 <TableHead>Driver</TableHead>
-                <TableHead>Round</TableHead>
-                <TableHead>Assigned</TableHead>
+                <TableHead>Van</TableHead>
                 <TableHead>Delivered</TableHead>
-                <TableHead>Rate</TableHead>
                 <TableHead>Est. Pay</TableHead>
+                <TableHead>Actual Pay</TableHead>
+                <TableHead>Screenshot</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {dailyLogs?.map((log) => {
-                const deliveryRate = log.sod_parcel_count 
-                  ? ((log.eod_delivered_count || 0) / log.sod_parcel_count * 100).toFixed(1)
-                  : '0';
-                
-                return (
-                  <TableRow key={log.id}>
-                    <TableCell className="font-medium">
-                      {format(new Date(log.log_date), 'dd/MM/yyyy')}
-                    </TableCell>
-                    <TableCell>
-                      {log.driver_profile?.first_name} {log.driver_profile?.last_name}
-                    </TableCell>
-                    <TableCell>
-                      {log.round?.round_number || '-'}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center">
-                        <Package className="h-3 w-3 mr-1 text-muted-foreground" />
-                        {log.sod_parcel_count || 0}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center">
-                        <CheckCircle className="h-3 w-3 mr-1 text-success" />
-                        {log.eod_delivered_count || 0}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={parseFloat(deliveryRate) >= 90 ? 'default' : 'secondary'}>
-                        {deliveryRate}%
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      {log.estimated_pay ? `£${log.estimated_pay}` : '-'}
-                    </TableCell>
-                    <TableCell>
-                      {getStatusBadge(log)}
-                    </TableCell>
-                    <TableCell>
-                      <Button variant="outline" size="sm">
-                        View Details
+              {eodReports?.map((report) => (
+                <TableRow key={report.id}>
+                  <TableCell className="font-medium">
+                    {format(new Date(report.log_date), 'dd/MM/yyyy')}
+                  </TableCell>
+                  <TableCell>
+                    {report.driver_profile?.first_name} {report.driver_profile?.last_name}
+                  </TableCell>
+                  <TableCell>
+                    {report.van ? `${report.van.registration}` : '-'}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center">
+                      <Package className="h-3 w-3 mr-1 text-muted-foreground" />
+                      {report.parcels_delivered || 0}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    £{report.estimated_pay?.toFixed(2) || '0.00'}
+                  </TableCell>
+                  <TableCell>
+                    {report.actual_pay ? `£${report.actual_pay.toFixed(2)}` : '-'}
+                  </TableCell>
+                  <TableCell>
+                    {report.screenshot_url ? (
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button variant="outline" size="sm">
+                            <Camera className="h-3 w-3 mr-1" />
+                            View
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent className="max-w-3xl">
+                          <DialogHeader>
+                            <DialogTitle>Delivery Screenshot</DialogTitle>
+                          </DialogHeader>
+                          <div className="mt-4">
+                            <img 
+                              src={`${supabase.storage.from('eod-screenshots').getPublicUrl(report.screenshot_url).data.publicUrl}`}
+                              alt="Delivery summary screenshot"
+                              className="w-full rounded-lg border"
+                            />
+                          </div>
+                        </DialogContent>
+                      </Dialog>
+                    ) : (
+                      <span className="text-muted-foreground text-sm">No screenshot</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {getStatusBadge(report)}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex space-x-2">
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button variant="outline" size="sm">
+                            <Eye className="h-3 w-3 mr-1" />
+                            View
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent className="max-w-2xl">
+                          <DialogHeader>
+                            <DialogTitle>EOD Report Details</DialogTitle>
+                          </DialogHeader>
+                          <div className="space-y-4 mt-4">
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <Label className="text-sm font-medium">Driver</Label>
+                                <p>{report.driver_profile?.first_name} {report.driver_profile?.last_name}</p>
+                              </div>
+                              <div>
+                                <Label className="text-sm font-medium">Date</Label>
+                                <p>{format(new Date(report.log_date), 'dd/MM/yyyy')}</p>
+                              </div>
+                              <div>
+                                <Label className="text-sm font-medium">Parcels Delivered</Label>
+                                <p>{report.parcels_delivered}</p>
+                              </div>
+                              <div>
+                                <Label className="text-sm font-medium">Estimated Pay</Label>
+                                <p>£{report.estimated_pay?.toFixed(2)}</p>
+                              </div>
+                            </div>
+                            
+                            {report.issues_reported && (
+                              <div>
+                                <Label className="text-sm font-medium">Issues Reported</Label>
+                                <p className="text-sm p-3 bg-muted rounded-lg mt-1">{report.issues_reported}</p>
+                              </div>
+                            )}
+                            
+                            {report.admin_notes && (
+                              <div>
+                                <Label className="text-sm font-medium">Admin Notes</Label>
+                                <p className="text-sm p-3 bg-muted rounded-lg mt-1">{report.admin_notes}</p>
+                              </div>
+                            )}
+                          </div>
+                        </DialogContent>
+                      </Dialog>
+                      
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => handleEditReport(report)}
+                      >
+                        <Edit className="h-3 w-3 mr-1" />
+                        Edit
                       </Button>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
             </TableBody>
           </Table>
           
-          {dailyLogs?.length === 0 && (
+          {eodReports?.length === 0 && (
             <div className="text-center py-8 text-muted-foreground">
-              No daily logs found for the selected time period.
+              No EOD reports found for the selected time period.
             </div>
           )}
         </CardContent>
       </Card>
+
+      {/* Edit Report Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit EOD Report</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 mt-4">
+            <div>
+              <Label htmlFor="actual_pay">Actual Pay (£)</Label>
+              <Input
+                id="actual_pay"
+                type="number"
+                step="0.01"
+                value={editData.actual_pay}
+                onChange={(e) => setEditData(prev => ({ ...prev, actual_pay: e.target.value }))}
+                placeholder="Enter actual pay amount"
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="status">Status</Label>
+              <Select value={editData.status} onValueChange={(value) => setEditData(prev => ({ ...prev, status: value }))}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="submitted">Submitted</SelectItem>
+                  <SelectItem value="approved">Approved</SelectItem>
+                  <SelectItem value="rejected">Rejected</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div>
+              <Label htmlFor="admin_notes">Admin Notes</Label>
+              <Textarea
+                id="admin_notes"
+                value={editData.admin_notes}
+                onChange={(e) => setEditData(prev => ({ ...prev, admin_notes: e.target.value }))}
+                placeholder="Add any admin notes or comments..."
+                rows={3}
+              />
+            </div>
+            
+            <div className="flex justify-end space-x-2">
+              <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleSaveEdit} disabled={updateReportMutation.isPending}>
+                {updateReportMutation.isPending ? 'Saving...' : 'Save Changes'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
           </main>
         </SidebarInset>
       </div>
