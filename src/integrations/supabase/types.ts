@@ -334,6 +334,66 @@ export type Database = {
           },
         ]
       }
+      eod_reports: {
+        Row: {
+          actual_pay: number | null
+          admin_notes: string | null
+          approved_at: string | null
+          approved_by: string | null
+          company_id: string
+          created_at: string
+          driver_id: string
+          estimated_pay: number | null
+          id: string
+          issues_reported: string | null
+          log_date: string
+          parcels_delivered: number
+          screenshot_url: string | null
+          status: string
+          timestamp: string
+          updated_at: string
+          van_id: string | null
+        }
+        Insert: {
+          actual_pay?: number | null
+          admin_notes?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          company_id: string
+          created_at?: string
+          driver_id: string
+          estimated_pay?: number | null
+          id?: string
+          issues_reported?: string | null
+          log_date?: string
+          parcels_delivered: number
+          screenshot_url?: string | null
+          status?: string
+          timestamp?: string
+          updated_at?: string
+          van_id?: string | null
+        }
+        Update: {
+          actual_pay?: number | null
+          admin_notes?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          company_id?: string
+          created_at?: string
+          driver_id?: string
+          estimated_pay?: number | null
+          id?: string
+          issues_reported?: string | null
+          log_date?: string
+          parcels_delivered?: number
+          screenshot_url?: string | null
+          status?: string
+          timestamp?: string
+          updated_at?: string
+          van_id?: string | null
+        }
+        Relationships: []
+      }
       incident_reports: {
         Row: {
           admin_notes: string | null
