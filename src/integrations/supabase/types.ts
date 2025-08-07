@@ -930,6 +930,14 @@ export type Database = {
           security_status: string
         }[]
       }
+      calculate_driver_pay: {
+        Args: {
+          driver_id_param: string
+          parcel_count_param: number
+          base_pay_param?: number
+        }
+        Returns: number
+      }
       generate_invite_token: {
         Args: Record<PropertyKey, never>
         Returns: string
