@@ -105,10 +105,10 @@ describe('Business Logic Tests', () => {
         isOvertime: true,
       };
 
-      const basePay = payStructure.baseDaily; // Daily base
-      const parcelPay = 50 * payStructure.perParcel; // 50 parcels delivered
-      const parcelPay = workDetails.parcelsDelivered * payStructure.parcelRate;
-      const totalPay = basePay + overtimePay + parcelPay;
+      const basePay = payStructure.baseDaily; // Daily base pay
+      const parcelPay = workDetails.parcelsDelivered * payStructure.parcelRate; // 40 parcels at £0.50 each
+      const bonuses = 0; // No weekend bonus since isWeekend is false
+      const totalPay = basePay + parcelPay + bonuses;
 
       expect(totalPay).toBe(30); // 10 + 20 + 0
     });
