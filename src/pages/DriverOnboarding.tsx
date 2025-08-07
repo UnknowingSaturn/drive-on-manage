@@ -278,14 +278,14 @@ const DriverOnboarding = () => {
       let finalUserId;
       
       if (!user) {
-        console.log('No existing user, creating new account...');
-        // Try to sign up
-        authResult = await supabase.auth.signUp({
-          email: invitation.email,
-          password: formData.password,
-          options: {
-            emailRedirectTo: `${window.location.origin}/dashboard`,
-            data: {
+        console.log('No existing user, creating new account without email confirmation...');
+        
+        // Create confirmed user via edge function (bypasses email confirmation)
+        const { data: createUserResponse, error: createUserError } = await supabase.functions.invoke('create-confirmed-driver', {
+          body: {
+            email: invitation.email,
+            password: formData.password,
+            userData: {
               first_name: invitation.first_name,
               last_name: invitation.last_name,
               user_type: 'driver'
@@ -293,22 +293,33 @@ const DriverOnboarding = () => {
           }
         });
 
-        console.log('Sign up result:', authResult);
-
-        if (authResult.error) {
-          console.log('Sign up error:', authResult.error.message);
-          if (authResult.error.message?.includes('User already registered')) {
+        if (createUserError || !createUserResponse.success) {
+          console.log('Create user error:', createUserError || createUserResponse.error);
+          // If user already exists, try to sign in
+          if (createUserResponse?.error?.includes('User already registered') || createUserError?.message?.includes('already been registered')) {
             console.log('User exists, trying to sign in...');
-            // User exists, try to sign in instead
             authResult = await supabase.auth.signInWithPassword({
               email: invitation.email,
               password: formData.password,
             });
             console.log('Sign in result:', authResult);
+            
+            if (authResult.error) {
+              throw new Error(`Authentication failed: ${authResult.error.message}`);
+            }
+          } else {
+            throw new Error(`User creation failed: ${createUserError?.message || createUserResponse.error}`);
           }
+        } else {
+          // User created successfully, now sign them in
+          authResult = await supabase.auth.signInWithPassword({
+            email: invitation.email,
+            password: formData.password,
+          });
+          console.log('Sign in result after creation:', authResult);
           
           if (authResult.error) {
-            throw new Error(`Authentication failed: ${authResult.error.message}`);
+            throw new Error(`Sign in failed after user creation: ${authResult.error.message}`);
           }
         }
 
