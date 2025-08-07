@@ -130,6 +130,52 @@ const VehicleCheck = () => {
     vehicleCheckMutation.mutate(formData);
   };
 
+  const handlePhotoUpload = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.multiple = true;
+    input.onchange = async (e) => {
+      const files = Array.from((e.target as HTMLInputElement).files || []);
+      if (files.length === 0) return;
+
+      try {
+        toast({
+          title: "Uploading photos...",
+          description: "Please wait while your photos are being uploaded.",
+        });
+
+        // Upload photos to Supabase storage
+        const uploadPromises = files.map(async (file) => {
+          const fileExt = file.name.split('.').pop();
+          const fileName = `${user?.id}/vehicle_check_${Date.now()}_${Math.random()}.${fileExt}`;
+          
+          const { data, error } = await supabase.storage
+            .from('eod-screenshots')
+            .upload(fileName, file);
+
+          if (error) throw error;
+          return data.path;
+        });
+
+        const uploadedPaths = await Promise.all(uploadPromises);
+
+        toast({
+          title: "Photos uploaded successfully",
+          description: `${uploadedPaths.length} photo(s) uploaded for your vehicle check.`,
+        });
+
+      } catch (error: any) {
+        toast({
+          title: "Upload failed",
+          description: error.message || "Failed to upload photos.",
+          variant: "destructive",
+        });
+      }
+    };
+    input.click();
+  };
+
   const isAlreadyCompleted = !!todayCheck;
 
   if (isLoading) {
@@ -375,7 +421,12 @@ const VehicleCheck = () => {
                         <p className="text-sm text-muted-foreground mb-2">
                           Upload photos of any issues or damage
                         </p>
-                        <Button variant="outline" size="sm" type="button">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          type="button"
+                          onClick={() => handlePhotoUpload()}
+                        >
                           <Upload className="h-4 w-4 mr-2" />
                           Take Photos
                         </Button>

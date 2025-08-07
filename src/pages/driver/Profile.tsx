@@ -92,6 +92,61 @@ const DriverProfile = () => {
     updateProfileMutation.mutate(formData);
   };
 
+  const handleDocumentUpload = (documentType: string) => {
+    // Create a file input element
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*,application/pdf';
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+
+      try {
+        // Show upload progress
+        toast({
+          title: "Uploading document...",
+          description: "Please wait while your document is being uploaded.",
+        });
+
+        // Upload to Supabase storage
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${user?.id}/${documentType}_${Date.now()}.${fileExt}`;
+        
+        const { data, error } = await supabase.storage
+          .from('driver-documents')
+          .upload(fileName, file);
+
+        if (error) throw error;
+
+        // Update driver profile with document URL
+        const { error: updateError } = await supabase
+          .from('driver_profiles')
+          .update({
+            [`${documentType}_document`]: data.path
+          })
+          .eq('user_id', user?.id);
+
+        if (updateError) throw updateError;
+
+        toast({
+          title: "Document uploaded successfully",
+          description: "Your document has been saved to your profile.",
+        });
+
+        // Refresh the profile data
+        queryClient.invalidateQueries({ queryKey: ['driver-profile'] });
+
+      } catch (error: any) {
+        toast({
+          title: "Upload failed",
+          description: error.message || "Failed to upload document.",
+          variant: "destructive",
+        });
+      }
+    };
+    input.click();
+  };
+
   const getOnboardingStatus = () => {
     const checks = [
       { label: 'Personal Details', completed: !!(formData.firstName && formData.lastName) },
@@ -281,7 +336,11 @@ const DriverProfile = () => {
                         <p className="text-sm text-muted-foreground mb-2">
                           {driverProfile?.right_to_work_document ? 'Document uploaded' : 'No document uploaded'}
                         </p>
-                        <Button variant="outline" size="sm">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => handleDocumentUpload('right_to_work')}
+                        >
                           <Upload className="h-4 w-4 mr-2" />
                           Upload Document
                         </Button>
@@ -325,7 +384,11 @@ const DriverProfile = () => {
                         <p className="text-sm text-muted-foreground mb-2">
                           {driverProfile?.driving_license_document ? 'License uploaded' : 'No license uploaded'}
                         </p>
-                        <Button variant="outline" size="sm">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => handleDocumentUpload('driving_license')}
+                        >
                           <Upload className="h-4 w-4 mr-2" />
                           Upload License
                         </Button>
@@ -349,7 +412,11 @@ const DriverProfile = () => {
                         <p className="text-sm text-muted-foreground mb-2">
                           {driverProfile?.insurance_document ? 'Insurance uploaded' : 'No insurance uploaded'}
                         </p>
-                        <Button variant="outline" size="sm">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => handleDocumentUpload('insurance')}
+                        >
                           <Upload className="h-4 w-4 mr-2" />
                           Upload Insurance
                         </Button>
