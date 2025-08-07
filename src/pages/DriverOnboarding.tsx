@@ -271,6 +271,7 @@ const DriverOnboarding = () => {
 
     try {
       let userId: string;
+      let authSession: any = null;
 
       // Create user account if not exists
       if (!user) {
@@ -298,61 +299,86 @@ const DriverOnboarding = () => {
         }
 
         userId = authData.user.id;
+        authSession = authData.session;
         console.log('User created with ID:', userId);
 
-        // For onboarding, we don't need to wait for session since we have the user ID
-        // The driver profile creation will work with just the user ID
+        // Wait a moment for the auth state to propagate
+        await new Promise(resolve => setTimeout(resolve, 1000));
       } else {
         userId = user.id;
         console.log('Using existing user ID:', userId);
       }
 
-      // Create driver profile
+      // Create driver profile with enhanced error handling
       console.log('Creating driver profile...');
-      const { error: profileError } = await supabase
+      const driverProfileData = {
+        user_id: userId,
+        company_id: invitation.company_id,
+        hourly_rate: invitation.hourly_rate,
+        driving_license_number: formData.licenseNumber,
+        license_expiry: formData.licenseExpiry || null,
+        status: 'active',
+        onboarding_completed_at: new Date().toISOString(),
+        onboarding_progress: {
+          personal_info: true,
+          account_setup: true,
+          documents_uploaded: true,
+          terms_accepted: true,
+        },
+      };
+
+      console.log('Inserting driver profile with data:', driverProfileData);
+      
+      const { data: profileData, error: profileError } = await supabase
         .from('driver_profiles')
-        .insert({
-          user_id: userId,
-          company_id: invitation.company_id,
-          hourly_rate: invitation.hourly_rate,
-          driving_license_number: formData.licenseNumber,
-          license_expiry: formData.licenseExpiry || null,
-          status: 'active',
-          onboarding_completed_at: new Date().toISOString(),
-          onboarding_progress: {
-            personal_info: true,
-            account_setup: true,
-            documents_uploaded: true,
-            terms_accepted: true,
-          },
-        });
+        .insert(driverProfileData)
+        .select();
 
       if (profileError) {
-        throw profileError;
+        console.error('Driver profile creation error:', profileError);
+        
+        // Enhanced error messaging
+        if (profileError.message?.includes('row-level security')) {
+          throw new Error('Authentication required. Please try refreshing the page and completing onboarding again.');
+        } else if (profileError.message?.includes('duplicate')) {
+          throw new Error('A driver profile already exists for this user.');
+        } else {
+          throw new Error(`Failed to create driver profile: ${profileError.message}`);
+        }
       }
 
+      console.log('Driver profile created successfully:', profileData);
+
       // Update invitation status
-      await supabase
+      const { error: inviteUpdateError } = await supabase
         .from('driver_invitations')
         .update({
           status: 'accepted',
           accepted_at: new Date().toISOString(),
+          driver_profile_id: profileData?.[0]?.id,
         })
         .eq('id', invitation.id);
+
+      if (inviteUpdateError) {
+        console.warn('Failed to update invitation status:', inviteUpdateError);
+        // Don't throw error for this as the main onboarding succeeded
+      }
 
       toast({
         title: "Welcome to the team! 🎉",
         description: "Your onboarding is complete. Redirecting to your dashboard...",
       });
 
+      // Force page reload to ensure clean auth state
       setTimeout(() => {
-        navigate('/dashboard');
+        window.location.href = '/dashboard';
       }, 2000);
 
     } catch (error: any) {
+      console.error('Onboarding completion error:', error);
       toast({
         title: "Error completing onboarding",
-        description: error.message,
+        description: error.message || 'An unexpected error occurred. Please try again.',
         variant: "destructive",
       });
     }
