@@ -277,174 +277,90 @@ const DriverOnboarding = () => {
     setLoading(true);
 
     try {
-      console.log('Starting onboarding for email:', invitation.email);
+      console.log('🚀 Starting driver onboarding for:', invitation.email);
       
-      // Always try to create/sign in the user first
-      let authResult;
-      let finalUserId;
-      
-      if (!user) {
-        console.log('No existing user, creating new account without email confirmation...');
-        
-        // Create confirmed user via edge function (bypasses email confirmation)
-        const { data: createUserResponse, error: createUserError } = await supabase.functions.invoke('create-confirmed-driver', {
-          body: {
-            email: invitation.email,
-            password: formData.password,
-            userData: {
-              first_name: invitation.first_name,
-              last_name: invitation.last_name,
-              user_type: 'driver'
-            }
+      // Call the create-confirmed-driver edge function
+      // This handles user creation, profile creation, and invitation updates
+      const { data: createUserResponse, error: createUserError } = await supabase.functions.invoke('create-confirmed-driver', {
+        body: {
+          email: invitation.email,
+          password: formData.password,
+          userData: {
+            first_name: invitation.first_name,
+            last_name: invitation.last_name,
+            user_type: 'driver'
           }
-        });
-
-        if (createUserError || !createUserResponse.success) {
-          console.log('Create user error:', createUserError || createUserResponse.error);
-          // If user already exists, try to sign in
-          if (createUserResponse?.error?.includes('User already registered') || createUserError?.message?.includes('already been registered')) {
-            console.log('User exists, trying to sign in...');
-            authResult = await supabase.auth.signInWithPassword({
-              email: invitation.email,
-              password: formData.password,
-            });
-            console.log('Sign in result:', authResult);
-            
-            if (authResult.error) {
-              throw new Error(`Authentication failed: ${authResult.error.message}`);
-            }
-            
-            finalUserId = authResult.data?.user?.id;
-          } else {
-            throw new Error(`User creation failed: ${createUserError?.message || createUserResponse.error}`);
-          }
-        } else {
-          // User created successfully via edge function, now sign them in
-          console.log('User created successfully, signing in...');
-          authResult = await supabase.auth.signInWithPassword({
-            email: invitation.email,
-            password: formData.password,
-          });
-          console.log('Sign in result after creation:', authResult);
-          
-          if (authResult.error) {
-            throw new Error(`Sign in failed after user creation: ${authResult.error.message}`);
-          }
-          
-          finalUserId = authResult.data?.user?.id;
-          console.log('Authentication successful, user ID:', finalUserId);
-
-          // Edge function already created all profiles and updated invitation status
-          // Just redirect to dashboard
-          console.log('Onboarding completed successfully via edge function');
-          toast({
-            title: "Welcome!",
-            description: "Your account has been created successfully.",
-          });
-          
-          navigate('/dashboard');
-          return;
         }
-
-        if (!authResult.data?.user) {
-          throw new Error('Failed to authenticate - no user data returned');
-        }
-
-        finalUserId = authResult.data.user.id;
-        console.log('Authentication successful, user ID:', finalUserId);
-
-        // For onboarding, we can use the user ID directly even without active session
-        // The user exists in auth.users table, which is what matters for foreign key
-        
-      } else {
-        console.log('Using existing user:', user.id);
-        finalUserId = user.id;
-      }
-
-      // Create both driver profile and user profile
-      console.log('Creating driver profile and user profile with user_id:', finalUserId);
-      
-      // First create the user profile in profiles table
-      const profileData = {
-        user_id: finalUserId,
-        email: invitation.email,
-        first_name: invitation.first_name,
-        last_name: invitation.last_name,
-        user_type: 'driver',
-        company_id: invitation.company_id,
-      };
-      
-      console.log('Inserting user profile data:', profileData);
-      const { error: profileCreateError } = await supabase
-        .from('profiles')
-        .insert(profileData);
-      
-      if (profileCreateError) {
-        console.error('Profile creation error:', profileCreateError);
-        throw new Error(`Profile creation failed: ${profileCreateError.message}`);
-      }
-
-      // Then create the driver profile
-      const driverProfileData = {
-        user_id: finalUserId,
-        company_id: invitation.company_id,
-        parcel_rate: invitation.parcel_rate || invitation.hourly_rate || 0,
-        driving_license_number: formData.licenseNumber,
-        license_expiry: formData.licenseExpiry || null,
-        status: 'active',
-        onboarding_completed_at: new Date().toISOString(),
-        onboarding_progress: {
-          personal_info: true,
-          account_setup: true,
-          documents_uploaded: true,
-          terms_accepted: true,
-        },
-      };
-
-      console.log('Inserting driver profile data:', driverProfileData);
-      const { data: profileInsertData, error: profileError } = await supabase
-        .from('driver_profiles')
-        .insert(driverProfileData)
-        .select()
-        .single();
-
-      if (profileError) {
-        console.error('Profile creation error:', profileError);
-        throw new Error(`Profile creation failed: ${profileError.message}`);
-      }
-
-      console.log('Driver profile created successfully:', profileInsertData);
-
-      // Update invitation status
-      const { error: inviteError } = await supabase
-        .from('driver_invitations')
-        .update({
-          status: 'accepted',
-          accepted_at: new Date().toISOString(),
-          driver_profile_id: profileInsertData.id,
-        })
-        .eq('id', invitation.id);
-
-      if (inviteError) {
-        console.warn('Failed to update invitation:', inviteError);
-      }
-
-      toast({
-        title: "Welcome to the team! 🎉",
-        description: "Onboarding complete. Redirecting...",
       });
 
-      // Simple redirect after a short delay
-      setTimeout(() => {
-        window.location.href = '/dashboard';
-      }, 1000);
+      // Check for edge function errors
+      if (createUserError) {
+        console.error('❌ Edge function error:', createUserError);
+        toast({
+          variant: "destructive",
+          title: "Account Creation Failed",
+          description: "There was a problem creating your account. Please try again or contact support.",
+        });
+        return;
+      }
 
-    } catch (error: any) {
-      console.error('Onboarding completion error:', error);
+      // Check for edge function failure response
+      if (!createUserResponse?.success) {
+        console.error('❌ Edge function failed:', createUserResponse?.error);
+        toast({
+          variant: "destructive", 
+          title: "Account Creation Failed",
+          description: createUserResponse?.error || "Failed to create your account. Please try again.",
+        });
+        return;
+      }
+
+      console.log('✅ Edge function succeeded - user and profiles created');
+
+      // Sign in the newly created user
+      console.log('🔐 Signing in user...');
+      const { data: authData, error: signInError } = await supabase.auth.signInWithPassword({
+        email: invitation.email,
+        password: formData.password,
+      });
+
+      if (signInError) {
+        console.error('❌ Sign in failed:', signInError);
+        toast({
+          variant: "destructive",
+          title: "Sign In Failed", 
+          description: "Your account was created but sign in failed. Please try logging in manually.",
+        });
+        return;
+      }
+
+      if (!authData.user) {
+        console.error('❌ No user data returned from sign in');
+        toast({
+          variant: "destructive",
+          title: "Sign In Failed",
+          description: "Authentication failed. Please try logging in manually.",
+        });
+        return;
+      }
+
+      console.log('✅ User signed in successfully:', authData.user.id);
+      console.log('🎉 Onboarding completed successfully!');
+
       toast({
-        title: "Error completing onboarding",
-        description: error.message || 'An unexpected error occurred. Please try again.',
+        title: "Welcome!",
+        description: "Your driver account has been created successfully.",
+      });
+
+      // Redirect to dashboard
+      navigate('/dashboard');
+
+    } catch (error) {
+      console.error('💥 Onboarding completion error:', error);
+      toast({
         variant: "destructive",
+        title: "Onboarding Failed",
+        description: error instanceof Error ? error.message : "An unexpected error occurred during onboarding.",
       });
     } finally {
       setLoading(false);
