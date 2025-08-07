@@ -8,12 +8,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
-import { Package, Clock, CheckCircle2, Truck, MapPin } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Package, Clock, CheckCircle2, Truck, MapPin, AlertTriangle, Check } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
+import { sanitizeInput } from '@/lib/security';
 
 const StartOfDay = () => {
   const { user, profile } = useAuth();
@@ -24,8 +26,23 @@ const StartOfDay = () => {
   const [formData, setFormData] = useState({
     parcelCount: '',
     mileage: '',
-    notes: ''
+    notes: '',
+    vanConfirmed: false
   });
+
+  const [vehicleCheck, setVehicleCheck] = useState({
+    lights: false,
+    tyres: false,
+    brakes: false,
+    mirrors: false,
+    fuel: false,
+    cleanliness: false,
+    documentation: false
+  });
+
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [successData, setSuccessData] = useState<any>(null);
+  const [errors, setErrors] = useState<{[key: string]: string}>({});
 
   const today = new Date().toISOString().split('T')[0];
 
@@ -44,13 +61,13 @@ const StartOfDay = () => {
     enabled: !!user?.id
   });
 
-  // Get today's log
+  // Get today's SOD log
   const { data: todayLog, isLoading } = useQuery({
-    queryKey: ['today-log', driverProfile?.id, today],
+    queryKey: ['today-sod-log', driverProfile?.id, today],
     queryFn: async () => {
       if (!driverProfile?.id) return null;
       const { data } = await supabase
-        .from('daily_logs')
+        .from('sod_logs')
         .select('*')
         .eq('driver_id', driverProfile.id)
         .eq('log_date', today)
@@ -75,20 +92,33 @@ const StartOfDay = () => {
     enabled: !!driverProfile?.assigned_van_id
   });
 
-  // Get today's round
-  const { data: todayRound } = useQuery({
-    queryKey: ['today-round', todayLog?.round_id],
-    queryFn: async () => {
-      if (!todayLog?.round_id) return null;
-      const { data } = await supabase
-        .from('rounds')
-        .select('*')
-        .eq('id', todayLog.round_id)
-        .single();
-      return data;
-    },
-    enabled: !!todayLog?.round_id
-  });
+  const validateForm = () => {
+    const newErrors: {[key: string]: string} = {};
+    
+    if (!formData.parcelCount || parseInt(formData.parcelCount) < 0) {
+      newErrors.parcelCount = 'Please enter a valid parcel count';
+    }
+    
+    if (!formData.mileage || parseInt(formData.mileage) < 0) {
+      newErrors.mileage = 'Please enter a valid starting mileage';
+    }
+    
+    if (!formData.vanConfirmed) {
+      newErrors.vanConfirmed = 'Please confirm your assigned van';
+    }
+
+    if (!driverProfile?.assigned_van_id) {
+      newErrors.vanAssignment = 'No van assigned. Contact your administrator.';
+    }
+    
+    const vehicleCheckCompleted = Object.values(vehicleCheck).every(checked => checked);
+    if (!vehicleCheckCompleted) {
+      newErrors.vehicleCheck = 'Please complete all vehicle check items';
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
   // Start of day mutation
   const startDayMutation = useMutation({
@@ -102,26 +132,28 @@ const StartOfDay = () => {
         company_id: profile.company_id,
         van_id: driverProfile.assigned_van_id,
         log_date: today,
-        sod_parcel_count: parseInt(data.parcelCount),
-        sod_mileage: parseInt(data.mileage),
-        sod_notes: data.notes,
-        sod_timestamp: new Date().toISOString(),
-        status: 'in_progress'
+        parcel_count: parseInt(data.parcelCount),
+        starting_mileage: parseInt(data.mileage),
+        notes: data.notes ? sanitizeInput(data.notes) : null,
+        van_confirmed: data.vanConfirmed,
+        vehicle_check_completed: Object.values(vehicleCheck).every(checked => checked),
+        vehicle_check_items: vehicleCheck,
+        timestamp: new Date().toISOString()
       };
 
-      const { error } = await supabase
-        .from('daily_logs')
-        .upsert(logData);
+      const { data: result, error } = await supabase
+        .from('sod_logs')
+        .insert(logData)
+        .select()
+        .single();
 
       if (error) throw error;
+      return result;
     },
-    onSuccess: () => {
-      toast({
-        title: "Start of day logged successfully",
-        description: "Your day has been started. Have a safe delivery!",
-      });
-      queryClient.invalidateQueries({ queryKey: ['today-log'] });
-      navigate('/dashboard');
+    onSuccess: (data) => {
+      setSuccessData(data);
+      setShowSuccess(true);
+      queryClient.invalidateQueries({ queryKey: ['today-sod-log'] });
     },
     onError: (error) => {
       toast({
@@ -134,10 +166,10 @@ const StartOfDay = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.parcelCount || !formData.mileage) {
+    if (!validateForm()) {
       toast({
-        title: "Missing information",
-        description: "Please fill in all required fields",
+        title: "Please fix the errors",
+        description: "Check all required fields and try again",
         variant: "destructive",
       });
       return;
@@ -145,7 +177,14 @@ const StartOfDay = () => {
     startDayMutation.mutate(formData);
   };
 
-  const isAlreadyStarted = todayLog?.sod_timestamp;
+  const handleVehicleCheckChange = (item: string, checked: boolean) => {
+    setVehicleCheck(prev => ({ ...prev, [item]: checked }));
+    if (errors.vehicleCheck) {
+      setErrors(prev => ({ ...prev, vehicleCheck: '' }));
+    }
+  };
+
+  const isAlreadyStarted = todayLog?.timestamp;
 
   if (isLoading) {
     return (
@@ -210,27 +249,43 @@ const StartOfDay = () => {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div className="text-center p-4 rounded-lg bg-card/50">
                         <div className="text-2xl font-bold text-gradient">
-                          {todayLog.sod_parcel_count || 0}
+                          {todayLog.parcel_count || 0}
                         </div>
                         <div className="text-sm text-muted-foreground">Parcels</div>
                       </div>
                       <div className="text-center p-4 rounded-lg bg-card/50">
                         <div className="text-2xl font-bold text-gradient">
-                          {todayLog.sod_mileage || 0}
+                          {todayLog.starting_mileage || 0}
                         </div>
                         <div className="text-sm text-muted-foreground">Start Mileage</div>
                       </div>
                       <div className="text-center p-4 rounded-lg bg-card/50">
                         <div className="text-sm text-success">
-                          Started at {new Date(todayLog.sod_timestamp).toLocaleTimeString()}
+                          Started at {new Date(todayLog.timestamp).toLocaleTimeString()}
                         </div>
                         <div className="text-sm text-muted-foreground">Time</div>
                       </div>
                     </div>
-                    {todayLog.sod_notes && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="p-4 bg-card/50 rounded-lg">
+                        <Label className="text-sm font-medium">Vehicle Check</Label>
+                        <div className="flex items-center mt-1">
+                          <CheckCircle2 className="h-4 w-4 text-success mr-1" />
+                          <span className="text-sm text-success">Completed</span>
+                        </div>
+                      </div>
+                      <div className="p-4 bg-card/50 rounded-lg">
+                        <Label className="text-sm font-medium">Van Confirmed</Label>
+                        <div className="flex items-center mt-1">
+                          <CheckCircle2 className="h-4 w-4 text-success mr-1" />
+                          <span className="text-sm text-success">Confirmed</span>
+                        </div>
+                      </div>
+                    </div>
+                    {todayLog.notes && (
                       <div className="p-4 bg-muted rounded-lg">
                         <Label className="text-sm font-medium">Notes:</Label>
-                        <p className="text-sm mt-1">{todayLog.sod_notes}</p>
+                        <p className="text-sm mt-1">{todayLog.notes}</p>
                       </div>
                     )}
                   </div>
@@ -271,32 +326,19 @@ const StartOfDay = () => {
               </Card>
             )}
 
-            {/* Round Info */}
-            {todayRound && (
-              <Card className="logistics-card">
+            {/* Van Assignment Error */}
+            {!driverProfile?.assigned_van_id && !isAlreadyStarted && (
+              <Card className="logistics-card border-destructive">
                 <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <MapPin className="h-5 w-5 text-primary mr-2" />
-                    Today's Round
+                  <CardTitle className="flex items-center text-destructive">
+                    <AlertTriangle className="h-5 w-5 mr-2" />
+                    No Van Assigned
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <Label className="text-sm font-medium">Round Number</Label>
-                      <p className="text-lg font-semibold">{todayRound.round_number}</p>
-                    </div>
-                    <div>
-                      <Label className="text-sm font-medium">Base Rate</Label>
-                      <p className="text-lg">£{todayRound.base_rate || 'Not set'}</p>
-                    </div>
-                  </div>
-                  {todayRound.description && (
-                    <div className="mt-4">
-                      <Label className="text-sm font-medium">Description</Label>
-                      <p className="text-sm text-muted-foreground mt-1">{todayRound.description}</p>
-                    </div>
-                  )}
+                  <p className="text-sm text-muted-foreground">
+                    You don't have a van assigned for today. Please contact your administrator before starting your shift.
+                  </p>
                 </CardContent>
               </Card>
             )}
@@ -314,7 +356,8 @@ const StartOfDay = () => {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <form onSubmit={handleSubmit} className="space-y-4">
+                  <form onSubmit={handleSubmit} className="space-y-6">
+                    {/* Basic Information */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="parcelCount">
@@ -323,11 +366,18 @@ const StartOfDay = () => {
                         <Input
                           id="parcelCount"
                           type="number"
+                          min="0"
                           value={formData.parcelCount}
-                          onChange={(e) => setFormData(prev => ({ ...prev, parcelCount: e.target.value }))}
+                          onChange={(e) => {
+                            setFormData(prev => ({ ...prev, parcelCount: e.target.value }));
+                            if (errors.parcelCount) setErrors(prev => ({ ...prev, parcelCount: '' }));
+                          }}
                           placeholder="Enter total parcels"
-                          required
+                          className={errors.parcelCount ? 'border-destructive' : ''}
                         />
+                        {errors.parcelCount && (
+                          <p className="text-sm text-destructive">{errors.parcelCount}</p>
+                        )}
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="mileage">
@@ -336,16 +386,83 @@ const StartOfDay = () => {
                         <Input
                           id="mileage"
                           type="number"
+                          min="0"
                           value={formData.mileage}
-                          onChange={(e) => setFormData(prev => ({ ...prev, mileage: e.target.value }))}
+                          onChange={(e) => {
+                            setFormData(prev => ({ ...prev, mileage: e.target.value }));
+                            if (errors.mileage) setErrors(prev => ({ ...prev, mileage: '' }));
+                          }}
                           placeholder="Enter vehicle mileage"
-                          required
+                          className={errors.mileage ? 'border-destructive' : ''}
                         />
+                        {errors.mileage && (
+                          <p className="text-sm text-destructive">{errors.mileage}</p>
+                        )}
                       </div>
+                    </div>
+
+                    {/* Van Confirmation */}
+                    {assignedVan && (
+                      <div className="space-y-3">
+                        <Label className="text-sm font-medium">
+                          Vehicle Confirmation <span className="text-destructive">*</span>
+                        </Label>
+                        <div className="flex items-center space-x-2 p-3 border rounded-lg bg-card/50">
+                          <Checkbox
+                            id="vanConfirmed"
+                            checked={formData.vanConfirmed}
+                            onCheckedChange={(checked) => {
+                              setFormData(prev => ({ ...prev, vanConfirmed: checked as boolean }));
+                              if (errors.vanConfirmed) setErrors(prev => ({ ...prev, vanConfirmed: '' }));
+                            }}
+                          />
+                          <label htmlFor="vanConfirmed" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                            I confirm I am using van: <strong>{assignedVan.registration}</strong> ({assignedVan.make} {assignedVan.model})
+                          </label>
+                        </div>
+                        {errors.vanConfirmed && (
+                          <p className="text-sm text-destructive">{errors.vanConfirmed}</p>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Vehicle Check Dropdown */}
+                    <div className="space-y-3">
+                      <Label className="text-sm font-medium">
+                        Vehicle Safety Check <span className="text-destructive">*</span>
+                      </Label>
+                      <div className="space-y-2 p-4 border rounded-lg bg-card/50">
+                        <p className="text-sm text-muted-foreground mb-3">
+                          Please confirm all items have been checked:
+                        </p>
+                        {Object.entries({
+                          lights: 'All lights working (headlights, indicators, brake lights)',
+                          tyres: 'Tyres in good condition (tread depth, no damage)',
+                          brakes: 'Brakes functioning properly',
+                          mirrors: 'All mirrors clean and properly adjusted',
+                          fuel: 'Adequate fuel level for route',
+                          cleanliness: 'Vehicle interior and exterior clean',
+                          documentation: 'Insurance and registration documents present'
+                        }).map(([key, description]) => (
+                          <div key={key} className="flex items-center space-x-2">
+                            <Checkbox
+                              id={key}
+                              checked={vehicleCheck[key as keyof typeof vehicleCheck]}
+                              onCheckedChange={(checked) => handleVehicleCheckChange(key, checked as boolean)}
+                            />
+                            <label htmlFor={key} className="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                              {description}
+                            </label>
+                          </div>
+                        ))}
+                      </div>
+                      {errors.vehicleCheck && (
+                        <p className="text-sm text-destructive">{errors.vehicleCheck}</p>
+                      )}
                     </div>
                     
                     <div className="space-y-2">
-                      <Label htmlFor="notes">Notes (Optional)</Label>
+                      <Label htmlFor="notes">Additional Notes (Optional)</Label>
                       <Textarea
                         id="notes"
                         value={formData.notes}
@@ -355,10 +472,16 @@ const StartOfDay = () => {
                       />
                     </div>
 
+                    {errors.vanAssignment && (
+                      <div className="p-3 border border-destructive rounded-lg bg-destructive/10">
+                        <p className="text-sm text-destructive">{errors.vanAssignment}</p>
+                      </div>
+                    )}
+
                     <Button 
                       type="submit" 
                       className="logistics-button w-full"
-                      disabled={startDayMutation.isPending}
+                      disabled={startDayMutation.isPending || !driverProfile?.assigned_van_id}
                       size="lg"
                     >
                       {startDayMutation.isPending ? (
@@ -425,6 +548,73 @@ const StartOfDay = () => {
           </main>
         </SidebarInset>
       </div>
+
+      {/* Success Dialog */}
+      <AlertDialog open={showSuccess} onOpenChange={setShowSuccess}>
+        <AlertDialogContent className="max-w-md">
+          <AlertDialogHeader>
+            <div className="flex items-center justify-center w-12 h-12 mx-auto mb-4 bg-success/10 rounded-full">
+              <Check className="w-6 h-6 text-success" />
+            </div>
+            <AlertDialogTitle className="text-center">Start of Day Complete!</AlertDialogTitle>
+            <AlertDialogDescription className="text-center">
+              Your shift has been successfully started. Here's a summary:
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          
+          {successData && (
+            <div className="space-y-3 my-4">
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div className="text-center p-3 bg-card/50 rounded-lg">
+                  <div className="font-semibold text-lg">{successData.parcel_count}</div>
+                  <div className="text-muted-foreground">Parcels</div>
+                </div>
+                <div className="text-center p-3 bg-card/50 rounded-lg">
+                  <div className="font-semibold text-lg">{successData.starting_mileage}</div>
+                  <div className="text-muted-foreground">Start Mileage</div>
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span>Vehicle Check:</span>
+                  <span className="flex items-center text-success">
+                    <Check className="w-4 h-4 mr-1" />
+                    Completed
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span>Van Confirmed:</span>
+                  <span className="flex items-center text-success">
+                    <Check className="w-4 h-4 mr-1" />
+                    Yes
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span>Started at:</span>
+                  <span>{new Date(successData.timestamp).toLocaleTimeString()}</span>
+                </div>
+              </div>
+
+              {successData.notes && (
+                <div className="p-3 bg-muted rounded-lg">
+                  <Label className="text-xs font-medium">Notes:</Label>
+                  <p className="text-sm mt-1">{successData.notes}</p>
+                </div>
+              )}
+            </div>
+          )}
+          
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => {
+              setShowSuccess(false);
+              navigate('/dashboard');
+            }}>
+              Continue to Dashboard
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </SidebarProvider>
   );
 };

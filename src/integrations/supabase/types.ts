@@ -543,6 +543,57 @@ export type Database = {
           },
         ]
       }
+      sod_logs: {
+        Row: {
+          company_id: string
+          created_at: string
+          driver_id: string
+          id: string
+          log_date: string
+          notes: string | null
+          parcel_count: number
+          starting_mileage: number
+          timestamp: string
+          updated_at: string
+          van_confirmed: boolean
+          van_id: string | null
+          vehicle_check_completed: boolean
+          vehicle_check_items: Json | null
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          driver_id: string
+          id?: string
+          log_date?: string
+          notes?: string | null
+          parcel_count: number
+          starting_mileage: number
+          timestamp?: string
+          updated_at?: string
+          van_confirmed?: boolean
+          van_id?: string | null
+          vehicle_check_completed?: boolean
+          vehicle_check_items?: Json | null
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          driver_id?: string
+          id?: string
+          log_date?: string
+          notes?: string | null
+          parcel_count?: number
+          starting_mileage?: number
+          timestamp?: string
+          updated_at?: string
+          van_confirmed?: boolean
+          van_id?: string | null
+          vehicle_check_completed?: boolean
+          vehicle_check_items?: Json | null
+        }
+        Relationships: []
+      }
       vans: {
         Row: {
           company_id: string
