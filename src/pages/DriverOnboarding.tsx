@@ -190,14 +190,24 @@ const DriverOnboarding = () => {
   };
 
   const handleFileUpload = async (fileType: keyof typeof uploadedFiles, file: File) => {
-    if (!user?.id) return;
+    if (!invitation?.id) {
+      toast({
+        title: "Upload failed",
+        description: "Invitation data not available. Please refresh the page.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     try {
       setUploadProgress(prev => ({ ...prev, [fileType]: 0 }));
       
       const fileExt = file.name.split('.').pop();
-      const fileName = `${user.id}/${fileType}.${fileExt}`;
+      // Use invitation ID as the folder since user isn't authenticated yet
+      const fileName = `${invitation.id}/${fileType}.${fileExt}`;
       const bucketName = fileType === 'avatar' ? 'driver-avatars' : 'driver-documents';
+
+      console.log(`Uploading ${fileType} to ${bucketName}/${fileName}`);
 
       const { error: uploadError } = await supabase.storage
         .from(bucketName)
@@ -206,6 +216,7 @@ const DriverOnboarding = () => {
         });
 
       if (uploadError) {
+        console.error('Upload error:', uploadError);
         throw uploadError;
       }
 
@@ -214,13 +225,14 @@ const DriverOnboarding = () => {
 
       toast({
         title: "File uploaded successfully",
-        description: `Your ${fileType} has been uploaded.`,
+        description: `Your ${fileType} document has been uploaded.`,
       });
 
     } catch (error: any) {
+      console.error('File upload failed:', error);
       toast({
         title: "Upload failed",
-        description: error.message,
+        description: error.message || 'Failed to upload file. Please try again.',
         variant: "destructive",
       });
       setUploadProgress(prev => ({ ...prev, [fileType]: 0 }));
