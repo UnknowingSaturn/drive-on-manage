@@ -338,9 +338,31 @@ const DriverOnboarding = () => {
         finalUserId = user.id;
       }
 
-      // Create driver profile directly using the user ID we have
-      console.log('Creating driver profile with user_id:', finalUserId);
+      // Create both driver profile and user profile
+      console.log('Creating driver profile and user profile with user_id:', finalUserId);
+      
+      // First create the user profile in profiles table
       const profileData = {
+        user_id: finalUserId,
+        email: invitation.email,
+        first_name: invitation.first_name,
+        last_name: invitation.last_name,
+        user_type: 'driver',
+        company_id: invitation.company_id,
+      };
+      
+      console.log('Inserting user profile data:', profileData);
+      const { error: profileCreateError } = await supabase
+        .from('profiles')
+        .insert(profileData);
+      
+      if (profileCreateError) {
+        console.error('Profile creation error:', profileCreateError);
+        throw new Error(`Profile creation failed: ${profileCreateError.message}`);
+      }
+
+      // Then create the driver profile
+      const driverProfileData = {
         user_id: finalUserId,
         company_id: invitation.company_id,
         hourly_rate: invitation.hourly_rate,
@@ -356,10 +378,10 @@ const DriverOnboarding = () => {
         },
       };
 
-      console.log('Inserting profile data:', profileData);
+      console.log('Inserting driver profile data:', driverProfileData);
       const { data: profileInsertData, error: profileError } = await supabase
         .from('driver_profiles')
-        .insert(profileData)
+        .insert(driverProfileData)
         .select()
         .single();
 
