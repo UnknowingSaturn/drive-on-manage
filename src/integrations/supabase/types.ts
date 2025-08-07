@@ -259,7 +259,6 @@ export type Database = {
           driving_license_document: string | null
           driving_license_number: string | null
           employee_id: string | null
-          hourly_rate: number | null
           id: string
           insurance_document: string | null
           license_expiry: string | null
@@ -280,7 +279,6 @@ export type Database = {
           driving_license_document?: string | null
           driving_license_number?: string | null
           employee_id?: string | null
-          hourly_rate?: number | null
           id?: string
           insurance_document?: string | null
           license_expiry?: string | null
@@ -301,7 +299,6 @@ export type Database = {
           driving_license_document?: string | null
           driving_license_number?: string | null
           employee_id?: string | null
-          hourly_rate?: number | null
           id?: string
           insurance_document?: string | null
           license_expiry?: string | null
