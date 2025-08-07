@@ -121,8 +121,8 @@ const CompanyManagement = () => {
     },
     onSuccess: () => {
       toast({
-        title: "Company created successfully",
-        description: "The new company has been added to the system.",
+        title: "Location created successfully",
+        description: "The new location has been added.",
       });
       setIsDialogOpen(false);
       setFormData({
@@ -135,7 +135,7 @@ const CompanyManagement = () => {
     },
     onError: (error: any) => {
       toast({
-        title: "Error creating company",
+        title: "Error creating location",
         description: error.message,
         variant: "destructive",
       });
@@ -188,8 +188,8 @@ const CompanyManagement = () => {
             <div className="flex items-center px-4 py-4">
               <SidebarTrigger className="mr-4" />
               <div>
-                <h1 className="text-xl font-semibold text-foreground">Company Management</h1>
-                <p className="text-sm text-muted-foreground">Manage companies in the system</p>
+                <h1 className="text-xl font-semibold text-foreground">My Locations</h1>
+                <p className="text-sm text-muted-foreground">Manage your locations</p>
               </div>
             </div>
           </header>
@@ -197,44 +197,44 @@ const CompanyManagement = () => {
           <main className="p-6 space-y-6">
             <div className="flex justify-between items-center">
               <div>
-                <h2 className="text-2xl font-bold">Companies Overview</h2>
-                <p className="text-muted-foreground">Manage all companies in the system</p>
+                <h2 className="text-2xl font-bold">Locations Overview</h2>
+                <p className="text-muted-foreground">Manage all your locations</p>
               </div>
         
               <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogTrigger asChild>
                   <Button>
                     <Plus className="h-4 w-4 mr-2" />
-                    Add Company
+                    Add Location
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="sm:max-w-[425px]">
                   <DialogHeader>
-                    <DialogTitle>Add New Company</DialogTitle>
+                    <DialogTitle>Add New Location</DialogTitle>
                     <DialogDescription>
-                      Create a new company profile in the system.
+                      Create a new location profile.
                     </DialogDescription>
                   </DialogHeader>
                   <form onSubmit={handleSubmit} className="space-y-4">
                     <div>
-                      <Label htmlFor="name">Company Name <span className="text-destructive">*</span></Label>
+                      <Label htmlFor="name">Location Name <span className="text-destructive">*</span></Label>
                       <Input
                         id="name"
                         value={formData.name}
                         onChange={(e) => handleInputChange('name', e.target.value)}
-                        placeholder="Enter company name"
+                        placeholder="Enter location name"
                         required
                       />
                     </div>
                     
                     <div>
-                      <Label htmlFor="email">Company Email <span className="text-destructive">*</span></Label>
+                      <Label htmlFor="email">Location Email <span className="text-destructive">*</span></Label>
                       <Input
                         id="email"
                         type="email"
                         value={formData.email}
                         onChange={(e) => handleInputChange('email', e.target.value)}
-                        placeholder="company@example.com"
+                        placeholder="location@example.com"
                         required
                       />
                     </div>
@@ -256,14 +256,14 @@ const CompanyManagement = () => {
                         id="address"
                         value={formData.address}
                         onChange={(e) => handleInputChange('address', e.target.value)}
-                        placeholder="Company address"
+                        placeholder="Location address"
                       />
                     </div>
                     
                     
                     <Button type="submit" className="w-full" disabled={createCompanyMutation.isPending}>
                       <Building2 className="h-4 w-4 mr-2" />
-                      {createCompanyMutation.isPending ? 'Creating Company...' : 'Create Company'}
+                      {createCompanyMutation.isPending ? 'Creating Location...' : 'Create Location'}
                     </Button>
                   </form>
                 </DialogContent>
@@ -272,14 +272,14 @@ const CompanyManagement = () => {
 
             <Card>
               <CardHeader>
-                <CardTitle>Active Companies</CardTitle>
-                <CardDescription>All companies registered in the system</CardDescription>
+                <CardTitle>Active Locations</CardTitle>
+                <CardDescription>All your locations</CardDescription>
               </CardHeader>
               <CardContent>
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Company Name</TableHead>
+                      <TableHead>Location Name</TableHead>
                       <TableHead>Contact</TableHead>
                       <TableHead>Address</TableHead>
                       <TableHead>Status</TableHead>
@@ -347,7 +347,7 @@ const CompanyManagement = () => {
                 
                 {companies?.length === 0 && (
                   <div className="text-center py-8 text-muted-foreground">
-                    No companies found. Start by adding your first company.
+                    No locations found. Start by adding your first location.
                   </div>
                 )}
               </CardContent>
