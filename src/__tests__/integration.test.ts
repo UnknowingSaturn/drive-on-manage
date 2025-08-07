@@ -179,24 +179,24 @@ describe('End of Day (EOD) Integration Tests', () => {
   describe('Pay Calculation', () => {
     it('should calculate pay correctly', () => {
       const rates = {
-        hourly: 15.00,
+        baseDaily: 10.00,
         perParcel: 0.50,
       };
       const delivered = 40;
-      const totalPay = rates.hourly + (delivered * rates.perParcel);
+      const totalPay = rates.baseDaily + (delivered * rates.perParcel);
 
       expect(totalPay).toBe(35.00);
     });
 
     it('should handle zero deliveries', () => {
       const rates = {
-        hourly: 15.00,
+        baseDaily: 10.00,
         perParcel: 0.50,
       };
       const delivered = 0;
-      const totalPay = rates.hourly + (delivered * rates.perParcel);
+      const totalPay = rates.baseDaily + (delivered * rates.perParcel);
 
-      expect(totalPay).toBe(15.00);
+      expect(totalPay).toBe(10.00);
     });
   });
 

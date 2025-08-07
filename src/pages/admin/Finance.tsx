@@ -63,7 +63,7 @@ const Finance = () => {
         .select(`
           id,
           user_id,
-          hourly_rate,
+          parcel_rate,
           parcel_rate,
           profiles!inner(first_name, last_name)
         `)
@@ -110,7 +110,7 @@ const Finance = () => {
         // Get driver rates with fallback logic
         const driver = driverProfiles.find(d => d.id === report.driver_id);
         const driverParcelRate = driver?.parcel_rate || 0.50; // Default £0.50 per parcel
-        const basePay = driver?.hourly_rate || 10.00; // Default £10/day base
+        const basePay = 10.00; // Default £10/day base pay
 
         const totalPay = (report.parcels_delivered * driverParcelRate) + basePay;
 

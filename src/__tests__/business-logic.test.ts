@@ -92,7 +92,7 @@ describe('Business Logic Tests', () => {
 
     it('should calculate accurate pay with multiple rates', () => {
       const payStructure = {
-        baseHourly: 15.00,
+        baseDaily: 10.00,
         parcelRate: 0.50,
         weekendBonus: 1.2,
         overtimeMultiplier: 1.5,
@@ -105,12 +105,12 @@ describe('Business Logic Tests', () => {
         isOvertime: true,
       };
 
-      const basePay = payStructure.baseHourly * 8; // Regular hours
-      const overtimePay = payStructure.baseHourly * payStructure.overtimeMultiplier * 2; // 2 overtime hours
+      const basePay = payStructure.baseDaily; // Daily base
+      const parcelPay = 50 * payStructure.perParcel; // 50 parcels delivered
       const parcelPay = workDetails.parcelsDelivered * payStructure.parcelRate;
       const totalPay = basePay + overtimePay + parcelPay;
 
-      expect(totalPay).toBe(170); // 120 + 30 + 20
+      expect(totalPay).toBe(30); // 10 + 20 + 0
     });
   });
 

@@ -383,10 +383,9 @@ const DriverProfile = () => {
                     
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label>Hourly Rate</Label>
+                        <Label>Daily Base Rate</Label>
                         <div className="text-lg font-semibold text-gradient">
-                          £{driverProfile?.hourly_rate || 'Not set'}
-                          {driverProfile?.hourly_rate && '/hour'}
+                          £10.00/day
                         </div>
                       </div>
                       <div className="space-y-2">

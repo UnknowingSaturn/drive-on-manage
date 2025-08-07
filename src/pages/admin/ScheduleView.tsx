@@ -85,7 +85,7 @@ const ScheduleView = () => {
           *,
           driver:driver_profiles(
             id,
-            hourly_rate,
+            parcel_rate,
             parcel_rate,
             profiles:profiles(first_name, last_name)
           ),
@@ -153,7 +153,7 @@ const ScheduleView = () => {
       // Get driver rate
       const driver = drivers?.find(d => d.id === driverId);
       const round = rounds?.find(r => r.id === roundId);
-      const driverRate = driver?.hourly_rate || round?.base_rate || 0;
+      const driverRate = driver?.parcel_rate || round?.parcel_rate || 0;
 
       if (existingAssignment?.id) {
         // Update existing assignment
@@ -412,9 +412,9 @@ const ScheduleView = () => {
                                         <span className="font-medium">
                                           {driver.profiles?.first_name} {driver.profiles?.last_name}
                                         </span>
-                                        {driver.hourly_rate && (
+                                        {driver.parcel_rate && (
                                           <span className="text-xs text-muted-foreground">
-                                            £{driver.hourly_rate}/hr
+                                            £{driver.parcel_rate}/parcel
                                           </span>
                                         )}
                                       </div>

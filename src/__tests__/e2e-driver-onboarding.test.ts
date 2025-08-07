@@ -44,7 +44,7 @@ const mockDriverInvitation = {
   invite_token: 'secure-invite-token-123',
   status: 'pending',
   expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days from now
-  hourly_rate: 15.50,
+  parcel_rate: 1.50,
   created_by: 'admin-123',
 };
 
@@ -55,8 +55,7 @@ const mockDriverProfile = {
   employee_id: 'EMP001',
   driving_license_number: 'DL123456789',
   license_expiry: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year from now
-  hourly_rate: 15.50,
-  parcel_rate: 0.75,
+  parcel_rate: 1.50,
   status: 'active',
   onboarding_progress: {
     personal_info: true,
@@ -110,7 +109,7 @@ describe('End-to-End Driver Onboarding Flow', () => {
         first_name: mockDriverInvitation.first_name,
         last_name: mockDriverInvitation.last_name,
         phone: mockDriverInvitation.phone,
-        hourly_rate: mockDriverInvitation.hourly_rate,
+        parcel_rate: mockDriverInvitation.parcel_rate,
         company_id: mockDriverInvitation.company_id,
       };
 

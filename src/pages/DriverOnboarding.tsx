@@ -20,7 +20,8 @@ interface InvitationData {
   first_name: string;
   last_name: string;
   phone: string;
-  parcel_rate: number;
+  parcel_rate?: number;
+  hourly_rate?: number; // Keep for backward compatibility
   company_id: string;
   status: string;
   expires_at: string;
@@ -365,7 +366,7 @@ const DriverOnboarding = () => {
       const driverProfileData = {
         user_id: finalUserId,
         company_id: invitation.company_id,
-        parcel_rate: invitation.parcel_rate || invitation.hourly_rate,
+        parcel_rate: invitation.parcel_rate || invitation.hourly_rate || 0,
         driving_license_number: formData.licenseNumber,
         license_expiry: formData.licenseExpiry || null,
         status: 'active',

@@ -110,7 +110,7 @@ const DriverManagement = () => {
         invitation_status: 'pending',
         user_id: null,
         company_id: invite.company_id,
-        parcel_rate: invite.parcel_rate || invite.hourly_rate,
+        parcel_rate: (invite as any).parcel_rate || (invite as any).hourly_rate,
         created_at: invite.created_at,
         expires_at: invite.expires_at,
         profiles: {

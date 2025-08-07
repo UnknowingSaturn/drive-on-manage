@@ -107,7 +107,7 @@ const EndOfDay = () => {
   const calculateEstimatedPay = () => {
     if (!driverProfile?.parcel_rate || !formData.parcelsDelivered) return 0;
     const parcelCount = parseInt(formData.parcelsDelivered);
-    const baseRate = driverProfile.hourly_rate || 0;
+    const baseRate = driverProfile.parcel_rate || 0;
     const parcelPay = parcelCount * (driverProfile.parcel_rate || 0);
     return Number((baseRate + parcelPay).toFixed(2));
   };
@@ -348,7 +348,7 @@ const EndOfDay = () => {
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div className="text-center p-4 rounded-lg bg-card/50">
                       <div className="text-lg font-bold">
-                        £{driverProfile?.hourly_rate || 0}
+                        £{driverProfile?.parcel_rate || 0}
                       </div>
                       <div className="text-sm text-muted-foreground">Base Rate</div>
                     </div>
