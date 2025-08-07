@@ -29,17 +29,27 @@ const CompanyManagement = () => {
   });
 
   // Fetch companies
-  const { data: companies, isLoading } = useQuery({
+  const { data: companies, isLoading, refetch } = useQuery({
     queryKey: ['companies'],
     queryFn: async () => {
+      console.log('Fetching companies...');
+      
       const { data, error } = await supabase
         .from('companies')
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      console.log('Companies query result:', { data, error });
+      
+      if (error) {
+        console.error('Error fetching companies:', error);
+        throw error;
+      }
       return data;
-    }
+    },
+    // Force refetch every time the component mounts
+    staleTime: 0,
+    gcTime: 0
   });
 
   // Create company mutation
