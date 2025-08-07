@@ -12,7 +12,8 @@ import {
   CheckCircle2,
   AlertTriangle,
   MessageCircle,
-  Building2
+  Building2,
+  Calculator
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -41,6 +42,7 @@ const adminItems = [
   { title: "Round Management", url: "/admin/rounds", icon: MapPin },
   { title: "Schedule View", url: "/admin/schedule", icon: Calendar },
   { title: "EOD Reports", url: "/admin/reports", icon: FileText },
+  { title: "Finance", url: "/admin/finance", icon: Calculator },
 ];
 
 const driverItems = [

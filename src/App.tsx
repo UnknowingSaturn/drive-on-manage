@@ -18,6 +18,7 @@ import VanManagement from "./pages/admin/VanManagement";
 import RoundManagement from "./pages/admin/RoundManagement";
 import ScheduleView from "./pages/admin/ScheduleView";
 import EODReports from "./pages/admin/EODReports";
+import Finance from "./pages/admin/Finance";
 import DriverOnboarding from "./pages/DriverOnboarding";
 
 // Driver pages
@@ -93,6 +94,13 @@ const App = () => (
               <ProtectedRoute>
                 <AdminRoute>
                   <EODReports />
+                </AdminRoute>
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/finance" element={
+              <ProtectedRoute>
+                <AdminRoute>
+                  <Finance />
                 </AdminRoute>
               </ProtectedRoute>
             } />

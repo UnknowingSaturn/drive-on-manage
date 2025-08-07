@@ -517,6 +517,94 @@ export type Database = {
         }
         Relationships: []
       }
+      payments: {
+        Row: {
+          admin_notes: string | null
+          base_pay: number | null
+          company_id: string
+          created_at: string
+          created_by: string
+          driver_id: string
+          eod_report_id: string
+          exported_at: string | null
+          exported_by: string | null
+          id: string
+          locked: boolean
+          manually_adjusted: boolean
+          parcel_count: number
+          parcel_rate: number
+          period_end: string
+          period_start: string
+          status: string
+          total_pay: number
+          updated_at: string
+        }
+        Insert: {
+          admin_notes?: string | null
+          base_pay?: number | null
+          company_id: string
+          created_at?: string
+          created_by: string
+          driver_id: string
+          eod_report_id: string
+          exported_at?: string | null
+          exported_by?: string | null
+          id?: string
+          locked?: boolean
+          manually_adjusted?: boolean
+          parcel_count?: number
+          parcel_rate: number
+          period_end: string
+          period_start: string
+          status?: string
+          total_pay: number
+          updated_at?: string
+        }
+        Update: {
+          admin_notes?: string | null
+          base_pay?: number | null
+          company_id?: string
+          created_at?: string
+          created_by?: string
+          driver_id?: string
+          eod_report_id?: string
+          exported_at?: string | null
+          exported_by?: string | null
+          id?: string
+          locked?: boolean
+          manually_adjusted?: boolean
+          parcel_count?: number
+          parcel_rate?: number
+          period_end?: string
+          period_start?: string
+          status?: string
+          total_pay?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_payments_company"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_payments_driver"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "driver_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_payments_eod_report"
+            columns: ["eod_report_id"]
+            isOneToOne: false
+            referencedRelation: "eod_reports"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           company_id: string | null
