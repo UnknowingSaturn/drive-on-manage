@@ -249,6 +249,60 @@ export type Database = {
         }
         Relationships: []
       }
+      driver_invoices: {
+        Row: {
+          billing_period_end: string
+          billing_period_start: string
+          company_id: string
+          created_at: string
+          driver_id: string
+          generated_by: string
+          id: string
+          invoice_number: string
+          paid_at: string | null
+          parcel_rate: number
+          sent_at: string | null
+          status: string
+          total_amount: number
+          total_parcels: number
+          updated_at: string
+        }
+        Insert: {
+          billing_period_end: string
+          billing_period_start: string
+          company_id: string
+          created_at?: string
+          driver_id: string
+          generated_by: string
+          id?: string
+          invoice_number: string
+          paid_at?: string | null
+          parcel_rate?: number
+          sent_at?: string | null
+          status?: string
+          total_amount?: number
+          total_parcels?: number
+          updated_at?: string
+        }
+        Update: {
+          billing_period_end?: string
+          billing_period_start?: string
+          company_id?: string
+          created_at?: string
+          driver_id?: string
+          generated_by?: string
+          id?: string
+          invoice_number?: string
+          paid_at?: string | null
+          parcel_rate?: number
+          sent_at?: string | null
+          status?: string
+          total_amount?: number
+          total_parcels?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       driver_profiles: {
         Row: {
           assigned_van_id: string | null
@@ -529,6 +583,42 @@ export type Database = {
           updated_at?: string | null
           user_id?: string
           window_start?: string | null
+        }
+        Relationships: []
+      }
+      operating_costs: {
+        Row: {
+          amount: number
+          category: string
+          company_id: string
+          created_at: string
+          created_by: string
+          date: string
+          description: string
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          category: string
+          company_id: string
+          created_at?: string
+          created_by: string
+          date: string
+          description: string
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          category?: string
+          company_id?: string
+          created_at?: string
+          created_by?: string
+          date?: string
+          description?: string
+          id?: string
+          updated_at?: string
         }
         Relationships: []
       }
@@ -960,6 +1050,18 @@ export type Database = {
           security_status: string
         }[]
       }
+      calculate_driver_invoice_data: {
+        Args: {
+          driver_id_param: string
+          period_start: string
+          period_end: string
+        }
+        Returns: {
+          total_parcels: number
+          parcel_rate: number
+          total_amount: number
+        }[]
+      }
       calculate_driver_pay: {
         Args: {
           driver_id_param: string
@@ -999,6 +1101,10 @@ export type Database = {
         }[]
       }
       generate_invite_token: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      generate_invoice_number: {
         Args: Record<PropertyKey, never>
         Returns: string
       }
