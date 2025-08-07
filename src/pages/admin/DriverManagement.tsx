@@ -45,13 +45,16 @@ const DriverManagement = () => {
     firstName: '',
     lastName: '',
     phone: '',
-    parcelRate: ''
+    parcelRate: '',
+    coverRate: ''
   });
   const [editFormData, setEditFormData] = useState({
     firstName: '',
     lastName: '',
     phone: '',
     parcelRate: '',
+    parcelRate: '',
+    coverRate: '',
     status: '',
     assignedVanId: ''
   });
@@ -156,13 +159,16 @@ const DriverManagement = () => {
 
   // Real-time form validation
   const validateField = (field: string, value: string) => {
+    const editSchema = z.object({
+      parcelRate: z.string().optional(),
+      coverRate: z.string().optional()
+    });
+    
     const fieldSchema = {
       email: emailSchema,
       firstName: nameSchema,
       lastName: nameSchema,
       phone: phoneSchema,
-      parcelRate: z.string().optional()
-    }[field];
 
     if (fieldSchema) {
       try {
@@ -263,7 +269,8 @@ const DriverManagement = () => {
         firstName: '',
         lastName: '',
         phone: '',
-        parcelRate: ''
+        parcelRate: '',
+        coverRate: ''
       });
       setFormErrors({});
       setShowFormErrors(false);
@@ -383,6 +390,7 @@ const DriverManagement = () => {
         .update({
           
           parcel_rate: updates.parcelRate ? parseFloat(updates.parcelRate) : null,
+          cover_rate: updates.coverRate ? parseFloat(updates.coverRate) : null,
           status: updates.status,
           assigned_van_id: updates.assignedVanId || null,
         })
@@ -456,6 +464,7 @@ const DriverManagement = () => {
       phone: driver.profiles?.phone || '',
       
       parcelRate: driver.parcel_rate?.toString() || '',
+      coverRate: driver.cover_rate?.toString() || '',
       status: driver.status || 'pending',
       assignedVanId: driver.assigned_van_id || ''
     });
@@ -638,7 +647,7 @@ const DriverManagement = () => {
                     </div>
                     
                     <div>
-                       <Label htmlFor="parcelRate">Parcel Rate (£)</Label>
+                       <Label htmlFor="parcelRate">Base Parcel Rate (£)</Label>
                        <Input
                          id="parcelRate"
                          type="number"
@@ -647,12 +656,31 @@ const DriverManagement = () => {
                          max="100"
                          value={formData.parcelRate}
                          onChange={(e) => handleInputChange('parcelRate', e.target.value)}
-                         placeholder="Enter parcel rate"
+                         placeholder="Enter base parcel rate"
                          aria-describedby={formErrors.parcelRate ? 'parcelRate-error' : undefined}
                        />
                        {formErrors.parcelRate && (
                          <p id="parcelRate-error" className="text-sm text-destructive mt-1">
                            {formErrors.parcelRate}
+                         </p>
+                       )}
+                     </div>
+                     <div>
+                       <Label htmlFor="coverRate">Cover Parcel Rate (£)</Label>
+                       <Input
+                         id="coverRate"
+                         type="number"
+                         step="0.01"
+                         min="0"
+                         max="100"
+                         value={formData.coverRate}
+                         onChange={(e) => handleInputChange('coverRate', e.target.value)}
+                         placeholder="Enter cover parcel rate"
+                         aria-describedby={formErrors.coverRate ? 'coverRate-error' : undefined}
+                       />
+                       {formErrors.coverRate && (
+                         <p id="coverRate-error" className="text-sm text-destructive mt-1">
+                           {formErrors.coverRate}
                          </p>
                        )}
                     </div>
@@ -874,7 +902,11 @@ const DriverManagement = () => {
                               {driver.profiles?.phone || '-'}
                             </TableCell>
                              <TableCell className="hidden md:table-cell">
-                               {driver.parcel_rate ? `£${driver.parcel_rate}/parcel` : '-'}
+                               <div className="text-sm">
+                                 Base: {driver.parcel_rate ? `£${driver.parcel_rate}` : '-'}/parcel
+                                 <br />
+                                 Cover: {driver.cover_rate ? `£${driver.cover_rate}` : '-'}/parcel
+                               </div>
                              </TableCell>
                             <TableCell className="hidden lg:table-cell">
                               {driver.assigned_van ? (

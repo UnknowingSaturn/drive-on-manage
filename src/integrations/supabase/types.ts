@@ -254,6 +254,7 @@ export type Database = {
           assigned_van_id: string | null
           avatar_url: string | null
           company_id: string
+          cover_rate: number | null
           created_at: string
           driving_license_document: string | null
           driving_license_number: string | null
@@ -274,6 +275,7 @@ export type Database = {
           assigned_van_id?: string | null
           avatar_url?: string | null
           company_id: string
+          cover_rate?: number | null
           created_at?: string
           driving_license_document?: string | null
           driving_license_number?: string | null
@@ -294,6 +296,7 @@ export type Database = {
           assigned_van_id?: string | null
           avatar_url?: string | null
           company_id?: string
+          cover_rate?: number | null
           created_at?: string
           driving_license_document?: string | null
           driving_license_number?: string | null
@@ -341,12 +344,17 @@ export type Database = {
           approved_at: string | null
           approved_by: string | null
           company_id: string
+          cover_confirmed: boolean | null
+          cover_confirmed_at: string | null
+          cover_confirmed_by: string | null
+          cover_parcels: number | null
           created_at: string
           driver_id: string
           estimated_pay: number | null
           id: string
           issues_reported: string | null
           log_date: string
+          manager_notes: string | null
           parcels_delivered: number
           screenshot_url: string | null
           status: string
@@ -360,12 +368,17 @@ export type Database = {
           approved_at?: string | null
           approved_by?: string | null
           company_id: string
+          cover_confirmed?: boolean | null
+          cover_confirmed_at?: string | null
+          cover_confirmed_by?: string | null
+          cover_parcels?: number | null
           created_at?: string
           driver_id: string
           estimated_pay?: number | null
           id?: string
           issues_reported?: string | null
           log_date?: string
+          manager_notes?: string | null
           parcels_delivered: number
           screenshot_url?: string | null
           status?: string
@@ -379,12 +392,17 @@ export type Database = {
           approved_at?: string | null
           approved_by?: string | null
           company_id?: string
+          cover_confirmed?: boolean | null
+          cover_confirmed_at?: string | null
+          cover_confirmed_by?: string | null
+          cover_parcels?: number | null
           created_at?: string
           driver_id?: string
           estimated_pay?: number | null
           id?: string
           issues_reported?: string | null
           log_date?: string
+          manager_notes?: string | null
           parcels_delivered?: number
           screenshot_url?: string | null
           status?: string
@@ -522,6 +540,8 @@ export type Database = {
           admin_notes: string | null
           base_pay: number | null
           company_id: string
+          cover_parcels: number | null
+          cover_rate: number | null
           created_at: string
           created_by: string
           driver_id: string
@@ -535,6 +555,8 @@ export type Database = {
           parcel_rate: number
           period_end: string
           period_start: string
+          rate_breakdown: Json | null
+          route_rate: number | null
           status: string
           total_pay: number
           updated_at: string
@@ -543,6 +565,8 @@ export type Database = {
           admin_notes?: string | null
           base_pay?: number | null
           company_id: string
+          cover_parcels?: number | null
+          cover_rate?: number | null
           created_at?: string
           created_by: string
           driver_id: string
@@ -556,6 +580,8 @@ export type Database = {
           parcel_rate: number
           period_end: string
           period_start: string
+          rate_breakdown?: Json | null
+          route_rate?: number | null
           status?: string
           total_pay: number
           updated_at?: string
@@ -564,6 +590,8 @@ export type Database = {
           admin_notes?: string | null
           base_pay?: number | null
           company_id?: string
+          cover_parcels?: number | null
+          cover_rate?: number | null
           created_at?: string
           created_by?: string
           driver_id?: string
@@ -577,6 +605,8 @@ export type Database = {
           parcel_rate?: number
           period_end?: string
           period_start?: string
+          rate_breakdown?: Json | null
+          route_rate?: number | null
           status?: string
           total_pay?: number
           updated_at?: string
@@ -656,6 +686,7 @@ export type Database = {
           id: string
           is_active: boolean
           parcel_rate: number | null
+          rate: number | null
           round_number: string
           updated_at: string
         }
@@ -667,6 +698,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           parcel_rate?: number | null
+          rate?: number | null
           round_number: string
           updated_at?: string
         }
@@ -678,6 +710,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           parcel_rate?: number | null
+          rate?: number | null
           round_number?: string
           updated_at?: string
         }
@@ -937,6 +970,16 @@ export type Database = {
           base_pay_param?: number
         }
         Returns: number
+      }
+      calculate_driver_pay_with_rates: {
+        Args: {
+          driver_id_param: string
+          route_id_param: string
+          regular_parcels_param: number
+          cover_parcels_param?: number
+          base_pay_param?: number
+        }
+        Returns: Json
       }
       generate_invite_token: {
         Args: Record<PropertyKey, never>
