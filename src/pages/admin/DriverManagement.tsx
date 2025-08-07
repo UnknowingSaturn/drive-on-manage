@@ -100,16 +100,41 @@ const DriverManagement = () => {
       console.log('Fetched invitations:', allInvitations);
 
       // Convert active drivers with their profiles
-      const activeDrivers = drivers?.map(driver => ({
-        ...driver,
-        type: 'active' as const,
-        profiles: driver.profiles, // Profile data is already joined
-        invitation_status: driver.onboarding_completed_at ? 'completed' : 'in_progress',
-        // Find the original invitation to get additional context
-        original_invitation: allInvitations?.find(inv => 
-          inv.driver_profile_id === driver.id || inv.email === driver.profiles?.email
-        )
-      })) || [];
+      const activeDrivers = drivers?.map(driver => {
+        // Get profile data from the join or find it from accepted invitations
+        let profileData = driver.profiles;
+        
+        // If no profile data from join, try to get it from accepted invitations
+        if (!profileData) {
+          const matchingInvitation = allInvitations?.find(inv => 
+            inv.driver_profile_id === driver.id && inv.status === 'accepted'
+          );
+          if (matchingInvitation) {
+            profileData = {
+              first_name: matchingInvitation.first_name,
+              last_name: matchingInvitation.last_name,
+              email: matchingInvitation.email,
+              phone: matchingInvitation.phone,
+              is_active: true
+            };
+          }
+        }
+
+        return {
+          ...driver,
+          type: 'active' as const,
+          profiles: profileData,
+          invitation_status: driver.onboarding_completed_at ? 'completed' : 
+            (driver.status === 'active' ? 'completed' : 'in_progress'),
+          // Find the original invitation to get additional context
+          original_invitation: allInvitations?.find(inv => 
+            inv.driver_profile_id === driver.id || 
+            (profileData && inv.email === profileData.email)
+          )
+        };
+      }) || [];
+
+      console.log('Processed active drivers:', activeDrivers);
 
       // Only show PENDING invitations as separate entries (not yet onboarded)
       const pendingInvitations = allInvitations?.filter(invite => 
