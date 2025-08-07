@@ -21,7 +21,7 @@ interface AuthContextType {
   session: Session | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
-  signUp: (email: string, password: string, userData: { first_name: string; last_name: string; user_type: 'admin' | 'driver' }) => Promise<{ error: any }>;
+  signUp: (email: string, password: string, userData: { first_name: string; last_name: string; user_type: 'admin' }) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
@@ -155,9 +155,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signUp = async (
     email: string, 
     password: string, 
-    userData: { first_name: string; last_name: string; user_type: 'admin' | 'driver' }
+    userData: { first_name: string; last_name: string; user_type: 'admin' }
   ) => {
     try {
+      // Only allow admin signup
+      if (userData.user_type !== 'admin') {
+        toast({
+          title: "Sign Up Failed", 
+          description: "Driver accounts can only be created through company invitations.",
+          variant: "destructive"
+        });
+        return { error: 'Driver signup not allowed' };
+      }
       const redirectUrl = `${window.location.origin}/`;
       
       const { error } = await supabase.auth.signUp({

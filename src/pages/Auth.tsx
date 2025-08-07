@@ -19,14 +19,14 @@ const Auth = () => {
     password: ''
   });
 
-  // Sign Up form state
+  // Sign Up form state (Admin only)
   const [signUpData, setSignUpData] = useState({
     email: '',
     password: '',
     confirmPassword: '',
     firstName: '',
     lastName: '',
-    userType: 'driver' as 'admin' | 'driver'
+    userType: 'admin' as const // Admin only
   });
 
   // Redirect if already authenticated
@@ -91,14 +91,14 @@ const Auth = () => {
           <CardHeader>
             <CardTitle>Welcome</CardTitle>
             <CardDescription>
-              Sign in to your account or create a new one to get started
+              Sign in to your account or contact your administrator for driver access
             </CardDescription>
           </CardHeader>
           <CardContent>
             <Tabs defaultValue="signin" className="w-full">
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="signin">Sign In</TabsTrigger>
-                <TabsTrigger value="signup">Sign Up</TabsTrigger>
+                <TabsTrigger value="signup">Admin Sign Up</TabsTrigger>
               </TabsList>
 
               <TabsContent value="signin" className="space-y-4">
@@ -138,6 +138,12 @@ const Auth = () => {
               </TabsContent>
 
               <TabsContent value="signup" className="space-y-4">
+                <div className="p-4 bg-muted/50 rounded-lg mb-4">
+                  <p className="text-sm text-muted-foreground">
+                    <strong>Admin Account Creation:</strong> Only administrators can create accounts here. 
+                    Drivers receive invitation links via email from their company administrators.
+                  </p>
+                </div>
                 <form onSubmit={handleSignUp} className="space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
@@ -176,33 +182,6 @@ const Auth = () => {
                     />
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="user-type">Account Type</Label>
-                    <Select
-                      value={signUpData.userType}
-                      onValueChange={(value: 'admin' | 'driver') => 
-                        setSignUpData({ ...signUpData, userType: value })
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="driver">
-                          <div className="flex items-center">
-                            <Users className="h-4 w-4 mr-2" />
-                            Driver
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="admin">
-                          <div className="flex items-center">
-                            <Shield className="h-4 w-4 mr-2" />
-                            Admin
-                          </div>
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
 
                   <div className="space-y-2">
                     <Label htmlFor="signup-password">Password</Label>
@@ -233,7 +212,7 @@ const Auth = () => {
                     className="w-full mobile-button" 
                     disabled={isSubmitting || signUpData.password !== signUpData.confirmPassword}
                   >
-                    {isSubmitting ? 'Creating Account...' : 'Create Account'}
+                    {isSubmitting ? 'Creating Admin Account...' : 'Create Admin Account'}
                   </Button>
                 </form>
               </TabsContent>
