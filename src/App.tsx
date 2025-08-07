@@ -12,6 +12,7 @@ import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import NotFound from "./pages/NotFound";
+import NotAuthorized from "./pages/NotAuthorized";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import DriverManagement from "./pages/admin/DriverManagement";
 import CompanyManagement from "./pages/admin/CompanyManagement";
@@ -44,6 +45,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
+            <Route path="/not-authorized" element={<NotAuthorized />} />
             <Route path="/onboarding" element={<DriverOnboarding />} />
             <Route path="/dashboard" element={
               <ProtectedRoute>

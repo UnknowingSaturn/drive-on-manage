@@ -1007,6 +1007,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: Json
       }
+      validate_invitation_token: {
+        Args: { token_param: string }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never

@@ -120,7 +120,12 @@ const DriverOnboarding = () => {
 
   useEffect(() => {
     if (!token) {
-      navigate('/auth');
+      toast({
+        title: "Access Denied",
+        description: "Driver onboarding requires a valid invitation link from your company.",
+        variant: "destructive"
+      });
+      navigate('/not-authorized');
       return;
     }
     
