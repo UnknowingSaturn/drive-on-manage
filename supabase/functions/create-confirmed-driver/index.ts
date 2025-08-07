@@ -81,20 +81,28 @@ serve(async (req) => {
     const parcelRate = invitation.parcel_rate || invitation.hourly_rate || 0;
     const coverRate = invitation.cover_rate || parcelRate;
 
-    // Check if user already exists
-    const { data: existingUser, error: checkError } = await supabase.auth.admin.getUserByEmail(email);
+    // Check if user already exists by trying to list users with email filter
+    const { data: users, error: listError } = await supabase.auth.admin.listUsers({
+      page: 1,
+      perPage: 1
+    });
+    
+    let existingUser = null;
+    if (users && users.users) {
+      existingUser = users.users.find(user => user.email === email);
+    }
     
     let userId: string;
     
-    if (existingUser && existingUser.user) {
-      console.log('User already exists:', existingUser.user.id);
-      userId = existingUser.user.id;
+    if (existingUser) {
+      console.log('User already exists:', existingUser.id);
+      userId = existingUser.id;
       
       // If user exists but is not confirmed, confirm them
-      if (!existingUser.user.email_confirmed_at) {
+      if (!existingUser.email_confirmed_at) {
         console.log('User exists but not confirmed, confirming...');
         const { error: confirmError } = await supabase.auth.admin.updateUserById(
-          existingUser.user.id,
+          existingUser.id,
           { email_confirm: true }
         );
         
