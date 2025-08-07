@@ -1000,6 +1000,16 @@ export type Database = {
           should_cleanup: boolean
         }[]
       }
+      test_auth_context: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          current_uid: string
+          current_db_role: string
+          jwt_claims: Json
+          profile_exists: boolean
+          profile_data: Json
+        }[]
+      }
       test_validation_system: {
         Args: Record<PropertyKey, never>
         Returns: Json

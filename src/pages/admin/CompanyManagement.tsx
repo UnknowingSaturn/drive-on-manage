@@ -58,6 +58,19 @@ const CompanyManagement = () => {
       
       console.log('Valid session found:', session.user.id);
       
+      // Test the authentication context in the database
+      try {
+        const { data: authTest, error: authTestError } = await supabase
+          .rpc('test_auth_context');
+        
+        console.log('Auth context test result:', authTest);
+        if (authTestError) {
+          console.error('Auth context test error:', authTestError);
+        }
+      } catch (testError) {
+        console.error('Failed to test auth context:', testError);
+      }
+      
       // Explicitly set the session to ensure auth context is available
       await supabase.auth.setSession({
         access_token: session.access_token,
