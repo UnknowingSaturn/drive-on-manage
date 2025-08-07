@@ -220,14 +220,16 @@ export function useRealtimeValidation(options: RealtimeValidationOptions = {}) {
           (payload) => {
             console.log('🚐 SOD change detected:', payload);
             
-            if (payload.new && payload.new.van_id) {
+            if (payload.new && typeof payload.new === 'object' && 'van_id' in payload.new) {
+              const newRecord = payload.new as { van_id: string; driver_id: string };
+              
               // Vehicle assignment changed, update availability
               setVehicleAvailability(prev => {
-                const updated = prev.filter(v => v.vehicleId !== payload.new.van_id);
+                const updated = prev.filter(v => v.vehicleId !== newRecord.van_id);
                 return [...updated, {
-                  vehicleId: payload.new.van_id,
+                  vehicleId: newRecord.van_id,
                   isAvailable: false,
-                  assignedDriver: payload.new.driver_id,
+                  assignedDriver: newRecord.driver_id,
                   lastCheck: new Date().toISOString()
                 }];
               });
@@ -254,9 +256,10 @@ export function useRealtimeValidation(options: RealtimeValidationOptions = {}) {
           (payload) => {
             console.log('📦 EOD change detected:', payload);
             
-            if (payload.new) {
+            if (payload.new && typeof payload.new === 'object' && 'driver_id' in payload.new && 'parcels_delivered' in payload.new) {
+              const newRecord = payload.new as { driver_id: string; parcels_delivered: number };
               // Validate parcel counts in real-time
-              validateParcelCounts(payload.new.driver_id, payload.new.parcels_delivered);
+              validateParcelCounts(newRecord.driver_id, newRecord.parcels_delivered);
             }
           }
         )
