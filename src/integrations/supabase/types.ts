@@ -68,6 +68,7 @@ export type Database = {
         Row: {
           address: string | null
           created_at: string
+          created_by: string
           email: string | null
           id: string
           is_active: boolean
@@ -78,6 +79,7 @@ export type Database = {
         Insert: {
           address?: string | null
           created_at?: string
+          created_by: string
           email?: string | null
           id?: string
           is_active?: boolean
@@ -88,6 +90,7 @@ export type Database = {
         Update: {
           address?: string | null
           created_at?: string
+          created_by?: string
           email?: string | null
           id?: string
           is_active?: boolean
