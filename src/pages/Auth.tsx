@@ -77,35 +77,34 @@ const Auth = () => {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-secondary p-4 md:p-8 safe-top safe-bottom">
-      <div className="w-full max-w-md space-y-6 md:space-y-8">
-        <div className="text-center space-y-2">
-          <h1 className="text-2xl md:text-4xl font-bold text-gradient">
-            LogiFlow
-          </h1>
-          <p className="text-muted-foreground text-sm md:text-base">
-            Streamline your logistics operations
-          </p>
+    <div className="min-h-screen flex items-center justify-center bg-background p-4">
+      <div className="w-full max-w-md">
+        <div className="text-center mb-8">
+          <div className="flex items-center justify-center mb-4">
+            <Truck className="h-10 w-10 text-primary mr-2" />
+            <h1 className="text-3xl font-bold text-foreground">LogiFlow</h1>
+          </div>
+          <p className="text-muted-foreground">Streamline your logistics operations</p>
         </div>
 
-        <Card className="logistics-card p-4 md:p-8">
-          <CardHeader className="p-0 mb-4 md:mb-6">
-            <CardTitle className="text-lg md:text-xl">Welcome</CardTitle>
-            <CardDescription className="text-sm">
+        <Card>
+          <CardHeader>
+            <CardTitle>Welcome</CardTitle>
+            <CardDescription>
               Sign in to your account or create a new one to get started
             </CardDescription>
           </CardHeader>
-          <CardContent className="p-0">
+          <CardContent>
             <Tabs defaultValue="signin" className="w-full">
-              <TabsList className="grid w-full grid-cols-2 h-12">
-                <TabsTrigger value="signin" className="min-h-[44px] text-sm">Sign In</TabsTrigger>
-                <TabsTrigger value="signup" className="min-h-[44px] text-sm">Sign Up</TabsTrigger>
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="signin">Sign In</TabsTrigger>
+                <TabsTrigger value="signup">Sign Up</TabsTrigger>
               </TabsList>
 
-              <TabsContent value="signin" className="space-y-3 md:space-y-4 mt-4">
-                <form onSubmit={handleSignIn} className="space-y-3 md:space-y-4">
+              <TabsContent value="signin" className="space-y-4">
+                <form onSubmit={handleSignIn} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="signin-email" className="text-sm">Email</Label>
+                    <Label htmlFor="signin-email">Email</Label>
                     <Input
                       id="signin-email"
                       type="email"
@@ -113,13 +112,10 @@ const Auth = () => {
                       value={signInData.email}
                       onChange={(e) => setSignInData({ ...signInData, email: e.target.value })}
                       required
-                      className="min-h-[48px] text-base"
-                      autoComplete="email"
-                      inputMode="email"
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="signin-password" className="text-sm">Password</Label>
+                    <Label htmlFor="signin-password">Password</Label>
                     <Input
                       id="signin-password"
                       type="password"
@@ -127,13 +123,11 @@ const Auth = () => {
                       value={signInData.password}
                       onChange={(e) => setSignInData({ ...signInData, password: e.target.value })}
                       required
-                      className="min-h-[48px] text-base"
-                      autoComplete="current-password"
                     />
                   </div>
                   <Button 
                     type="submit" 
-                    className="w-full btn-mobile" 
+                    className="w-full" 
                     disabled={isSubmitting}
                   >
                     {isSubmitting ? 'Signing In...' : 'Sign In'}
@@ -141,37 +135,33 @@ const Auth = () => {
                 </form>
               </TabsContent>
 
-              <TabsContent value="signup" className="space-y-3 md:space-y-4 mt-4">
-                <form onSubmit={handleSignUp} className="space-y-3 md:space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
+              <TabsContent value="signup" className="space-y-4">
+                <form onSubmit={handleSignUp} className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="signup-firstname" className="text-sm">First Name</Label>
+                      <Label htmlFor="signup-firstname">First Name</Label>
                       <Input
                         id="signup-firstname"
                         placeholder="John"
                         value={signUpData.firstName}
                         onChange={(e) => setSignUpData({ ...signUpData, firstName: e.target.value })}
                         required
-                        className="min-h-[48px] text-base"
-                        autoComplete="given-name"
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="signup-lastname" className="text-sm">Last Name</Label>
+                      <Label htmlFor="signup-lastname">Last Name</Label>
                       <Input
                         id="signup-lastname"
                         placeholder="Doe"
                         value={signUpData.lastName}
                         onChange={(e) => setSignUpData({ ...signUpData, lastName: e.target.value })}
                         required
-                        className="min-h-[48px] text-base"
-                        autoComplete="family-name"
                       />
                     </div>
                   </div>
                   
                   <div className="space-y-2">
-                    <Label htmlFor="signup-email" className="text-sm">Email</Label>
+                    <Label htmlFor="signup-email">Email</Label>
                     <Input
                       id="signup-email"
                       type="email"
@@ -179,21 +169,18 @@ const Auth = () => {
                       value={signUpData.email}
                       onChange={(e) => setSignUpData({ ...signUpData, email: e.target.value })}
                       required
-                      className="min-h-[48px] text-base"
-                      autoComplete="email"
-                      inputMode="email"
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="user-type" className="text-sm">Account Type</Label>
+                    <Label htmlFor="user-type">Account Type</Label>
                     <Select
                       value={signUpData.userType}
                       onValueChange={(value: 'admin' | 'driver') => 
                         setSignUpData({ ...signUpData, userType: value })
                       }
                     >
-                      <SelectTrigger className="min-h-[48px]">
+                      <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -214,7 +201,7 @@ const Auth = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="signup-password" className="text-sm">Password</Label>
+                    <Label htmlFor="signup-password">Password</Label>
                     <Input
                       id="signup-password"
                       type="password"
@@ -222,13 +209,11 @@ const Auth = () => {
                       value={signUpData.password}
                       onChange={(e) => setSignUpData({ ...signUpData, password: e.target.value })}
                       required
-                      className="min-h-[48px] text-base"
-                      autoComplete="new-password"
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="signup-confirm-password" className="text-sm">Confirm Password</Label>
+                    <Label htmlFor="signup-confirm-password">Confirm Password</Label>
                     <Input
                       id="signup-confirm-password"
                       type="password"
@@ -236,14 +221,12 @@ const Auth = () => {
                       value={signUpData.confirmPassword}
                       onChange={(e) => setSignUpData({ ...signUpData, confirmPassword: e.target.value })}
                       required
-                      className="min-h-[48px] text-base"
-                      autoComplete="new-password"
                     />
                   </div>
 
                   <Button 
                     type="submit" 
-                    className="w-full btn-mobile" 
+                    className="w-full" 
                     disabled={isSubmitting || signUpData.password !== signUpData.confirmPassword}
                   >
                     {isSubmitting ? 'Creating Account...' : 'Create Account'}
