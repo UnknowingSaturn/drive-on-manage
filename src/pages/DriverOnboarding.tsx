@@ -78,6 +78,13 @@ const DriverOnboarding = () => {
     avatar: null as File | null,
   });
 
+  const [documentUrls, setDocumentUrls] = useState({
+    license: '',
+    insurance: '',
+    rightToWork: '',
+    avatar: '',
+  });
+
   const [uploadProgress, setUploadProgress] = useState({
     license: 0,
     insurance: 0,
@@ -229,6 +236,12 @@ const DriverOnboarding = () => {
       setUploadedFiles(prev => ({ ...prev, [fileType]: file }));
       setUploadProgress(prev => ({ ...prev, [fileType]: 100 }));
 
+      // Store the document URL for later database save
+      const documentUrl = `${bucketName}/${fileName}`;
+      setDocumentUrls(prev => ({ ...prev, [fileType]: documentUrl }));
+
+      console.log(`Document ${fileType} uploaded to: ${documentUrl}`);
+
       toast({
         title: "File uploaded successfully",
         description: `Your ${fileType} document has been uploaded.`,
@@ -264,7 +277,12 @@ const DriverOnboarding = () => {
       case 1: // Account Setup
         return !!(formData.password && formData.confirmPassword && formData.password === formData.confirmPassword && formData.password.length >= 8);
       case 2: // Documents
-        return !!(uploadedFiles.license && uploadedFiles.insurance && uploadedFiles.rightToWork && formData.licenseNumber);
+        return !!(
+          (uploadedFiles.license || documentUrls.license) && 
+          (uploadedFiles.insurance || documentUrls.insurance) && 
+          (uploadedFiles.rightToWork || documentUrls.rightToWork) && 
+          formData.licenseNumber
+        );
       case 3: // Terms
         return !!(formData.acceptTerms && formData.acceptPrivacy);
       default:
@@ -289,6 +307,12 @@ const DriverOnboarding = () => {
             first_name: invitation.first_name,
             last_name: invitation.last_name,
             user_type: 'driver'
+          },
+          // Include document URLs and additional form data
+          documentUrls: documentUrls,
+          driverData: {
+            driving_license_number: formData.licenseNumber,
+            license_expiry: formData.licenseExpiry || null,
           }
         }
       });

@@ -15,6 +15,16 @@ interface CreateDriverRequest {
     last_name: string;
     user_type: 'driver';
   };
+  documentUrls?: {
+    license: string;
+    insurance: string;
+    rightToWork: string;
+    avatar: string;
+  };
+  driverData?: {
+    driving_license_number?: string;
+    license_expiry?: string;
+  };
 }
 
 serve(async (req) => {
@@ -27,7 +37,7 @@ serve(async (req) => {
     const requestBody: CreateDriverRequest = await req.json()
     console.log('Request payload received:', JSON.stringify(requestBody, null, 2))
     
-    const { email, password, userData } = requestBody
+    const { email, password, userData, documentUrls, driverData } = requestBody
 
     if (!email || !password || !userData) {
       console.error('Missing required fields')
@@ -182,7 +192,7 @@ serve(async (req) => {
     let driverProfileId: string;
 
     if (!existingDriverProfile) {
-      // Create driver profile entry with rates
+      // Create driver profile entry with rates and document URLs
       const driverProfileData = {
         user_id: userId,
         company_id: invitation.company_id,
@@ -193,9 +203,17 @@ serve(async (req) => {
         onboarding_progress: {
           personal_info: true,
           account_setup: true,
-          documents_uploaded: false, // Will be updated when documents are uploaded
+          documents_uploaded: !!(documentUrls?.license && documentUrls?.insurance && documentUrls?.rightToWork),
           terms_accepted: true
-        }
+        },
+        // Add document URLs if provided
+        ...(documentUrls?.license && { driving_license_document: documentUrls.license }),
+        ...(documentUrls?.insurance && { insurance_document: documentUrls.insurance }),
+        ...(documentUrls?.rightToWork && { right_to_work_document: documentUrls.rightToWork }),
+        ...(documentUrls?.avatar && { avatar_url: documentUrls.avatar }),
+        // Add driver data if provided
+        ...(driverData?.driving_license_number && { driving_license_number: driverData.driving_license_number }),
+        ...(driverData?.license_expiry && { license_expiry: driverData.license_expiry }),
       };
 
       console.log('Creating driver profile:', driverProfileData);
