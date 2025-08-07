@@ -313,11 +313,14 @@ const DriverOnboarding = () => {
             if (authResult.error) {
               throw new Error(`Authentication failed: ${authResult.error.message}`);
             }
+            
+            finalUserId = authResult.data?.user?.id;
           } else {
             throw new Error(`User creation failed: ${createUserError?.message || createUserResponse.error}`);
           }
         } else {
-          // User created successfully, now sign them in
+          // User created successfully via edge function, now sign them in
+          console.log('User created successfully, signing in...');
           authResult = await supabase.auth.signInWithPassword({
             email: invitation.email,
             password: formData.password,
@@ -327,6 +330,20 @@ const DriverOnboarding = () => {
           if (authResult.error) {
             throw new Error(`Sign in failed after user creation: ${authResult.error.message}`);
           }
+          
+          finalUserId = authResult.data?.user?.id;
+          console.log('Authentication successful, user ID:', finalUserId);
+
+          // Edge function already created all profiles and updated invitation status
+          // Just redirect to dashboard
+          console.log('Onboarding completed successfully via edge function');
+          toast({
+            title: "Welcome!",
+            description: "Your account has been created successfully.",
+          });
+          
+          navigate('/dashboard');
+          return;
         }
 
         if (!authResult.data?.user) {
