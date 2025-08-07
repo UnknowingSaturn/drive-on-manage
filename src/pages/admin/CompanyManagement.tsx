@@ -45,6 +45,9 @@ const CompanyManagement = () => {
   // Create company mutation
   const createCompanyMutation = useMutation({
     mutationFn: async (companyData: typeof formData) => {
+      console.log('Creating company with data:', companyData);
+      console.log('Current user profile:', profile);
+      
       const { data, error } = await supabase
         .from('companies')
         .insert({
@@ -58,7 +61,12 @@ const CompanyManagement = () => {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Database error:', error);
+        throw error;
+      }
+      
+      console.log('Company created successfully:', data);
       return data;
     },
     onSuccess: () => {
