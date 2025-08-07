@@ -14,6 +14,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format, differenceInDays, parseISO } from 'date-fns';
 import { SidebarProvider, SidebarTrigger, SidebarInset } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/AppSidebar';
+import { ComponentErrorBoundary } from '@/components/ComponentErrorBoundary';
+import { LoadingSpinner } from '@/components/LoadingSpinner';
 
 const VanManagement = () => {
   const { profile } = useAuth();
@@ -30,7 +32,7 @@ const VanManagement = () => {
   });
 
   // Fetch vans for the company
-  const { data: vans, isLoading } = useQuery({
+  const { data: vans, isLoading, error } = useQuery({
     queryKey: ['vans', profile?.company_id],
     queryFn: async () => {
       if (!profile?.company_id) return [];
@@ -45,7 +47,9 @@ const VanManagement = () => {
       if (error) throw error;
       return data;
     },
-    enabled: !!profile?.company_id
+    enabled: !!profile?.company_id,
+    retry: 3,
+    retryDelay: 1000
   });
 
   // Add van mutation
@@ -134,7 +138,46 @@ const VanManagement = () => {
   };
 
   if (isLoading) {
-    return <div className="p-6">Loading...</div>;
+    return (
+      <SidebarProvider>
+        <div className="min-h-screen flex w-full bg-background">
+          <AppSidebar />
+          <SidebarInset className="flex-1">
+            <LoadingSpinner text="Loading van management..." />
+          </SidebarInset>
+        </div>
+      </SidebarProvider>
+    );
+  }
+
+  if (error) {
+    return (
+      <SidebarProvider>
+        <div className="min-h-screen flex w-full bg-background">
+          <AppSidebar />
+          <SidebarInset className="flex-1">
+            <ComponentErrorBoundary componentName="Van Management">
+              <div className="p-6">
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="text-center text-destructive">
+                      <AlertTriangle className="h-12 w-12 mx-auto mb-4" />
+                      <h3 className="text-lg font-semibold mb-2">Failed to load vans</h3>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        {error?.message || 'An unexpected error occurred'}
+                      </p>
+                      <Button onClick={() => window.location.reload()}>
+                        Try Again
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </ComponentErrorBoundary>
+          </SidebarInset>
+        </div>
+      </SidebarProvider>
+    );
   }
 
   return (
@@ -347,7 +390,16 @@ const VanManagement = () => {
                     {getStatusBadge(van.mot_expiry, van.service_due)}
                   </TableCell>
                   <TableCell>
-                    <Button variant="outline" size="sm">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => {
+                        toast({
+                          title: "Feature coming soon",
+                          description: "Van editing functionality will be available soon.",
+                        });
+                      }}
+                    >
                       Edit
                     </Button>
                   </TableCell>

@@ -19,6 +19,7 @@ const RoundManagement = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingRound, setEditingRound] = useState<any>(null);
   const [formData, setFormData] = useState({
     roundNumber: '',
     description: '',
@@ -93,6 +94,23 @@ const RoundManagement = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     addRoundMutation.mutate(formData);
+  };
+
+  const handleEditRound = (round: any) => {
+    setEditingRound(round);
+    setFormData({
+      roundNumber: round.round_number || '',
+      description: round.description || '',
+      baseRate: round.base_rate?.toString() || '',
+      parcelRate: round.parcel_rate?.toString() || '',
+      routeRate: round.rate?.toString() || ''
+    });
+    setIsDialogOpen(true);
+    
+    toast({
+      title: "Edit functionality coming soon",
+      description: "Round editing will be available in the next update.",
+    });
   };
 
   if (isLoading) {
@@ -172,31 +190,22 @@ const RoundManagement = () => {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="parcelRate">Parcel Rate (£)</Label>
+                  <Label htmlFor="routeRate">Route Parcel Rate (£)</Label>
                   <Input
-                    id="parcelRate"
+                    id="routeRate"
                     type="number"
                     step="0.01"
-                    value={formData.parcelRate}
-                    onChange={(e) => handleInputChange('parcelRate', e.target.value)}
-                    placeholder="Per parcel rate"
+                    value={formData.routeRate}
+                    onChange={(e) => handleInputChange('routeRate', e.target.value)}
+                    placeholder="Per parcel rate for this route"
                   />
                 </div>
               </div>
               
               <div>
-                <Label htmlFor="routeRate">Route Parcel Rate (£)</Label>
-                <Input
-                  id="routeRate"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={formData.routeRate}
-                  onChange={(e) => handleInputChange('routeRate', e.target.value)}
-                  placeholder="Override rate for this route"
-                />
+                <Label htmlFor="description2">Additional Notes</Label>
                 <p className="text-xs text-muted-foreground mt-1">
-                  If set, this rate overrides driver base rates for this route
+                  Route rate overrides individual driver rates when set
                 </p>
               </div>
               
@@ -297,10 +306,20 @@ const RoundManagement = () => {
                   </TableCell>
                   <TableCell>
                     <div className="flex space-x-2">
-                      <Button variant="outline" size="sm">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => handleEditRound(round)}
+                        title="Edit round settings"
+                      >
                         <Settings className="h-3 w-3" />
                       </Button>
-                      <Button variant="outline" size="sm">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => handleEditRound(round)}
+                        title="Edit round details"
+                      >
                         Edit
                       </Button>
                     </div>
