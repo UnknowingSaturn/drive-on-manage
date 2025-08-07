@@ -394,6 +394,69 @@ export type Database = {
           },
         ]
       }
+      invitation_audit_log: {
+        Row: {
+          action: string
+          created_at: string | null
+          details: Json | null
+          id: string
+          invitation_id: string | null
+          ip_address: string | null
+          performed_by: string
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string | null
+          details?: Json | null
+          id?: string
+          invitation_id?: string | null
+          ip_address?: string | null
+          performed_by: string
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string | null
+          details?: Json | null
+          id?: string
+          invitation_id?: string | null
+          ip_address?: string | null
+          performed_by?: string
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
+      invitation_rate_limits: {
+        Row: {
+          company_id: string
+          created_at: string | null
+          id: string
+          invitations_sent: number | null
+          updated_at: string | null
+          user_id: string
+          window_start: string | null
+        }
+        Insert: {
+          company_id: string
+          created_at?: string | null
+          id?: string
+          invitations_sent?: number | null
+          updated_at?: string | null
+          user_id: string
+          window_start?: string | null
+        }
+        Update: {
+          company_id?: string
+          created_at?: string | null
+          id?: string
+          invitations_sent?: number | null
+          updated_at?: string | null
+          user_id?: string
+          window_start?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           company_id: string | null

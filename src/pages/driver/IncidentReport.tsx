@@ -13,6 +13,7 @@ import { AlertTriangle, Camera, Upload, Clock, MapPin, CheckCircle2, Phone } fro
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { sanitizeInput, sanitizeHtml } from '@/lib/security';
 
 const IncidentReport = () => {
   const { user, profile } = useAuth();
@@ -24,6 +25,7 @@ const IncidentReport = () => {
     location: '',
     description: ''
   });
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   // Get driver profile
   const { data: driverProfile } = useQuery({
@@ -55,19 +57,58 @@ const IncidentReport = () => {
     enabled: !!driverProfile?.id
   });
 
-  // Submit incident report mutation
+  // Input validation with security checks
+  const validateIncidentData = (data: typeof formData) => {
+    const errors: Record<string, string> = {};
+    
+    if (!data.incidentType.trim()) {
+      errors.incidentType = 'Incident type is required';
+    }
+    
+    if (!data.description.trim()) {
+      errors.description = 'Description is required';
+    } else if (data.description.length < 10) {
+      errors.description = 'Description must be at least 10 characters';
+    } else if (data.description.length > 1000) {
+      errors.description = 'Description must be less than 1000 characters';
+    }
+    
+    if (!data.location.trim()) {
+      errors.location = 'Location is required';
+    } else if (data.location.length > 255) {
+      errors.location = 'Location must be less than 255 characters';
+    }
+    
+    return errors;
+  };
+
+  // Submit incident report mutation with enhanced security
   const submitIncidentMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
       if (!driverProfile?.id || !profile?.company_id) {
         throw new Error('Driver profile not found');
       }
 
+      // Validate input data
+      const validationErrors = validateIncidentData(data);
+      if (Object.keys(validationErrors).length > 0) {
+        setFormErrors(validationErrors);
+        throw new Error('Please fix validation errors');
+      }
+
+      // Sanitize inputs to prevent XSS attacks
+      const sanitizedData = {
+        incidentType: sanitizeInput(data.incidentType),
+        location: sanitizeInput(data.location),
+        description: sanitizeHtml(data.description) // Allow basic formatting but sanitize
+      };
+
       const incidentData = {
         driver_id: driverProfile.id,
         company_id: profile.company_id,
-        incident_type: data.incidentType,
-        location: data.location,
-        description: data.description,
+        incident_type: sanitizedData.incidentType,
+        location: sanitizedData.location,
+        description: sanitizedData.description,
         incident_date: new Date().toISOString(),
         status: 'reported'
       };
@@ -90,6 +131,7 @@ const IncidentReport = () => {
         location: '',
         description: ''
       });
+      setFormErrors({});
     },
     onError: (error) => {
       toast({
@@ -100,16 +142,16 @@ const IncidentReport = () => {
     }
   });
 
+  const handleInputChange = (field: string, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+    // Clear error when user starts typing
+    if (formErrors[field]) {
+      setFormErrors(prev => ({ ...prev, [field]: '' }));
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.incidentType || !formData.description) {
-      toast({
-        title: "Missing information",
-        description: "Please fill in all required fields",
-        variant: "destructive",
-      });
-      return;
-    }
     submitIncidentMutation.mutate(formData);
   };
 
@@ -216,7 +258,7 @@ const IncidentReport = () => {
                       </Label>
                       <Select
                         value={formData.incidentType}
-                        onValueChange={(value) => setFormData(prev => ({ ...prev, incidentType: value }))}
+                        onValueChange={(value) => handleInputChange('incidentType', value)}
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="Select incident type" />
@@ -229,6 +271,9 @@ const IncidentReport = () => {
                           ))}
                         </SelectContent>
                       </Select>
+                      {formErrors.incidentType && (
+                        <p className="text-sm text-destructive">{formErrors.incidentType}</p>
+                      )}
                     </div>
                     
                     <div className="space-y-2">
@@ -238,9 +283,15 @@ const IncidentReport = () => {
                       <Input
                         id="location"
                         value={formData.location}
-                        onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value }))}
+                        onChange={(e) => handleInputChange('location', e.target.value)}
                         placeholder="Where did the incident occur?"
+                        className={formErrors.location ? 'border-destructive' : ''}
+                        maxLength={255}
+                        required
                       />
+                      {formErrors.location && (
+                        <p className="text-sm text-destructive">{formErrors.location}</p>
+                      )}
                     </div>
                   </div>
 
@@ -251,11 +302,19 @@ const IncidentReport = () => {
                     <Textarea
                       id="description"
                       value={formData.description}
-                      onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                      placeholder="Provide a detailed description of what happened, including time, circumstances, and any damage or injuries..."
+                      onChange={(e) => handleInputChange('description', e.target.value)}
+                      placeholder="Provide a detailed description of what happened... (10-1000 characters)"
                       rows={4}
                       required
+                      maxLength={1000}
+                      className={formErrors.description ? 'border-destructive' : ''}
                     />
+                    {formErrors.description && (
+                      <p className="text-sm text-destructive">{formErrors.description}</p>
+                    )}
+                    <p className="text-xs text-muted-foreground">
+                      {formData.description.length}/1000 characters
+                    </p>
                   </div>
 
                   {/* Photo Upload */}

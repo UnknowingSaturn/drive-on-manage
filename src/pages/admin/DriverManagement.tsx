@@ -196,7 +196,7 @@ const DriverManagement = () => {
         }
       }
 
-      const { data, error } = await supabase.functions.invoke('enhanced-driver-invite', {
+      const { data, error } = await supabase.functions.invoke('secure-staff-invite', {
         body: {
           ...sanitizedData,
           companyId: companyId
