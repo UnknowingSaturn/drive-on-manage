@@ -268,19 +268,19 @@ const DriverOnboarding = () => {
 
   const completeOnboarding = async () => {
     if (!invitation) return;
+    setLoading(true);
 
     try {
-      let userId: string;
-      let authSession: any = null;
-
-      // Create user account if not exists
+      // Always try to create/sign in the user first
+      let authResult;
+      
       if (!user) {
-        console.log('Creating new user account...');
-        const { data: authData, error: authError } = await supabase.auth.signUp({
+        // Try to sign up
+        authResult = await supabase.auth.signUp({
           email: invitation.email,
           password: formData.password,
           options: {
-            emailRedirectTo: window.location.origin,
+            emailRedirectTo: `${window.location.origin}/dashboard`,
             data: {
               first_name: invitation.first_name,
               last_name: invitation.last_name,
@@ -289,104 +289,73 @@ const DriverOnboarding = () => {
           }
         });
 
-        if (authError) {
-          console.error('Auth error:', authError);
-          throw authError;
+        if (authResult.error) {
+          if (authResult.error.message?.includes('User already registered')) {
+            // User exists, try to sign in instead
+            authResult = await supabase.auth.signInWithPassword({
+              email: invitation.email,
+              password: formData.password,
+            });
+          }
+          
+          if (authResult.error) {
+            throw new Error(`Authentication failed: ${authResult.error.message}`);
+          }
         }
-
-        if (!authData.user) {
-          throw new Error('Failed to create user account');
-        }
-
-        userId = authData.user.id;
-        authSession = authData.session;
-        console.log('User created with ID:', userId);
-
-        // Ensure the session is properly set
-        if (authSession) {
-          await supabase.auth.setSession(authSession);
-          console.log('Auth session set successfully');
-        }
-
-        // Wait a moment for the auth state to propagate
-        await new Promise(resolve => setTimeout(resolve, 1500));
       } else {
-        userId = user.id;
-        console.log('Using existing user ID:', userId);
+        authResult = { data: { user, session: null } };
       }
 
-      // Verify auth state before creating profile
-      const { data: { session: currentSession } } = await supabase.auth.getSession();
-      console.log('Current auth session before profile creation:', currentSession ? 'Present' : 'Missing');
-      
-      if (!currentSession) {
-        throw new Error('Authentication session lost. Please try again.');
+      if (!authResult.data.user) {
+        throw new Error('Authentication failed');
       }
 
-      // Create driver profile with enhanced error handling
-      console.log('Creating driver profile...');
-      const driverProfileData = {
-        user_id: userId,
-        company_id: invitation.company_id,
-        hourly_rate: invitation.hourly_rate,
-        driving_license_number: formData.licenseNumber,
-        license_expiry: formData.licenseExpiry || null,
-        status: 'active',
-        onboarding_completed_at: new Date().toISOString(),
-        onboarding_progress: {
-          personal_info: true,
-          account_setup: true,
-          documents_uploaded: true,
-          terms_accepted: true,
-        },
-      };
+      const userId = authResult.data.user.id;
 
-      console.log('Inserting driver profile with data:', driverProfileData);
-      
+      // Create driver profile directly
       const { data: profileData, error: profileError } = await supabase
         .from('driver_profiles')
-        .insert(driverProfileData)
-        .select();
+        .insert({
+          user_id: userId,
+          company_id: invitation.company_id,
+          hourly_rate: invitation.hourly_rate,
+          driving_license_number: formData.licenseNumber,
+          license_expiry: formData.licenseExpiry || null,
+          status: 'active',
+          onboarding_completed_at: new Date().toISOString(),
+          onboarding_progress: {
+            personal_info: true,
+            account_setup: true,
+            documents_uploaded: true,
+            terms_accepted: true,
+          },
+        })
+        .select()
+        .single();
 
       if (profileError) {
-        console.error('Driver profile creation error:', profileError);
-        
-        // Enhanced error messaging
-        if (profileError.message?.includes('row-level security')) {
-          throw new Error('Authentication required. Please try refreshing the page and completing onboarding again.');
-        } else if (profileError.message?.includes('duplicate')) {
-          throw new Error('A driver profile already exists for this user.');
-        } else {
-          throw new Error(`Failed to create driver profile: ${profileError.message}`);
-        }
+        throw new Error(`Profile creation failed: ${profileError.message}`);
       }
 
-      console.log('Driver profile created successfully:', profileData);
-
       // Update invitation status
-      const { error: inviteUpdateError } = await supabase
+      await supabase
         .from('driver_invitations')
         .update({
           status: 'accepted',
           accepted_at: new Date().toISOString(),
-          driver_profile_id: profileData?.[0]?.id,
+          driver_profile_id: profileData.id,
         })
         .eq('id', invitation.id);
 
-      if (inviteUpdateError) {
-        console.warn('Failed to update invitation status:', inviteUpdateError);
-        // Don't throw error for this as the main onboarding succeeded
-      }
-
       toast({
         title: "Welcome to the team! 🎉",
-        description: "Your onboarding is complete. Redirecting to your dashboard...",
+        description: "Onboarding complete. Redirecting...",
       });
 
-      // Force page reload to ensure clean auth state
+      // Simple redirect after a short delay
       setTimeout(() => {
         window.location.href = '/dashboard';
-      }, 2000);
+      }, 1000);
 
     } catch (error: any) {
       console.error('Onboarding completion error:', error);
@@ -395,6 +364,8 @@ const DriverOnboarding = () => {
         description: error.message || 'An unexpected error occurred. Please try again.',
         variant: "destructive",
       });
+    } finally {
+      setLoading(false);
     }
   };
 
