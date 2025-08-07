@@ -74,17 +74,18 @@ export function AppSidebar() {
     <Sidebar 
       variant="sidebar"
       collapsible="icon"
+      className="safe-left"
     >
-      <SidebarHeader className="border-b border-sidebar-border p-4 bg-gradient-dark">
-        <div className="flex items-center space-x-3">
+      <SidebarHeader className="border-b border-sidebar-border p-3 md:p-4 bg-gradient-dark">
+        <div className="flex items-center space-x-2 md:space-x-3">
           <div className="relative">
-            <Truck className="h-8 w-8 text-primary animate-truck-drive" />
-            <div className="absolute inset-0 h-8 w-8 text-primary-glow opacity-50 blur-sm animate-truck-drive"></div>
+            <Truck className="h-6 w-6 md:h-8 md:w-8 text-primary animate-truck-drive" />
+            <div className="absolute inset-0 h-6 w-6 md:h-8 md:w-8 text-primary-glow opacity-50 blur-sm animate-truck-drive"></div>
           </div>
           {!collapsed && (
-            <div>
-              <h2 className="text-lg font-bold text-gradient">LogiFlow</h2>
-              <p className="text-sm text-sidebar-foreground/70">
+            <div className="min-w-0 flex-1">
+              <h2 className="text-base md:text-lg font-bold text-gradient truncate">LogiFlow</h2>
+              <p className="text-xs md:text-sm text-sidebar-foreground/70 truncate">
                 {profile?.first_name || 'User'}
               </p>
             </div>
@@ -93,31 +94,35 @@ export function AppSidebar() {
         {!collapsed && (
           <Badge 
             variant={isAdmin ? "default" : "secondary"} 
-            className={`w-fit mt-2 ${isAdmin ? 'bg-gradient-primary border-primary/30' : 'bg-secondary/50 border-secondary/30'}`}
+            className={`w-fit mt-2 text-xs ${isAdmin ? 'bg-gradient-primary border-primary/30' : 'bg-secondary/50 border-secondary/30'}`}
           >
             {isAdmin ? "Admin" : "Driver"}
           </Badge>
         )}
       </SidebarHeader>
 
-      <SidebarContent>
+      <SidebarContent className="overflow-y-auto">
         <SidebarGroup>
-          <SidebarGroupLabel className="text-sidebar-foreground/70">
+          <SidebarGroupLabel className="text-sidebar-foreground/70 text-xs md:text-sm px-3 md:px-4">
             {isAdmin ? "Administration" : "Driver Tools"}
           </SidebarGroupLabel>
 
           <SidebarGroupContent>
-            <SidebarMenu>
+            <SidebarMenu className="space-y-1">
               {items.map((item) => (
                 <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
+                  <SidebarMenuButton asChild className="min-h-[44px] px-3 md:px-4">
                     <NavLink 
                       to={item.url} 
                       end 
                       className={({ isActive }) => getNavCls({ isActive })}
                     >
-                      <item.icon className="h-4 w-4" />
-                      {!collapsed && <span>{item.title}</span>}
+                      <item.icon className="h-4 w-4 md:h-5 md:w-5 flex-shrink-0" />
+                      {!collapsed && (
+                        <span className="text-sm md:text-base truncate min-w-0 flex-1">
+                          {item.title}
+                        </span>
+                      )}
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -128,19 +133,23 @@ export function AppSidebar() {
 
         {isAdmin && (
           <SidebarGroup>
-            <SidebarGroupLabel className="text-sidebar-foreground/70">
+            <SidebarGroupLabel className="text-sidebar-foreground/70 text-xs md:text-sm px-3 md:px-4">
               Settings
             </SidebarGroupLabel>
             <SidebarGroupContent>
-              <SidebarMenu>
+              <SidebarMenu className="space-y-1">
                 <SidebarMenuItem>
-                  <SidebarMenuButton asChild>
+                  <SidebarMenuButton asChild className="min-h-[44px] px-3 md:px-4">
                     <NavLink 
                       to="/admin/settings" 
                       className={({ isActive }) => getNavCls({ isActive })}
                     >
-                      <Settings className="h-4 w-4" />
-                      {!collapsed && <span>Settings</span>}
+                      <Settings className="h-4 w-4 md:h-5 md:w-5 flex-shrink-0" />
+                      {!collapsed && (
+                        <span className="text-sm md:text-base truncate min-w-0 flex-1">
+                          Settings
+                        </span>
+                      )}
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -150,15 +159,19 @@ export function AppSidebar() {
         )}
       </SidebarContent>
 
-      <SidebarFooter className="border-t border-sidebar-border p-4 bg-gradient-dark">
+      <SidebarFooter className="border-t border-sidebar-border p-3 md:p-4 bg-gradient-dark safe-bottom">
         <Button 
           variant="outline" 
           onClick={signOut}
-          className="w-full justify-start hover:bg-destructive/20 hover:border-destructive/30 hover:text-destructive transition-all duration-300 group"
+          className="w-full justify-start hover:bg-destructive/20 hover:border-destructive/30 hover:text-destructive transition-all duration-300 group min-h-[44px]"
           size={collapsed ? "icon" : "default"}
         >
-          <LogOut className="h-4 w-4 group-hover:animate-pulse" />
-          {!collapsed && <span className="ml-2">Sign Out</span>}
+          <LogOut className="h-4 w-4 md:h-5 md:w-5 group-hover:animate-pulse flex-shrink-0" />
+          {!collapsed && (
+            <span className="ml-2 text-sm md:text-base truncate min-w-0 flex-1">
+              Sign Out
+            </span>
+          )}
         </Button>
       </SidebarFooter>
     </Sidebar>

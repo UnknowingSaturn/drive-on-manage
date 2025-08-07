@@ -208,46 +208,50 @@ const AdminDashboard = () => {
         <AppSidebar />
         
         <SidebarInset className="flex-1">
-          <header className="border-b bg-card sticky top-0 z-10">
-            <div className="flex items-center px-4 py-4">
-              <SidebarTrigger className="mr-4" />
-              <div>
-                <h1 className="text-xl font-semibold text-foreground">Admin Dashboard</h1>
-                <p className="text-sm text-muted-foreground">Overview of your logistics operations</p>
+          <header className="border-b bg-card sticky top-0 z-10 safe-top">
+            <div className="flex items-center px-3 md:px-4 py-3 md:py-4">
+              <SidebarTrigger className="mr-3 md:mr-4 min-h-[44px] min-w-[44px]" />
+              <div className="min-w-0 flex-1">
+                <h1 className="text-lg md:text-xl font-semibold text-foreground truncate">Admin Dashboard</h1>
+                <p className="text-xs md:text-sm text-muted-foreground truncate hidden-mobile">
+                  Overview of your logistics operations
+                </p>
               </div>
             </div>
           </header>
 
-          <main className="p-6 space-y-6">
+          <main className="p-3 md:p-6 space-y-4 md:space-y-6 container-mobile">
             {/* Welcome Section */}
-            <div className="flex justify-between items-center">
-              <div>
-                <h2 className="text-3xl font-bold text-gradient">Welcome back, {profile?.first_name}!</h2>
-                <p className="text-muted-foreground mt-1">
-                  Here's what's happening with your logistics operations today.
+            <div className="flex flex-col space-y-3 md:flex-row md:justify-between md:items-center md:space-y-0">
+              <div className="min-w-0 flex-1">
+                <h2 className="text-xl md:text-3xl font-bold text-gradient truncate">Welcome back, {profile?.first_name}!</h2>
+                <p className="text-muted-foreground mt-1 text-sm md:text-base">
+                  Here's what's happening with your operations today.
                 </p>
               </div>
               <Button 
                 onClick={() => navigate('/admin/reports')}
-                className="logistics-button"
+                className="logistics-button btn-mobile w-full md:w-auto"
+                size="sm"
               >
                 <FileText className="h-4 w-4 mr-2" />
-                View Full Reports
+                <span className="hidden-mobile">View Full Reports</span>
+                <span className="mobile-only">Reports</span>
               </Button>
             </div>
 
             {/* Summary Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <Card className="logistics-card hover-lift">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Active Drivers</CardTitle>
-                  <Users className="h-4 w-4 text-primary" />
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
+              <Card className="logistics-card hover-lift card-mobile">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3 md:p-6">
+                  <CardTitle className="text-xs md:text-sm font-medium truncate">Active Drivers</CardTitle>
+                  <Users className="h-4 w-4 md:h-5 md:w-5 text-primary flex-shrink-0" />
                 </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-gradient">
+                <CardContent className="p-3 md:p-6 pt-0">
+                  <div className="text-xl md:text-2xl font-bold text-gradient">
                     {driversData?.active || 0}
                   </div>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-muted-foreground truncate">
                     of {driversData?.total || 0} total drivers
                   </p>
                   <Progress 
@@ -317,57 +321,57 @@ const AdminDashboard = () => {
             </div>
 
             {/* Performance Overview */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <Card className="logistics-card bg-gradient-dark">
-                <CardHeader>
-                  <CardTitle className="flex items-center text-gradient">
-                    <TrendingUp className="h-5 w-5 mr-2" />
-                    Weekly Performance
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 md:gap-6">
+              <Card className="logistics-card bg-gradient-dark card-mobile">
+                <CardHeader className="p-3 md:p-6">
+                  <CardTitle className="flex items-center text-gradient text-base md:text-lg">
+                    <TrendingUp className="h-4 w-4 md:h-5 md:w-5 mr-2 flex-shrink-0" />
+                    <span className="truncate">Weekly Performance</span>
                   </CardTitle>
-                  <CardDescription>Last 7 days overview</CardDescription>
+                  <CardDescription className="text-xs md:text-sm">Last 7 days overview</CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
+                <CardContent className="p-3 md:p-6 pt-0">
+                  <div className="space-y-3 md:space-y-4">
                     <div className="flex justify-between items-center">
-                      <span className="text-sm">Total Delivered</span>
-                      <span className="font-semibold">{performanceData?.totalDelivered || 0} parcels</span>
+                      <span className="text-xs md:text-sm">Total Delivered</span>
+                      <span className="font-semibold text-xs md:text-sm">{performanceData?.totalDelivered || 0} parcels</span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-sm">Total Pay</span>
-                      <span className="font-semibold">£{performanceData?.totalPay?.toFixed(2) || '0.00'}</span>
+                      <span className="text-xs md:text-sm">Total Pay</span>
+                      <span className="font-semibold text-xs md:text-sm">£{performanceData?.totalPay?.toFixed(2) || '0.00'}</span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-sm">Avg. per Day</span>
-                      <span className="font-semibold">{performanceData?.avgDeliveryRate || 0} parcels</span>
+                      <span className="text-xs md:text-sm">Avg. per Day</span>
+                      <span className="font-semibold text-xs md:text-sm">{performanceData?.avgDeliveryRate || 0} parcels</span>
                     </div>
                   </div>
                 </CardContent>
               </Card>
 
-              <Card className="lg:col-span-2 logistics-card">
-                <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <Clock className="h-5 w-5 mr-2 text-primary" />
-                    Recent EOD Reports
+              <Card className="lg:col-span-2 logistics-card card-mobile">
+                <CardHeader className="p-3 md:p-6">
+                  <CardTitle className="flex items-center text-base md:text-lg">
+                    <Clock className="h-4 w-4 md:h-5 md:w-5 mr-2 text-primary flex-shrink-0" />
+                    <span className="truncate">Recent EOD Reports</span>
                   </CardTitle>
-                  <CardDescription>Latest end-of-day submissions</CardDescription>
+                  <CardDescription className="text-xs md:text-sm">Latest end-of-day submissions</CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
+                <CardContent className="p-3 md:p-6 pt-0">
+                  <div className="space-y-2 md:space-y-3">
                     {eodData?.recent?.map((report, index) => (
-                      <div key={report.id} className="flex items-center justify-between p-3 rounded-lg bg-card/50">
-                        <div className="flex items-center space-x-3">
-                          <div className="w-2 h-2 rounded-full bg-primary"></div>
-                          <div>
-                            <p className="font-medium">{report.driver_name}</p>
-                            <p className="text-sm text-muted-foreground">
+                      <div key={report.id} className="flex items-center justify-between p-2 md:p-3 rounded-lg bg-card/50">
+                        <div className="flex items-center space-x-2 md:space-x-3 min-w-0 flex-1">
+                          <div className="w-2 h-2 rounded-full bg-primary flex-shrink-0"></div>
+                          <div className="min-w-0 flex-1">
+                            <p className="font-medium text-sm md:text-base truncate">{report.driver_name}</p>
+                            <p className="text-xs md:text-sm text-muted-foreground truncate">
                               {report.parcels_delivered} parcels - £{report.estimated_pay?.toFixed(2)}
                             </p>
                           </div>
                         </div>
-                        <div className="flex items-center space-x-2">
+                        <div className="flex items-center space-x-1 md:space-x-2 flex-shrink-0">
                           {getStatusBadge(report.status)}
-                          <span className="text-xs text-muted-foreground">
+                          <span className="text-xs text-muted-foreground hidden md:inline">
                             {format(new Date(report.log_date), 'MMM dd')}
                           </span>
                         </div>
@@ -375,9 +379,9 @@ const AdminDashboard = () => {
                     ))}
                     
                     {(!eodData?.recent || eodData.recent.length === 0) && (
-                      <div className="text-center py-6 text-muted-foreground">
-                        <FileText className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                        <p>No recent EOD reports</p>
+                      <div className="text-center py-4 md:py-6 text-muted-foreground">
+                        <FileText className="h-6 w-6 md:h-8 md:w-8 mx-auto mb-2 opacity-50" />
+                        <p className="text-sm md:text-base">No recent EOD reports</p>
                       </div>
                     )}
                   </div>
@@ -386,50 +390,50 @@ const AdminDashboard = () => {
             </div>
 
             {/* Quick Actions */}
-            <Card className="logistics-card">
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Activity className="h-5 w-5 mr-2 text-primary" />
-                  Quick Actions
+            <Card className="logistics-card card-mobile">
+              <CardHeader className="p-3 md:p-6">
+                <CardTitle className="flex items-center text-base md:text-lg">
+                  <Activity className="h-4 w-4 md:h-5 md:w-5 mr-2 text-primary flex-shrink-0" />
+                  <span className="truncate">Quick Actions</span>
                 </CardTitle>
-                <CardDescription>Common administrative tasks</CardDescription>
+                <CardDescription className="text-xs md:text-sm">Common administrative tasks</CardDescription>
               </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <CardContent className="p-3 md:p-6 pt-0">
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 md:gap-4">
                   <Button 
                     variant="outline" 
-                    className="h-20 flex-col space-y-2 hover-lift"
+                    className="h-16 md:h-20 flex-col space-y-1 md:space-y-2 hover-lift btn-mobile text-xs md:text-sm"
                     onClick={() => navigate('/admin/drivers')}
                   >
-                    <Users className="h-6 w-6" />
-                    <span>Manage Drivers</span>
+                    <Users className="h-4 w-4 md:h-6 md:w-6" />
+                    <span className="truncate">Manage Drivers</span>
                   </Button>
                   
                   <Button 
                     variant="outline" 
-                    className="h-20 flex-col space-y-2 hover-lift"
+                    className="h-16 md:h-20 flex-col space-y-1 md:space-y-2 hover-lift btn-mobile text-xs md:text-sm"
                     onClick={() => navigate('/admin/vans')}
                   >
-                    <Truck className="h-6 w-6" />
-                    <span>Manage Vans</span>
+                    <Truck className="h-4 w-4 md:h-6 md:w-6" />
+                    <span className="truncate">Manage Vans</span>
                   </Button>
                   
                   <Button 
                     variant="outline" 
-                    className="h-20 flex-col space-y-2 hover-lift"
+                    className="h-16 md:h-20 flex-col space-y-1 md:space-y-2 hover-lift btn-mobile text-xs md:text-sm"
                     onClick={() => navigate('/admin/rounds')}
                   >
-                    <MapPin className="h-6 w-6" />
-                    <span>Manage Rounds</span>
+                    <MapPin className="h-4 w-4 md:h-6 md:w-6" />
+                    <span className="truncate">Manage Rounds</span>
                   </Button>
                   
                   <Button 
                     variant="outline" 
-                    className="h-20 flex-col space-y-2 hover-lift"
+                    className="h-16 md:h-20 flex-col space-y-1 md:space-y-2 hover-lift btn-mobile text-xs md:text-sm"
                     onClick={() => navigate('/admin/schedule')}
                   >
-                    <Calendar className="h-6 w-6" />
-                    <span>View Schedule</span>
+                    <Calendar className="h-4 w-4 md:h-6 md:w-6" />
+                    <span className="truncate">View Schedule</span>
                   </Button>
                 </div>
               </CardContent>
