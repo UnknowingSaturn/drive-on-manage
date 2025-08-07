@@ -6,7 +6,7 @@ export const createDriverInvitationSchema = z.object({
   first_name: z.string().min(1, 'First name is required').max(50, 'First name too long'),
   last_name: z.string().min(1, 'Last name is required').max(50, 'Last name too long'),
   phone: z.string().regex(/^\+?[1-9]\d{1,14}$/, 'Invalid phone format').optional(),
-  hourly_rate: z.number().min(0, 'Hourly rate must be positive').optional(),
+  parcel_rate: z.number().min(0, 'Parcel rate must be positive').optional(),
   company_id: z.string().uuid('Invalid company ID'),
 });
 

@@ -6,7 +6,7 @@ export const emailSchema = z.string().email('Invalid email format').min(1, 'Emai
 export const passwordSchema = z.string().min(8, 'Password must be at least 8 characters').max(128, 'Password too long');
 export const nameSchema = z.string().min(2, 'Name must be at least 2 characters').max(50, 'Name too long').regex(/^[a-zA-Z\s]+$/, 'Name can only contain letters and spaces');
 export const phoneSchema = z.string().regex(/^[\+]?[1-9][\d]{0,15}$/, 'Invalid phone number format').optional().or(z.literal(''));
-export const hourlyRateSchema = z.string().regex(/^\d+(\.\d{1,2})?$/, 'Invalid rate format').transform(Number).refine(val => val >= 0 && val <= 1000, 'Rate must be between 0 and 1000');
+export const parcelRateSchema = z.string().regex(/^\d+(\.\d{1,2})?$/, 'Invalid rate format').transform(Number).refine(val => val >= 0 && val <= 100, 'Rate must be between 0 and 100');
 
 // XSS sanitization
 export const sanitizeInput = (input: string): string => {

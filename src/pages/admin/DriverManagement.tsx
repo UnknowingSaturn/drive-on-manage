@@ -18,7 +18,7 @@ import { ConfirmDelete } from '@/components/ConfirmDelete';
 import { SmartSearch } from '@/components/SmartSearch';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Progress } from '@/components/ui/progress';
-import { validateForm, sanitizeInput, emailSchema, nameSchema, phoneSchema, hourlyRateSchema } from '@/lib/security';
+import { validateForm, sanitizeInput, emailSchema, nameSchema, phoneSchema, parcelRateSchema } from '@/lib/security';
 import { z } from 'zod';
 
 // Validation schema for driver invitation
@@ -27,7 +27,7 @@ const driverInviteSchema = z.object({
   firstName: nameSchema,
   lastName: nameSchema,
   phone: phoneSchema,
-  hourlyRate: z.string().optional()
+  parcelRate: z.string().optional()
 });
 
 const DriverManagement = () => {
@@ -45,13 +45,12 @@ const DriverManagement = () => {
     firstName: '',
     lastName: '',
     phone: '',
-    hourlyRate: ''
+    parcelRate: ''
   });
   const [editFormData, setEditFormData] = useState({
     firstName: '',
     lastName: '',
     phone: '',
-    hourlyRate: '',
     parcelRate: '',
     status: '',
     assignedVanId: ''
@@ -111,7 +110,7 @@ const DriverManagement = () => {
         invitation_status: 'pending',
         user_id: null,
         company_id: invite.company_id,
-        hourly_rate: invite.hourly_rate,
+        parcel_rate: invite.parcel_rate || invite.hourly_rate,
         created_at: invite.created_at,
         expires_at: invite.expires_at,
         profiles: {
@@ -162,7 +161,7 @@ const DriverManagement = () => {
       firstName: nameSchema,
       lastName: nameSchema,
       phone: phoneSchema,
-      hourlyRate: z.string().optional()
+      parcelRate: z.string().optional()
     }[field];
 
     if (fieldSchema) {
@@ -194,7 +193,7 @@ const DriverManagement = () => {
         firstName: sanitizeInput(driverData.firstName),
         lastName: sanitizeInput(driverData.lastName),
         phone: sanitizeInput(driverData.phone),
-        hourlyRate: driverData.hourlyRate
+        parcelRate: driverData.parcelRate
       };
 
       // Get fresh profile data
@@ -264,7 +263,7 @@ const DriverManagement = () => {
         firstName: '',
         lastName: '',
         phone: '',
-        hourlyRate: ''
+        parcelRate: ''
       });
       setFormErrors({});
       setShowFormErrors(false);
@@ -382,7 +381,7 @@ const DriverManagement = () => {
       const { error: driverError } = await supabase
         .from('driver_profiles')
         .update({
-          hourly_rate: updates.hourlyRate ? parseFloat(updates.hourlyRate) : null,
+          
           parcel_rate: updates.parcelRate ? parseFloat(updates.parcelRate) : null,
           status: updates.status,
           assigned_van_id: updates.assignedVanId || null,
@@ -455,7 +454,7 @@ const DriverManagement = () => {
       firstName: driver.profiles?.first_name || '',
       lastName: driver.profiles?.last_name || '',
       phone: driver.profiles?.phone || '',
-      hourlyRate: driver.hourly_rate?.toString() || '',
+      
       parcelRate: driver.parcel_rate?.toString() || '',
       status: driver.status || 'pending',
       assignedVanId: driver.assigned_van_id || ''
@@ -639,23 +638,23 @@ const DriverManagement = () => {
                     </div>
                     
                     <div>
-                      <Label htmlFor="hourlyRate">Hourly Rate (£)</Label>
-                      <Input
-                        id="hourlyRate"
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        max="1000"
-                        value={formData.hourlyRate}
-                        onChange={(e) => handleInputChange('hourlyRate', e.target.value)}
-                        placeholder="Enter hourly rate"
-                        aria-describedby={formErrors.hourlyRate ? 'hourlyRate-error' : undefined}
-                      />
-                      {formErrors.hourlyRate && (
-                        <p id="hourlyRate-error" className="text-sm text-destructive mt-1">
-                          {formErrors.hourlyRate}
-                        </p>
-                      )}
+                       <Label htmlFor="parcelRate">Parcel Rate (£)</Label>
+                       <Input
+                         id="parcelRate"
+                         type="number"
+                         step="0.01"
+                         min="0"
+                         max="100"
+                         value={formData.parcelRate}
+                         onChange={(e) => handleInputChange('parcelRate', e.target.value)}
+                         placeholder="Enter parcel rate"
+                         aria-describedby={formErrors.parcelRate ? 'parcelRate-error' : undefined}
+                       />
+                       {formErrors.parcelRate && (
+                         <p id="parcelRate-error" className="text-sm text-destructive mt-1">
+                           {formErrors.parcelRate}
+                         </p>
+                       )}
                     </div>
                     
                     <Button 
@@ -720,19 +719,6 @@ const DriverManagement = () => {
                     </div>
                     
                     <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="editHourlyRate">Hourly Rate (£)</Label>
-                        <Input
-                          id="editHourlyRate"
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          max="1000"
-                          value={editFormData.hourlyRate}
-                          onChange={(e) => setEditFormData(prev => ({ ...prev, hourlyRate: e.target.value }))}
-                          placeholder="Enter hourly rate"
-                        />
-                      </div>
                       <div>
                         <Label htmlFor="editParcelRate">Parcel Rate (£)</Label>
                         <Input
@@ -887,9 +873,9 @@ const DriverManagement = () => {
                             <TableCell className="hidden sm:table-cell">
                               {driver.profiles?.phone || '-'}
                             </TableCell>
-                            <TableCell className="hidden md:table-cell">
-                              {driver.hourly_rate ? `£${driver.hourly_rate}/hr` : '-'}
-                            </TableCell>
+                             <TableCell className="hidden md:table-cell">
+                               {driver.parcel_rate ? `£${driver.parcel_rate}/parcel` : '-'}
+                             </TableCell>
                             <TableCell className="hidden lg:table-cell">
                               {driver.assigned_van ? (
                                 <Badge variant="outline" className="text-xs">
