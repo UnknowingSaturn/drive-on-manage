@@ -241,7 +241,7 @@ const AdminDashboard = () => {
             </div>
 
             {/* Summary Stats Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
               <Card className="logistics-card hover-lift card-mobile">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3 md:p-6">
                   <CardTitle className="text-xs md:text-sm font-medium truncate">Active Drivers</CardTitle>
@@ -261,16 +261,16 @@ const AdminDashboard = () => {
                 </CardContent>
               </Card>
 
-              <Card className="logistics-card hover-lift">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Active Vans</CardTitle>
-                  <Truck className="h-4 w-4 text-primary" />
+              <Card className="logistics-card hover-lift card-mobile">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3 md:p-6">
+                  <CardTitle className="text-xs md:text-sm font-medium truncate">Active Vans</CardTitle>
+                  <Truck className="h-4 w-4 md:h-5 md:w-5 text-primary flex-shrink-0" />
                 </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-gradient">
+                <CardContent className="p-3 md:p-6 pt-0">
+                  <div className="text-xl md:text-2xl font-bold text-gradient">
                     {vansData?.active || 0}
                   </div>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-muted-foreground truncate">
                     of {vansData?.total || 0} total vans
                   </p>
                   <Progress 
@@ -280,16 +280,16 @@ const AdminDashboard = () => {
                 </CardContent>
               </Card>
 
-              <Card className="logistics-card hover-lift">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Active Rounds</CardTitle>
-                  <MapPin className="h-4 w-4 text-primary" />
+              <Card className="logistics-card hover-lift card-mobile">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3 md:p-6">
+                  <CardTitle className="text-xs md:text-sm font-medium truncate">Active Rounds</CardTitle>
+                  <MapPin className="h-4 w-4 md:h-5 md:w-5 text-primary flex-shrink-0" />
                 </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-gradient">
+                <CardContent className="p-3 md:p-6 pt-0">
+                  <div className="text-xl md:text-2xl font-bold text-gradient">
                     {roundsData?.active || 0}
                   </div>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-muted-foreground truncate">
                     of {roundsData?.total || 0} total rounds
                   </p>
                   <Progress 
@@ -299,16 +299,16 @@ const AdminDashboard = () => {
                 </CardContent>
               </Card>
 
-              <Card className="logistics-card hover-lift">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">EOD Reports</CardTitle>
-                  <FileText className="h-4 w-4 text-primary" />
+              <Card className="logistics-card hover-lift card-mobile">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3 md:p-6">
+                  <CardTitle className="text-xs md:text-sm font-medium truncate">EOD Reports</CardTitle>
+                  <FileText className="h-4 w-4 md:h-5 md:w-5 text-primary flex-shrink-0" />
                 </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-gradient">
+                <CardContent className="p-3 md:p-6 pt-0">
+                  <div className="text-xl md:text-2xl font-bold text-gradient">
                     {eodData?.today || 0}
                   </div>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-muted-foreground truncate">
                     submitted today
                   </p>
                   {(eodData?.pending || 0) > 0 && (

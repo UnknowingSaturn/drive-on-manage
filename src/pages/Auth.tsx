@@ -77,17 +77,18 @@ const Auth = () => {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-3 md:p-4 safe-top safe-bottom">
-      <div className="w-full max-w-md">
-        <div className="text-center mb-6 md:mb-8">
-          <div className="flex items-center justify-center mb-3 md:mb-4">
-            <Truck className="h-8 w-8 md:h-10 md:w-10 text-primary mr-2" />
-            <h1 className="text-2xl md:text-3xl font-bold text-foreground">LogiFlow</h1>
-          </div>
-          <p className="text-sm md:text-base text-muted-foreground">Streamline your logistics operations</p>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-secondary p-4 md:p-8 safe-top safe-bottom">
+      <div className="w-full max-w-md space-y-6 md:space-y-8">
+        <div className="text-center space-y-2">
+          <h1 className="text-2xl md:text-4xl font-bold text-gradient">
+            LogiFlow
+          </h1>
+          <p className="text-muted-foreground text-sm md:text-base">
+            Streamline your logistics operations
+          </p>
         </div>
 
-        <Card className="p-4 md:p-6">
+        <Card className="logistics-card p-4 md:p-8">
           <CardHeader className="p-0 mb-4 md:mb-6">
             <CardTitle className="text-lg md:text-xl">Welcome</CardTitle>
             <CardDescription className="text-sm">
