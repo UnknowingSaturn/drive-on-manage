@@ -94,15 +94,15 @@ const Dashboard = () => {
         <SidebarInset className="flex-1 no-overflow">
           {/* Header */}
           <header className="border-b bg-card sticky top-0 z-10">
-            <div className="flex items-center justify-between mobile-padding py-3 md:py-4">
+            <div className="mobile-flex-responsive mobile-container py-3 md:py-4">
               <div className="flex items-center space-x-3">
-                <SidebarTrigger className="mr-2 hidden md:flex" />
+                <SidebarTrigger className="mr-2 mobile-hidden" />
                 <MobileNav className="md:hidden" />
                 <div>
-                  <h1 className="mobile-heading font-semibold text-foreground">
+                  <h1 className="mobile-heading text-foreground">
                     Driver Dashboard
                   </h1>
-                  <p className="text-xs md:text-sm text-muted-foreground">
+                  <p className="text-responsive-sm text-muted-foreground">
                     Welcome back, {profile?.first_name || user?.email}
                   </p>
                 </div>
@@ -111,12 +111,12 @@ const Dashboard = () => {
           </header>
 
           {/* Main Content */}
-          <main className="mobile-padding py-4 md:py-6">
+          <main className="mobile-container py-4 md:py-6">
         {isDriver && (
-          <div className="space-y-6 md:space-y-8 animate-fade-in">
+          <div className="mobile-space-y animate-fade-in">
             <div>
-              <h2 className="mobile-heading font-bold mb-2 text-gradient">Driver Dashboard</h2>
-              <p className="mobile-text text-muted-foreground">
+              <h2 className="mobile-heading text-gradient">Driver Dashboard</h2>
+              <p className="text-responsive-base text-muted-foreground">
                 Your daily logistics operations
               </p>
             </div>
@@ -133,55 +133,55 @@ const Dashboard = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4">
-                  <div className="text-center p-4 rounded-lg bg-card/50 hover-lift">
-                    <div className="text-2xl font-bold text-gradient">
+                <div className="mobile-grid-auto">
+                  <div className="text-center mobile-card-compact bg-card/50 hover-lift">
+                    <div className="text-xl sm:text-2xl font-bold text-gradient">
                       {todaySOD?.parcel_count || 0}
                     </div>
-                    <div className="text-sm text-muted-foreground">Parcels Assigned</div>
+                    <div className="text-responsive-sm text-muted-foreground">Parcels Assigned</div>
                     <div className="flex items-center justify-center mt-2">
                       {todaySOD ? (
                         <div className="flex items-center text-success">
                           <CheckCircle2 className="h-3 w-3 mr-1" />
-                          <span className="text-xs">Day Started</span>
+                          <span className="text-responsive-xs">Day Started</span>
                         </div>
                       ) : (
                         <div className="flex items-center text-muted-foreground">
                           <Clock className="h-3 w-3 mr-1" />
-                          <span className="text-xs">Not Started</span>
+                          <span className="text-responsive-xs">Not Started</span>
                         </div>
                       )}
                     </div>
                   </div>
                   
-                  <div className="text-center p-4 rounded-lg bg-card/50 hover-lift">
-                    <div className="text-2xl font-bold text-success">
+                  <div className="text-center mobile-card-compact bg-card/50 hover-lift">
+                    <div className="text-xl sm:text-2xl font-bold text-success">
                       {todayEOD?.parcels_delivered || 0}
                     </div>
-                    <div className="text-sm text-muted-foreground">Delivered</div>
+                    <div className="text-responsive-sm text-muted-foreground">Delivered</div>
                     <div className="flex items-center justify-center mt-2">
                       {todayEOD ? (
                         <div className="flex items-center text-success">
                           <CheckCircle2 className="h-3 w-3 mr-1" />
-                          <span className="text-xs">Day Completed</span>
+                          <span className="text-responsive-xs">Day Completed</span>
                         </div>
                       ) : (
                         <div className="flex items-center text-muted-foreground">
                           <Clock className="h-3 w-3 mr-1" />
-                          <span className="text-xs">In Progress</span>
+                          <span className="text-responsive-xs">In Progress</span>
                         </div>
                       )}
                     </div>
                   </div>
                   
-                  <div className="text-center p-4 rounded-lg bg-card/50 hover-lift">
-                    <div className="text-2xl font-bold text-gradient">
+                  <div className="text-center mobile-card-compact bg-card/50 hover-lift">
+                    <div className="text-xl sm:text-2xl font-bold text-gradient">
                       £{todayEOD?.estimated_pay?.toFixed(2) || '0.00'}
                     </div>
-                    <div className="text-sm text-muted-foreground">Estimated Pay</div>
+                    <div className="text-responsive-sm text-muted-foreground">Estimated Pay</div>
                     <div className="flex items-center justify-center mt-2">
                       <div className="w-2 h-2 bg-success rounded-full mr-2 animate-pulse"></div>
-                      <span className="text-xs text-success">
+                      <span className="text-responsive-xs text-success">
                         {todayEOD?.status || 'Pending'}
                       </span>
                     </div>
@@ -191,17 +191,17 @@ const Dashboard = () => {
             </Card>
 
             {/* Driver Quick Actions with Enhanced Effects */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+            <div className="mobile-grid gap-4 md:gap-6">
               <Card className="logistics-card hover-lift click-shrink group">
                 <CardHeader>
-                  <CardTitle className="flex items-center">
+                  <CardTitle className="flex items-center text-responsive-lg">
                     <Clock className="h-5 w-5 text-primary mr-2" />
                     Start of Day
                     {todaySOD && (
                       <CheckCircle2 className="h-4 w-4 text-success ml-2" />
                     )}
                   </CardTitle>
-                  <CardDescription>
+                  <CardDescription className="text-responsive-sm">
                     Log your parcel count and vehicle check
                   </CardDescription>
                 </CardHeader>
@@ -219,14 +219,14 @@ const Dashboard = () => {
 
               <Card className="logistics-card hover-lift click-shrink group">
                 <CardHeader>
-                  <CardTitle className="flex items-center">
+                  <CardTitle className="flex items-center text-responsive-lg">
                     <CheckCircle2 className="h-5 w-5 text-primary mr-2" />
                     End of Day
                     {todayEOD && (
                       <CheckCircle2 className="h-4 w-4 text-success ml-2" />
                     )}
                   </CardTitle>
-                  <CardDescription>
+                  <CardDescription className="text-responsive-sm">
                     Complete your day and log deliveries
                   </CardDescription>
                 </CardHeader>
@@ -244,11 +244,11 @@ const Dashboard = () => {
 
               <Card className="logistics-card hover-lift click-shrink group">
                 <CardHeader>
-                  <CardTitle className="flex items-center">
+                  <CardTitle className="flex items-center text-responsive-lg">
                     <Truck className="h-5 w-5 text-primary mr-2 animate-truck-drive" />
                     Vehicle Check
                   </CardTitle>
-                  <CardDescription>
+                  <CardDescription className="text-responsive-sm">
                     Perform and log your vehicle inspection
                   </CardDescription>
                 </CardHeader>
@@ -265,11 +265,11 @@ const Dashboard = () => {
 
               <Card className="logistics-card hover-lift click-shrink group">
                 <CardHeader>
-                  <CardTitle className="flex items-center">
+                  <CardTitle className="flex items-center text-responsive-lg">
                     <AlertTriangle className="h-5 w-5 text-warning mr-2" />
                     Incident Report
                   </CardTitle>
-                  <CardDescription>
+                  <CardDescription className="text-responsive-sm">
                     Report any incidents or issues
                   </CardDescription>
                 </CardHeader>
@@ -287,7 +287,7 @@ const Dashboard = () => {
             </div>
 
             {/* Integrated Driver Features */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+            <div className="mobile-grid gap-4 md:gap-6">
               <EarningsWidget />
               <LeaderboardWidget />
               <FeedbackWidget />

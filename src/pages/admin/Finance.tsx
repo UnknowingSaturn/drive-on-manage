@@ -29,28 +29,39 @@ const Finance = () => {
 
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex w-full bg-background">
+      <div className="min-h-screen flex w-full bg-background no-overflow">
         <AppSidebar />
         
-        <SidebarInset className="flex-1">
+        <SidebarInset className="flex-1 no-overflow">
           <header className="border-b bg-card sticky top-0 z-10">
-            <div className="flex items-center px-4 py-4">
-              <SidebarTrigger className="mr-4" />
-              <div className="flex-1">
-                <h1 className="text-xl font-semibold text-foreground">Finance Management</h1>
-                <p className="text-sm text-muted-foreground">
-                  Complete financial management system
-                </p>
+            <div className="mobile-flex-responsive mobile-container py-3 md:py-4">
+              <div className="flex items-center space-x-3">
+                <SidebarTrigger className="mr-2 mobile-hidden" />
+                <div>
+                  <h1 className="mobile-heading text-foreground">Finance Management</h1>
+                  <p className="text-responsive-sm text-muted-foreground">
+                    Complete financial management system
+                  </p>
+                </div>
               </div>
             </div>
           </header>
 
-          <main className="p-6">
-            <Tabs defaultValue="invoicing" className="space-y-6">
-              <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="invoicing">Driver Invoicing</TabsTrigger>
-                <TabsTrigger value="costs">Operating Costs</TabsTrigger>
-                <TabsTrigger value="pl">Profit & Loss</TabsTrigger>
+          <main className="mobile-container py-4 md:py-6">
+            <Tabs defaultValue="invoicing" className="mobile-space-y">
+              <TabsList className="mobile-grid-auto w-full">
+                <TabsTrigger value="invoicing" className="mobile-button-sm">
+                  <span className="mobile-hidden">Driver Invoicing</span>
+                  <span className="mobile-only">Invoicing</span>
+                </TabsTrigger>
+                <TabsTrigger value="costs" className="mobile-button-sm">
+                  <span className="mobile-hidden">Operating Costs</span>
+                  <span className="mobile-only">Costs</span>
+                </TabsTrigger>
+                <TabsTrigger value="pl" className="mobile-button-sm">
+                  <span className="mobile-hidden">Profit & Loss</span>
+                  <span className="mobile-only">P&L</span>
+                </TabsTrigger>
               </TabsList>
               
               <TabsContent value="invoicing">

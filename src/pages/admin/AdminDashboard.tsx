@@ -210,24 +210,24 @@ const AdminDashboard = () => {
         
         <SidebarInset className="flex-1 no-overflow">
           <header className="border-b bg-card sticky top-0 z-10">
-            <div className="flex items-center justify-between mobile-padding py-3 md:py-4">
+            <div className="mobile-flex-responsive mobile-container py-3 md:py-4">
               <div className="flex items-center space-x-3">
-                <SidebarTrigger className="mr-2 hidden md:flex" />
+                <SidebarTrigger className="mr-2 mobile-hidden" />
                 <MobileNav className="md:hidden" />
                 <div>
-                  <h1 className="mobile-heading font-semibold text-foreground">Admin Dashboard</h1>
-                  <p className="text-xs md:text-sm text-muted-foreground">Overview of your logistics operations</p>
+                  <h1 className="mobile-heading text-foreground">Admin Dashboard</h1>
+                  <p className="text-responsive-sm text-muted-foreground">Overview of your logistics operations</p>
                 </div>
               </div>
             </div>
           </header>
 
-          <main className="mobile-padding py-4 md:py-6 space-y-4 md:space-y-6 no-overflow">
+          <main className="mobile-container py-4 md:py-6 mobile-space-y no-overflow">
             {/* Welcome Section */}
-            <div className="flex flex-col md:flex-row md:justify-between md:items-center space-y-4 md:space-y-0">
+            <div className="mobile-flex-responsive">
               <div>
-                <h2 className="mobile-heading font-bold text-gradient">Welcome back, {profile?.first_name}!</h2>
-                <p className="mobile-text text-muted-foreground mt-1">
+                <h2 className="mobile-heading text-gradient">Welcome back, {profile?.first_name}!</h2>
+                <p className="text-responsive-base text-muted-foreground mt-1">
                   Here's what's happening with your logistics operations today.
                 </p>
               </div>
@@ -236,23 +236,23 @@ const AdminDashboard = () => {
                 className="logistics-button mobile-button w-full md:w-auto"
               >
                 <FileText className="h-4 w-4 mr-2" />
-                <span className="hidden sm:inline">View Full Reports</span>
-                <span className="sm:hidden">Reports</span>
+                <span className="mobile-hidden">View Full Reports</span>
+                <span className="mobile-only">Reports</span>
               </Button>
             </div>
 
             {/* Summary Stats Cards */}
-            <div className="mobile-grid gap-4 md:gap-6">
+            <div className="mobile-grid-auto gap-3 sm:gap-4 md:gap-6">
               <Card className="logistics-card hover-lift">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Active Drivers</CardTitle>
+                  <CardTitle className="text-responsive-sm font-medium">Active Drivers</CardTitle>
                   <Users className="h-4 w-4 text-primary" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-gradient">
+                  <div className="text-xl sm:text-2xl font-bold text-gradient">
                     {driversData?.active || 0}
                   </div>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-responsive-xs text-muted-foreground">
                     of {driversData?.total || 0} total drivers
                   </p>
                   <Progress 
