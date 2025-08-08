@@ -3,6 +3,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Truck, Users, MapPin, Calendar, Bell, Clock, CheckCircle2, AlertTriangle, DollarSign, Star, Trophy, Receipt } from 'lucide-react';
+import EarningsWidget from '@/components/driver/EarningsWidget';
+import LeaderboardWidget from '@/components/driver/LeaderboardWidget';
+import FeedbackWidget from '@/components/driver/FeedbackWidget';
+import ExpenseWidget from '@/components/driver/ExpenseWidget';
 import { SidebarProvider, SidebarTrigger, SidebarInset } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/AppSidebar';
 import { MobileNav } from '@/components/MobileNav';
@@ -282,57 +286,13 @@ const Dashboard = () => {
               </Card>
             </div>
 
-            {/* New Driver Features Hub */}
-            <Card className="logistics-card bg-gradient-subtle">
-              <CardHeader>
-                <CardTitle className="flex items-center text-gradient">
-                  <Trophy className="h-5 w-5 text-primary mr-2" />
-                  Driver Hub
-                </CardTitle>
-                <CardDescription>
-                  Track your performance, earnings, and achievements
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  <Button 
-                    variant="outline" 
-                    className="h-20 flex-col space-y-2 hover-lift"
-                    onClick={() => navigate('/driver/earnings')}
-                  >
-                    <DollarSign className="h-6 w-6 text-green-600" />
-                    <span className="text-xs">Earnings</span>
-                  </Button>
-                  
-                  <Button 
-                    variant="outline" 
-                    className="h-20 flex-col space-y-2 hover-lift"
-                    onClick={() => navigate('/driver/leaderboard')}
-                  >
-                    <Trophy className="h-6 w-6 text-yellow-600" />
-                    <span className="text-xs">Leaderboard</span>
-                  </Button>
-                  
-                  <Button 
-                    variant="outline" 
-                    className="h-20 flex-col space-y-2 hover-lift"
-                    onClick={() => navigate('/driver/feedback')}
-                  >
-                    <Star className="h-6 w-6 text-blue-600" />
-                    <span className="text-xs">Feedback</span>
-                  </Button>
-                  
-                  <Button 
-                    variant="outline" 
-                    className="h-20 flex-col space-y-2 hover-lift"
-                    onClick={() => navigate('/driver/expenses')}
-                  >
-                    <Receipt className="h-6 w-6 text-purple-600" />
-                    <span className="text-xs">Expenses</span>
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+            {/* Integrated Driver Features */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+              <EarningsWidget />
+              <LeaderboardWidget />
+              <FeedbackWidget />
+              <ExpenseWidget />
+            </div>
           </div>
         )}
 
