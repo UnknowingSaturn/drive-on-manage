@@ -78,7 +78,7 @@ const Auth = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background px-4 py-6">
-      <div className="w-full max-w-sm">
+      <div className="w-full max-w-96">
         <div className="text-center mb-8">
           <div className="flex items-center justify-center mb-4">
             <Truck className="h-10 w-10 text-primary mr-2" />
