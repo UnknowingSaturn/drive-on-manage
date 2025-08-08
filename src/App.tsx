@@ -29,6 +29,10 @@ import VehicleCheck from "./pages/driver/VehicleCheck";
 import IncidentReport from "./pages/driver/IncidentReport";
 import NewsChat from "./pages/driver/NewsChat";
 import Profile from "./pages/driver/Profile";
+import EarningsTracker from "./pages/driver/EarningsTracker";
+import RouteFeedback from "./pages/driver/RouteFeedback";
+import Leaderboard from "./pages/driver/Leaderboard";
+import ExpenseTracker from "./pages/driver/ExpenseTracker";
 
 const queryClient = new QueryClient();
 
@@ -136,6 +140,26 @@ const App = () => (
             <Route path="/driver/news-chat" element={
               <ProtectedRoute>
                 <NewsChat />
+              </ProtectedRoute>
+            } />
+            <Route path="/driver/earnings" element={
+              <ProtectedRoute>
+                <EarningsTracker />
+              </ProtectedRoute>
+            } />
+            <Route path="/driver/feedback" element={
+              <ProtectedRoute>
+                <RouteFeedback />
+              </ProtectedRoute>
+            } />
+            <Route path="/driver/leaderboard" element={
+              <ProtectedRoute>
+                <Leaderboard />
+              </ProtectedRoute>
+            } />
+            <Route path="/driver/expenses" element={
+              <ProtectedRoute>
+                <ExpenseTracker />
               </ProtectedRoute>
             } />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

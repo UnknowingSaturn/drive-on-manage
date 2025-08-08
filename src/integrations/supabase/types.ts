@@ -195,6 +195,150 @@ export type Database = {
           },
         ]
       }
+      driver_achievements: {
+        Row: {
+          achievement_name: string
+          achievement_type: string
+          badge_icon: string | null
+          company_id: string
+          created_at: string
+          description: string | null
+          driver_id: string
+          earned_at: string
+          id: string
+          is_completed: boolean
+          progress_value: number | null
+          target_value: number | null
+        }
+        Insert: {
+          achievement_name: string
+          achievement_type: string
+          badge_icon?: string | null
+          company_id: string
+          created_at?: string
+          description?: string | null
+          driver_id: string
+          earned_at?: string
+          id?: string
+          is_completed?: boolean
+          progress_value?: number | null
+          target_value?: number | null
+        }
+        Update: {
+          achievement_name?: string
+          achievement_type?: string
+          badge_icon?: string | null
+          company_id?: string
+          created_at?: string
+          description?: string | null
+          driver_id?: string
+          earned_at?: string
+          id?: string
+          is_completed?: boolean
+          progress_value?: number | null
+          target_value?: number | null
+        }
+        Relationships: []
+      }
+      driver_earnings: {
+        Row: {
+          adjustments: number | null
+          base_pay: number | null
+          bonus_pay: number | null
+          company_id: string
+          created_at: string
+          driver_id: string
+          earning_date: string
+          eod_report_id: string | null
+          id: string
+          overtime_pay: number | null
+          parcel_pay: number | null
+          total_earnings: number
+          updated_at: string
+        }
+        Insert: {
+          adjustments?: number | null
+          base_pay?: number | null
+          bonus_pay?: number | null
+          company_id: string
+          created_at?: string
+          driver_id: string
+          earning_date?: string
+          eod_report_id?: string | null
+          id?: string
+          overtime_pay?: number | null
+          parcel_pay?: number | null
+          total_earnings: number
+          updated_at?: string
+        }
+        Update: {
+          adjustments?: number | null
+          base_pay?: number | null
+          bonus_pay?: number | null
+          company_id?: string
+          created_at?: string
+          driver_id?: string
+          earning_date?: string
+          eod_report_id?: string | null
+          id?: string
+          overtime_pay?: number | null
+          parcel_pay?: number | null
+          total_earnings?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      driver_expenses: {
+        Row: {
+          admin_notes: string | null
+          amount: number
+          approved_at: string | null
+          approved_by: string | null
+          company_id: string
+          created_at: string
+          description: string | null
+          driver_id: string
+          expense_date: string
+          expense_type: string
+          id: string
+          is_approved: boolean | null
+          receipt_url: string | null
+          updated_at: string
+        }
+        Insert: {
+          admin_notes?: string | null
+          amount: number
+          approved_at?: string | null
+          approved_by?: string | null
+          company_id: string
+          created_at?: string
+          description?: string | null
+          driver_id: string
+          expense_date?: string
+          expense_type: string
+          id?: string
+          is_approved?: boolean | null
+          receipt_url?: string | null
+          updated_at?: string
+        }
+        Update: {
+          admin_notes?: string | null
+          amount?: number
+          approved_at?: string | null
+          approved_by?: string | null
+          company_id?: string
+          created_at?: string
+          description?: string | null
+          driver_id?: string
+          expense_date?: string
+          expense_type?: string
+          id?: string
+          is_approved?: boolean | null
+          receipt_url?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       driver_invitations: {
         Row: {
           accepted_at: string | null
@@ -813,6 +957,51 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      route_feedback: {
+        Row: {
+          company_id: string
+          created_at: string
+          depot_experience: number | null
+          driver_id: string
+          eod_report_id: string | null
+          feedback_date: string
+          id: string
+          notes: string | null
+          round_id: string | null
+          route_difficulty: number | null
+          traffic_rating: number | null
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          depot_experience?: number | null
+          driver_id: string
+          eod_report_id?: string | null
+          feedback_date?: string
+          id?: string
+          notes?: string | null
+          round_id?: string | null
+          route_difficulty?: number | null
+          traffic_rating?: number | null
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          depot_experience?: number | null
+          driver_id?: string
+          eod_report_id?: string | null
+          feedback_date?: string
+          id?: string
+          notes?: string | null
+          round_id?: string | null
+          route_difficulty?: number | null
+          traffic_rating?: number | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       schedules: {
         Row: {
