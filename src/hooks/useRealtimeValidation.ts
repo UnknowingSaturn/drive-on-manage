@@ -37,7 +37,6 @@ export function useRealtimeValidation(options: RealtimeValidationOptions = {}) {
     if (!options.enableVehicleChecks) return { isAvailable: true };
 
     try {
-      console.log('🚐 Checking vehicle availability for:', vehicleId);
       
       // Check if vehicle is already assigned for today
       const today = new Date().toISOString().split('T')[0];
@@ -86,7 +85,6 @@ export function useRealtimeValidation(options: RealtimeValidationOptions = {}) {
     if (!options.enableDuplicateChecks) return { hasDuplicate: false };
 
     try {
-      console.log(`📝 Checking duplicate ${entryType.toUpperCase()} entries for driver:`, driverId);
       
       const today = new Date().toISOString().split('T')[0];
       const tableName = entryType === 'sod' ? 'sod_logs' : 'eod_reports';
@@ -131,7 +129,6 @@ export function useRealtimeValidation(options: RealtimeValidationOptions = {}) {
     if (!options.enableParcelValidation) return { isValid: true };
 
     try {
-      console.log('📦 Validating parcel counts for driver:', driverId, 'delivered:', deliveredCount);
       
       const today = new Date().toISOString().split('T')[0];
       
@@ -201,7 +198,7 @@ export function useRealtimeValidation(options: RealtimeValidationOptions = {}) {
   useEffect(() => {
     if (!options.companyId) return;
 
-    console.log('🔄 Setting up real-time validation subscriptions for company:', options.companyId);
+    
 
     const subscriptions = [];
 
@@ -218,7 +215,6 @@ export function useRealtimeValidation(options: RealtimeValidationOptions = {}) {
             filter: `company_id=eq.${options.companyId}`
           },
           (payload) => {
-            console.log('🚐 SOD change detected:', payload);
             
             if (payload.new && typeof payload.new === 'object' && 'van_id' in payload.new) {
               const newRecord = payload.new as { van_id: string; driver_id: string };
@@ -254,7 +250,6 @@ export function useRealtimeValidation(options: RealtimeValidationOptions = {}) {
             filter: `company_id=eq.${options.companyId}`
           },
           (payload) => {
-            console.log('📦 EOD change detected:', payload);
             
             if (payload.new && typeof payload.new === 'object' && 'driver_id' in payload.new && 'parcels_delivered' in payload.new) {
               const newRecord = payload.new as { driver_id: string; parcels_delivered: number };
@@ -270,7 +265,6 @@ export function useRealtimeValidation(options: RealtimeValidationOptions = {}) {
 
     // Cleanup subscriptions
     return () => {
-      console.log('🧹 Cleaning up real-time validation subscriptions');
       subscriptions.forEach(sub => {
         supabase.removeChannel(sub);
       });

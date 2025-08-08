@@ -82,7 +82,7 @@ const DriverManagement = () => {
         throw driversError;
       }
 
-      console.log('Fetched drivers:', drivers);
+      
 
       // Fetch ALL invitations (including accepted ones to track status)
       const { data: allInvitations, error: invitationsError } = await supabase
@@ -97,7 +97,7 @@ const DriverManagement = () => {
         throw invitationsError;
       }
 
-      console.log('Fetched invitations:', allInvitations);
+      
 
       // Convert active drivers with their profiles
       const activeDrivers = drivers?.map(driver => {
@@ -134,7 +134,7 @@ const DriverManagement = () => {
         };
       }) || [];
 
-      console.log('Processed active drivers:', activeDrivers);
+      
 
       // Only show PENDING invitations as separate entries (not yet onboarded)
       const pendingInvitations = allInvitations?.filter(invite => 
@@ -498,7 +498,6 @@ const DriverManagement = () => {
   };
 
   const openEditDialog = (driver: any) => {
-    console.log('Edit button clicked for driver:', driver);
     setSelectedDriver(driver);
     setEditFormData({
       firstName: driver.profiles?.first_name || '',
@@ -510,7 +509,6 @@ const DriverManagement = () => {
       status: driver.status || 'pending',
       assignedVanId: driver.assigned_van_id || ''
     });
-    console.log('Setting dialog open to true');
     setIsEditDialogOpen(true);
   };
 

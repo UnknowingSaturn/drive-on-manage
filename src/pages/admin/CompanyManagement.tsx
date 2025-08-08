@@ -30,20 +30,12 @@ const CompanyManagement = () => {
   const { data: companies, isLoading, refetch } = useQuery({
     queryKey: ['companies'],
     queryFn: async () => {
-      console.log('Fetching companies...');
       
       const { data, error } = await supabase
         .from('companies')
         .select('*')
         .order('created_at', { ascending: false });
 
-      console.log('Companies query result:', { 
-        data, 
-        error, 
-        dataLength: data?.length,
-        firstCompany: data?.[0],
-        allCompanies: JSON.stringify(data, null, 2)
-      });
       
       if (error) {
         console.error('Error fetching companies:', error);
@@ -59,8 +51,6 @@ const CompanyManagement = () => {
   // Create company mutation
   const createCompanyMutation = useMutation({
     mutationFn: async (companyData: typeof formData) => {
-      console.log('Creating company with data:', companyData);
-      console.log('Current user profile:', profile);
       
       // Ensure we have a valid session and refresh it if needed
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
@@ -70,23 +60,17 @@ const CompanyManagement = () => {
         throw new Error('No valid session found. Please log in again.');
       }
       
-      console.log('Valid session found:', session.user.id);
-      
       // Test the authentication context in the database
       try {
         const { data: authTest, error: authTestError } = await supabase
           .rpc('test_auth_context');
         
-        console.log('Auth context test result:', JSON.stringify(authTest, null, 2));
         if (authTestError) {
-          console.error('Auth context test error:', authTestError);
+          throw new Error(`Database connection error: ${authTestError.message}`);
         }
         
-        // Check if auth.uid() is null in database context
         if (authTest && authTest[0] && authTest[0].current_uid === null) {
-          console.error('CRITICAL: auth.uid() is null in database context despite valid session');
-          console.log('Session user ID:', session.user.id);
-          console.log('JWT claims:', authTest[0].jwt_claims);
+          throw new Error('Authentication context not available in database. Please try again.');
         }
       } catch (testError) {
         console.error('Failed to test auth context:', testError);
@@ -118,8 +102,6 @@ const CompanyManagement = () => {
         console.error('Database error:', error);
         throw error;
       }
-      
-      console.log('Company created successfully:', data);
       return data;
     },
     onSuccess: () => {
@@ -155,13 +137,6 @@ const CompanyManagement = () => {
   };
 
 
-  // Add logging to debug rendering
-  console.log('Companies in render:', companies, 'Length:', companies?.length);
-  if (companies) {
-    companies.forEach((company, index) => {
-      console.log(`Company ${index}:`, company);
-    });
-  }
 
   if (isLoading) {
     return (
