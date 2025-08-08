@@ -62,6 +62,13 @@ export type Database = {
             referencedRelation: "companies"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "fk_announcements_company"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
         ]
       }
       companies: {
@@ -524,6 +531,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "fk_driver_profiles_company"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "fk_driver_profiles_user_id"
             columns: ["user_id"]
             isOneToOne: true
@@ -605,7 +619,22 @@ export type Database = {
           updated_at?: string
           van_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "fk_eod_reports_company"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_eod_reports_driver"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "driver_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       incident_reports: {
         Row: {
@@ -651,6 +680,20 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "fk_incident_reports_company"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_incident_reports_driver"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "driver_profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "incident_reports_company_id_fkey"
             columns: ["company_id"]
@@ -950,6 +993,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "fk_rounds_company"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "rounds_company_id_fkey"
             columns: ["company_id"]
             isOneToOne: false
@@ -1160,6 +1210,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "fk_vans_company"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "vans_company_id_fkey"
             columns: ["company_id"]
             isOneToOne: false
@@ -1271,24 +1328,6 @@ export type Database = {
           base_pay_param?: number
         }
         Returns: Json
-      }
-      create_company_test: {
-        Args: {
-          company_name: string
-          company_email: string
-          company_phone?: string
-          company_address?: string
-        }
-        Returns: {
-          id: string
-          name: string
-          email: string
-          phone: string
-          address: string
-          is_active: boolean
-          created_at: string
-          updated_at: string
-        }[]
       }
       generate_invite_token: {
         Args: Record<PropertyKey, never>
