@@ -107,6 +107,75 @@ export type Database = {
         }
         Relationships: []
       }
+      company_settings: {
+        Row: {
+          allow_late_submissions: boolean | null
+          company_id: string
+          created_at: string
+          default_base_pay: number | null
+          default_cover_rate: number | null
+          default_parcel_rate: number | null
+          email_notifications: boolean | null
+          id: string
+          late_submission_hours: number | null
+          overtime_rate_multiplier: number | null
+          payment_day: number | null
+          payment_frequency: string | null
+          require_eod_screenshot: boolean | null
+          require_insurance_upload: boolean | null
+          require_license_upload: boolean | null
+          require_right_to_work: boolean | null
+          require_vehicle_check: boolean | null
+          sms_notifications: boolean | null
+          standard_work_hours: number | null
+          updated_at: string
+        }
+        Insert: {
+          allow_late_submissions?: boolean | null
+          company_id: string
+          created_at?: string
+          default_base_pay?: number | null
+          default_cover_rate?: number | null
+          default_parcel_rate?: number | null
+          email_notifications?: boolean | null
+          id?: string
+          late_submission_hours?: number | null
+          overtime_rate_multiplier?: number | null
+          payment_day?: number | null
+          payment_frequency?: string | null
+          require_eod_screenshot?: boolean | null
+          require_insurance_upload?: boolean | null
+          require_license_upload?: boolean | null
+          require_right_to_work?: boolean | null
+          require_vehicle_check?: boolean | null
+          sms_notifications?: boolean | null
+          standard_work_hours?: number | null
+          updated_at?: string
+        }
+        Update: {
+          allow_late_submissions?: boolean | null
+          company_id?: string
+          created_at?: string
+          default_base_pay?: number | null
+          default_cover_rate?: number | null
+          default_parcel_rate?: number | null
+          email_notifications?: boolean | null
+          id?: string
+          late_submission_hours?: number | null
+          overtime_rate_multiplier?: number | null
+          payment_day?: number | null
+          payment_frequency?: string | null
+          require_eod_screenshot?: boolean | null
+          require_insurance_upload?: boolean | null
+          require_license_upload?: boolean | null
+          require_right_to_work?: boolean | null
+          require_vehicle_check?: boolean | null
+          sms_notifications?: boolean | null
+          standard_work_hours?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       daily_logs: {
         Row: {
           actual_pay: number | null
@@ -546,6 +615,57 @@ export type Database = {
           },
         ]
       }
+      driver_ratings: {
+        Row: {
+          communication: number
+          company_id: string
+          created_at: string
+          customer_service: number
+          driver_id: string
+          feedback_text: string | null
+          id: string
+          is_anonymous: boolean
+          overall_rating: number
+          punctuality: number
+          rated_by: string
+          rating_period_end: string
+          rating_period_start: string
+          vehicle_care: number
+        }
+        Insert: {
+          communication?: number
+          company_id: string
+          created_at?: string
+          customer_service?: number
+          driver_id: string
+          feedback_text?: string | null
+          id?: string
+          is_anonymous?: boolean
+          overall_rating?: number
+          punctuality?: number
+          rated_by: string
+          rating_period_end: string
+          rating_period_start: string
+          vehicle_care?: number
+        }
+        Update: {
+          communication?: number
+          company_id?: string
+          created_at?: string
+          customer_service?: number
+          driver_id?: string
+          feedback_text?: string | null
+          id?: string
+          is_anonymous?: boolean
+          overall_rating?: number
+          punctuality?: number
+          rated_by?: string
+          rating_period_end?: string
+          rating_period_start?: string
+          vehicle_care?: number
+        }
+        Relationships: []
+      }
       eod_reports: {
         Row: {
           actual_pay: number | null
@@ -772,6 +892,56 @@ export type Database = {
           window_start?: string | null
         }
         Relationships: []
+      }
+      messages: {
+        Row: {
+          company_id: string
+          content: string
+          created_at: string
+          id: string
+          is_edited: boolean
+          message_type: string
+          replied_to: string | null
+          sender_id: string
+          sender_name: string
+          sender_role: string
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          content: string
+          created_at?: string
+          id?: string
+          is_edited?: boolean
+          message_type?: string
+          replied_to?: string | null
+          sender_id: string
+          sender_name: string
+          sender_role?: string
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          content?: string
+          created_at?: string
+          id?: string
+          is_edited?: boolean
+          message_type?: string
+          replied_to?: string | null
+          sender_id?: string
+          sender_name?: string
+          sender_role?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_replied_to_fkey"
+            columns: ["replied_to"]
+            isOneToOne: false
+            referencedRelation: "messages"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       operating_costs: {
         Row: {

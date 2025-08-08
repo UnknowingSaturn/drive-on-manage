@@ -53,37 +53,61 @@ const NewsChat = () => {
     enabled: !!user?.id
   });
 
-  // Mock chat data for now (in real implementation, this would be from a chat table)
-  const mockChatMessages = [
-    {
-      id: 1,
-      user: 'Admin',
-      message: 'Good morning everyone! Weather looks good for deliveries today.',
-      timestamp: new Date(Date.now() - 1000 * 60 * 30),
-      isAdmin: true
+  // Get real chat messages from the messages table
+  const { data: chatMessages, isLoading: messagesLoading } = useQuery({
+    queryKey: ['messages', profile?.company_id],
+    queryFn: async () => {
+      if (!profile?.company_id) return [];
+      const { data } = await supabase
+        .from('messages')
+        .select('*')
+        .eq('company_id', profile.company_id)
+        .order('created_at', { ascending: false })
+        .limit(50);
+      return data || [];
     },
-    {
-      id: 2,
-      user: 'John D.',
-      message: 'Route 5 has heavy traffic on A40, might be delayed.',
-      timestamp: new Date(Date.now() - 1000 * 60 * 15),
-      isAdmin: false
+    enabled: !!profile?.company_id
+  });
+
+  // Send message mutation
+  const sendMessageMutation = useMutation({
+    mutationFn: async (content: string) => {
+      if (!profile?.company_id || !user?.id || !profile?.first_name) {
+        throw new Error('Missing required data');
+      }
+
+      const { data, error } = await supabase
+        .from('messages')
+        .insert({
+          content,
+          sender_id: user.id,
+          sender_name: `${profile.first_name} ${profile.last_name || ''}`.trim(),
+          sender_role: profile.user_type || 'driver',
+          company_id: profile.company_id,
+          message_type: 'general'
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
     },
-    {
-      id: 3,
-      user: 'Sarah M.',
-      message: 'Thanks for the heads up John!',
-      timestamp: new Date(Date.now() - 1000 * 60 * 10),
-      isAdmin: false
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['messages'] });
+      setChatMessage('');
+      toast({
+        title: "Message sent",
+        description: "Your message has been sent to the team chat.",
+      });
     },
-    {
-      id: 4,
-      user: 'Admin',
-      message: 'Please remember to complete your vehicle checks before starting your routes.',
-      timestamp: new Date(Date.now() - 1000 * 60 * 5),
-      isAdmin: true
+    onError: (error: any) => {
+      toast({
+        title: "Error sending message",
+        description: error.message,
+        variant: "destructive",
+      });
     }
-  ];
+  });
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
@@ -105,23 +129,7 @@ const NewsChat = () => {
 
   const handleSendMessage = () => {
     if (!chatMessage.trim()) return;
-    
-    // In a real implementation, this would send the message to a chat service
-    toast({
-      title: "Message sent",
-      description: "Your message has been sent to the team chat.",
-    });
-    setChatMessage('');
-  };
-
-  const formatTimeAgo = (date: Date) => {
-    const now = new Date();
-    const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
-    
-    if (diffInMinutes < 1) return 'Just now';
-    if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
-    if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h ago`;
-    return `${Math.floor(diffInMinutes / 1440)}d ago`;
+    sendMessageMutation.mutate(chatMessage.trim());
   };
 
   if (announcementsLoading) {
@@ -183,14 +191,14 @@ const NewsChat = () => {
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    {announcements.length === 0 ? (
+                    {announcements && announcements.length === 0 ? (
                       <div className="text-center py-8">
                         <Bell className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                         <p className="text-muted-foreground">No announcements at the moment</p>
                       </div>
                     ) : (
                       <div className="space-y-4">
-                        {announcements.map((announcement) => (
+                        {announcements?.map((announcement) => (
                           <div key={announcement.id} className="p-4 border rounded-lg bg-card/50 hover-lift">
                             <div className="flex items-start justify-between mb-2">
                               <div className="flex items-center space-x-2">
@@ -248,31 +256,54 @@ const NewsChat = () => {
                   </CardHeader>
                   <CardContent className="p-0">
                     <ScrollArea className="h-[400px] p-4">
-                      <div className="space-y-4">
-                        {mockChatMessages.map((message) => (
-                          <div key={message.id} className="flex items-start space-x-3">
-                            <Avatar className="h-8 w-8">
-                              <AvatarFallback>
-                                {message.user.split(' ').map(n => n[0]).join('')}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center space-x-2">
-                                <span className="font-medium text-sm">{message.user}</span>
-                                {message.isAdmin && (
-                                  <Badge variant="default" className="text-xs">Admin</Badge>
-                                )}
-                                <span className="text-xs text-muted-foreground">
-                                  {formatTimeAgo(message.timestamp)}
-                                </span>
+                      {messagesLoading ? (
+                        <div className="flex items-center justify-center h-32">
+                          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+                        </div>
+                      ) : chatMessages && chatMessages.length > 0 ? (
+                        <div className="space-y-4">
+                          {chatMessages.reverse().map((message) => {
+                            const initials = message.sender_name
+                              .split(' ')
+                              .map((n: string) => n[0])
+                              .join('')
+                              .toUpperCase();
+                            
+                            return (
+                              <div key={message.id} className="flex items-start space-x-3">
+                                <Avatar className="h-8 w-8">
+                                  <AvatarFallback className={`text-xs ${
+                                    message.sender_role === 'admin' 
+                                      ? 'bg-primary text-primary-foreground' 
+                                      : 'bg-secondary text-secondary-foreground'
+                                  }`}>
+                                    {initials}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <div className="flex-1 space-y-1">
+                                  <div className="flex items-center space-x-2">
+                                    <span className="text-sm font-medium">{message.sender_name}</span>
+                                    <Badge variant={message.sender_role === 'admin' ? 'default' : 'secondary'} className="text-xs">
+                                      {message.sender_role}
+                                    </Badge>
+                                    <span className="text-xs text-muted-foreground">
+                                      {new Date(message.created_at).toLocaleString()}
+                                    </span>
+                                  </div>
+                                  <p className="text-sm text-foreground">{message.content}</p>
+                                </div>
                               </div>
-                              <p className="text-sm text-muted-foreground mt-1">
-                                {message.message}
-                              </p>
-                            </div>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-center h-32 text-center">
+                          <div>
+                            <MessageCircle className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+                            <p className="text-sm text-muted-foreground">No messages yet. Start the conversation!</p>
                           </div>
-                        ))}
-                      </div>
+                        </div>
+                      )}
                     </ScrollArea>
                     
                     <div className="border-t p-4">
@@ -283,12 +314,16 @@ const NewsChat = () => {
                           placeholder="Type a message..."
                           onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
                         />
-                        <Button 
+                        <Button
                           onClick={handleSendMessage}
                           className="logistics-button"
-                          disabled={!chatMessage.trim()}
+                          disabled={!chatMessage.trim() || sendMessageMutation.isPending}
                         >
-                          <Send className="h-4 w-4" />
+                          {sendMessageMutation.isPending ? (
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current" />
+                          ) : (
+                            <Send className="h-4 w-4" />
+                          )}
                         </Button>
                       </div>
                     </div>

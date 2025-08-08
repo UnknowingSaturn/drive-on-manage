@@ -22,6 +22,7 @@ import EODReports from "./pages/admin/EODReports";
 import Finance from "./pages/admin/Finance";
 import DriverEngagement from "./pages/admin/DriverEngagement";
 import DriverOnboarding from "./pages/DriverOnboarding";
+import AdminSettings from "./pages/admin/Settings";
 
 // Driver pages
 import StartOfDay from "./pages/driver/StartOfDay";
@@ -115,6 +116,13 @@ const App = () => (
               <ProtectedRoute>
                 <AdminRoute>
                   <DriverEngagement />
+                </AdminRoute>
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/settings" element={
+              <ProtectedRoute>
+                <AdminRoute>
+                  <AdminSettings />
                 </AdminRoute>
               </ProtectedRoute>
             } />
