@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, MapPin, DollarSign, Settings } from 'lucide-react';
+import { Plus, MapPin, DollarSign, Settings, X, Route } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -22,10 +22,12 @@ const RoundManagement = () => {
   const [editingRound, setEditingRound] = useState<any>(null);
   const [formData, setFormData] = useState({
     roundNumber: '',
-    description: '',
+    locations: '',
     parcelRate: '',
-    routeRate: '' // New field for route-specific rate
+    routeRate: '',
+    roadLists: ['']
   });
+  const [newRoad, setNewRoad] = useState('');
 
   // Fetch rounds for the company
   const { data: rounds, isLoading } = useQuery({
@@ -53,9 +55,10 @@ const RoundManagement = () => {
         .from('rounds')
         .insert({
           round_number: roundData.roundNumber,
-          description: roundData.description,
+          description: roundData.locations,
           parcel_rate: roundData.parcelRate ? parseFloat(roundData.parcelRate) : null,
-          rate: roundData.routeRate ? parseFloat(roundData.routeRate) : null, // Route-specific override rate
+          rate: roundData.routeRate ? parseFloat(roundData.routeRate) : null,
+          road_lists: roundData.roadLists.filter(road => road.trim() !== ''),
           company_id: profile?.company_id
         });
 
@@ -69,9 +72,10 @@ const RoundManagement = () => {
       setIsDialogOpen(false);
       setFormData({
         roundNumber: '',
-        description: '',
+        locations: '',
         parcelRate: '',
-        routeRate: ''
+        routeRate: '',
+        roadLists: ['']
       });
       queryClient.invalidateQueries({ queryKey: ['rounds'] });
     },
@@ -97,9 +101,10 @@ const RoundManagement = () => {
     setEditingRound(round);
     setFormData({
       roundNumber: round.round_number || '',
-      description: round.description || '',
+      locations: round.description || '',
       parcelRate: round.parcel_rate?.toString() || '',
-      routeRate: round.rate?.toString() || ''
+      routeRate: round.rate?.toString() || '',
+      roadLists: round.road_lists?.length ? round.road_lists : ['']
     });
     setIsDialogOpen(true);
     
@@ -107,6 +112,30 @@ const RoundManagement = () => {
       title: "Edit functionality coming soon",
       description: "Round editing will be available in the next update.",
     });
+  };
+
+  const addRoadToList = () => {
+    if (newRoad.trim()) {
+      setFormData(prev => ({
+        ...prev,
+        roadLists: [...prev.roadLists, newRoad.trim()]
+      }));
+      setNewRoad('');
+    }
+  };
+
+  const removeRoadFromList = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      roadLists: prev.roadLists.filter((_, i) => i !== index)
+    }));
+  };
+
+  const updateRoadInList = (index: number, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      roadLists: prev.roadLists.map((road, i) => i === index ? value : road)
+    }));
   };
 
   if (isLoading) {
@@ -163,11 +192,11 @@ const RoundManagement = () => {
               </div>
               
               <div>
-                <Label htmlFor="description">Description</Label>
+                <Label htmlFor="locations">Locations</Label>
                 <Textarea
-                  id="description"
-                  value={formData.description}
-                  onChange={(e) => handleInputChange('description', e.target.value)}
+                  id="locations"
+                  value={formData.locations}
+                  onChange={(e) => handleInputChange('locations', e.target.value)}
                   placeholder="Describe the round area and key locations"
                   rows={3}
                 />
@@ -186,10 +215,50 @@ const RoundManagement = () => {
               </div>
               
               <div>
-                <Label htmlFor="description2">Additional Notes</Label>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Route rate overrides individual driver rates when set
+                <Label>Road Lists</Label>
+                <p className="text-xs text-muted-foreground mb-2">
+                  Add roads in order for driver reference
                 </p>
+                <div className="space-y-2">
+                  {formData.roadLists.map((road, index) => (
+                    <div key={index} className="flex gap-2">
+                      <Input
+                        value={road}
+                        onChange={(e) => updateRoadInList(index, e.target.value)}
+                        placeholder={`Road ${index + 1}`}
+                        className="flex-1"
+                      />
+                      {formData.roadLists.length > 1 && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => removeRoadFromList(index)}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                  <div className="flex gap-2">
+                    <Input
+                      value={newRoad}
+                      onChange={(e) => setNewRoad(e.target.value)}
+                      placeholder="Add new road"
+                      className="flex-1"
+                      onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addRoadToList())}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={addRoadToList}
+                      disabled={!newRoad.trim()}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
               </div>
               
               <Button type="submit" className="w-full" disabled={addRoundMutation.isPending}>
@@ -251,7 +320,8 @@ const RoundManagement = () => {
             <TableHeader>
               <TableRow>
                 <TableHead>Round Number</TableHead>
-                <TableHead>Description</TableHead>
+                <TableHead>Locations</TableHead>
+                <TableHead>Road Lists</TableHead>
                 <TableHead>Route Rate</TableHead>
                 <TableHead>Created</TableHead>
                 <TableHead>Actions</TableHead>
@@ -264,6 +334,27 @@ const RoundManagement = () => {
                   <TableCell>
                     <div className="max-w-xs truncate">
                       {round.description || '-'}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="max-w-xs">
+                      {round.road_lists?.length ? (
+                        <div className="space-y-1">
+                          {round.road_lists.slice(0, 3).map((road: string, index: number) => (
+                            <div key={index} className="text-xs flex items-center gap-1">
+                              <Route className="h-3 w-3 text-muted-foreground" />
+                              <span className="truncate">{road}</span>
+                            </div>
+                          ))}
+                          {round.road_lists.length > 3 && (
+                            <div className="text-xs text-muted-foreground">
+                              +{round.road_lists.length - 3} more roads
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground text-sm">No roads added</span>
+                      )}
                     </div>
                   </TableCell>
                   <TableCell>

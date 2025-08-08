@@ -774,6 +774,7 @@ export type Database = {
           is_active: boolean
           parcel_rate: number | null
           rate: number | null
+          road_lists: string[] | null
           round_number: string
           updated_at: string
         }
@@ -786,6 +787,7 @@ export type Database = {
           is_active?: boolean
           parcel_rate?: number | null
           rate?: number | null
+          road_lists?: string[] | null
           round_number: string
           updated_at?: string
         }
@@ -798,6 +800,7 @@ export type Database = {
           is_active?: boolean
           parcel_rate?: number | null
           rate?: number | null
+          road_lists?: string[] | null
           round_number?: string
           updated_at?: string
         }
