@@ -9,15 +9,17 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Upload, FileText, User, Car, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Upload, FileText, User, Car, CheckCircle2, AlertCircle, DollarSign, Star, Trophy, Receipt } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useNavigate } from 'react-router-dom';
 
 const DriverProfile = () => {
   const { user, profile } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   
   const [formData, setFormData] = useState({
     firstName: profile?.first_name || '',
@@ -241,6 +243,58 @@ const DriverProfile = () => {
                       </div>
                     ))}
                   </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Driver Features Quick Access */}
+            <Card className="logistics-card bg-gradient-subtle">
+              <CardHeader>
+                <CardTitle className="flex items-center text-gradient">
+                  <Trophy className="h-5 w-5 text-primary mr-2" />
+                  Driver Features
+                </CardTitle>
+                <CardDescription>
+                  Quick access to earnings, leaderboard, feedback, and expense tracking
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <Button 
+                    variant="outline" 
+                    className="h-16 flex-col space-y-1 hover-lift"
+                    onClick={() => navigate('/driver/earnings')}
+                  >
+                    <DollarSign className="h-5 w-5 text-green-600" />
+                    <span className="text-xs">Live Earnings</span>
+                  </Button>
+                  
+                  <Button 
+                    variant="outline" 
+                    className="h-16 flex-col space-y-1 hover-lift"
+                    onClick={() => navigate('/driver/leaderboard')}
+                  >
+                    <Trophy className="h-5 w-5 text-yellow-600" />
+                    <span className="text-xs">Leaderboard</span>
+                  </Button>
+                  
+                  <Button 
+                    variant="outline" 
+                    className="h-16 flex-col space-y-1 hover-lift"
+                    onClick={() => navigate('/driver/feedback')}
+                  >
+                    <Star className="h-5 w-5 text-blue-600" />
+                    <span className="text-xs">Route Feedback</span>
+                  </Button>
+                  
+                  <Button 
+                    variant="outline" 
+                    className="h-16 flex-col space-y-1 hover-lift"
+                    onClick={() => navigate('/driver/expenses')}
+                  >
+                    <Receipt className="h-5 w-5 text-purple-600" />
+                    <span className="text-xs">Expenses</span>
+                  </Button>
                 </div>
               </CardContent>
             </Card>
