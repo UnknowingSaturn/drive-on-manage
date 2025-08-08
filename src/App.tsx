@@ -20,6 +20,7 @@ import RoundManagement from "./pages/admin/RoundManagement";
 import ScheduleView from "./pages/admin/ScheduleView";
 import EODReports from "./pages/admin/EODReports";
 import Finance from "./pages/admin/Finance";
+import DriverEngagement from "./pages/admin/DriverEngagement";
 import DriverOnboarding from "./pages/DriverOnboarding";
 
 // Driver pages
@@ -107,6 +108,13 @@ const App = () => (
               <ProtectedRoute>
                 <AdminRoute>
                   <Finance />
+                </AdminRoute>
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/engagement" element={
+              <ProtectedRoute>
+                <AdminRoute>
+                  <DriverEngagement />
                 </AdminRoute>
               </ProtectedRoute>
             } />

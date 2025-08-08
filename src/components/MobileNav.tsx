@@ -29,6 +29,7 @@ const adminItems = [
   { title: "Dashboard", url: "/admin/dashboard", icon: LayoutDashboard },
   { title: "Companies", url: "/admin/companies", icon: Building2 },
   { title: "Driver Management", url: "/admin/drivers", icon: Users },
+  { title: "Driver Engagement", url: "/admin/engagement", icon: Trophy },
   { title: "Van Management", url: "/admin/vans", icon: Truck },
   { title: "Round Management", url: "/admin/rounds", icon: MapPin },
   { title: "Schedule View", url: "/admin/schedule", icon: Calendar },
