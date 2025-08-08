@@ -368,7 +368,7 @@ const EODReports = () => {
                           </DialogHeader>
                           <div className="mt-4">
                             <img 
-                              src={`${supabase.storage.from('eod-screenshots').getPublicUrl(report.screenshot_url).data.publicUrl}`}
+                              src={supabase.storage.from('eod-screenshots').getPublicUrl(report.screenshot_url).data.publicUrl}
                               alt="Delivery summary screenshot"
                               className="w-full rounded-lg border"
                             />

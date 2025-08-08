@@ -300,7 +300,7 @@ const EndOfDay = () => {
                         <Label className="text-sm font-medium">Screenshot:</Label>
                         <div className="mt-2">
                           <img 
-                            src={`${supabase.storage.from('eod-screenshots').getPublicUrl(todayEOD.screenshot_url).data.publicUrl}`}
+                            src={supabase.storage.from('eod-screenshots').getPublicUrl(todayEOD.screenshot_url).data.publicUrl}
                             alt="Delivery summary screenshot"
                             className="max-w-sm rounded-lg border"
                           />
