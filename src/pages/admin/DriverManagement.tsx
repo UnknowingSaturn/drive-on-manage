@@ -34,7 +34,7 @@ const driverCreateSchema = z.object({
 });
 
 const DriverManagement = () => {
-  const { profile } = useAuth();
+  const { profile, refreshProfile } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -63,6 +63,11 @@ const DriverManagement = () => {
   });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [editFormErrors, setEditFormErrors] = useState<Record<string, string>>({});
+
+  // Refresh profile on component mount to ensure latest data
+  React.useEffect(() => {
+    refreshProfile();
+  }, []);
 
   // Fetch drivers for the company
   const { data: drivers = [], isLoading, error } = useQuery({
@@ -162,6 +167,7 @@ const DriverManagement = () => {
       }
 
       const companyId = profile?.company_id;
+      console.log('Using company_id for driver creation:', companyId);
       if (!companyId) {
         throw new Error('No company assigned to your profile');
       }
