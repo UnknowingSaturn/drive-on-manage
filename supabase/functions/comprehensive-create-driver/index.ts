@@ -87,25 +87,14 @@ const handler = async (req: Request): Promise<Response> => {
         phone: phone || null,
         user_type: 'driver'
       },
-      email_confirm: false // Don't auto-confirm to avoid password being reset
+      email_confirm: true // Auto-confirm email for immediate login
     });
-
-    // Manually confirm the email and ensure password is properly set
-    if (userData.user) {
-      // Update user to confirm email and ensure proper password
-      await supabaseAdmin.auth.admin.updateUserById(userData.user.id, {
-        email_confirm: true,
-        password: tempPassword // Set password again to ensure it's correct
-      });
-      
-      console.log('User email confirmed and password set');
-    }
 
     if (createError || !userData.user) {
       console.error('User creation failed:', createError);
       throw new Error(createError?.message || 'Failed to create user');
     }
-
+    
     const userId = userData.user.id;
     console.log('User created successfully, user ID:', userId);
 
