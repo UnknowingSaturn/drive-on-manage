@@ -105,7 +105,16 @@ export function validateStoragePath(path: string, userId: string): boolean {
   }
 
   // Validate allowed folders
-  const allowedFolders = ['documents', 'photos', 'avatars', 'reports'];
+  const allowedFolders = [
+    'documents', 
+    'photos', 
+    'avatars', 
+    'reports',
+    'driving_license',
+    'right_to_work', 
+    'insurance',
+    'eod_screenshots'
+  ];
   const pathParts = path.split('/');
   if (pathParts.length < 3 || !allowedFolders.includes(pathParts[1])) {
     return false;
