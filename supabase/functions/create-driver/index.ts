@@ -52,21 +52,44 @@ const handler = async (req: Request): Promise<Response> => {
       companyId
     });
 
-    // Check if user already exists first
-    const { data: existingUser, error: checkError } = await supabaseAdmin.auth.admin.listUsers();
+    // Check if user already exists in auth.users
+    const { data: existingUsers, error: listError } = await supabaseAdmin.auth.admin.listUsers();
     
-    if (checkError) {
-      console.error('Error checking existing users:', checkError);
-    } else {
-      const userExists = existingUser.users.find(user => user.email === email);
-      if (userExists) {
+    if (listError) {
+      console.error('Error listing users:', listError);
+      return new Response(
+        JSON.stringify({ error: 'Failed to check existing users' }),
+        {
+          status: 500,
+          headers: { 'Content-Type': 'application/json', ...corsHeaders },
+        }
+      );
+    }
+
+    const existingUser = existingUsers.users.find(user => user.email === email);
+    
+    if (existingUser) {
+      // Check if they have a profile in our system
+      const { data: existingProfile } = await supabaseAdmin
+        .from('profiles')
+        .select('id, company_id')
+        .eq('user_id', existingUser.id)
+        .single();
+      
+      if (existingProfile) {
         return new Response(
-          JSON.stringify({ error: `A user with email ${email} already exists. Please use a different email address or contact the existing user to join your company.` }),
+          JSON.stringify({ 
+            error: `A user with email ${email} already exists and is registered with ${existingProfile.company_id === companyId ? 'your company' : 'another company'}.` 
+          }),
           {
             status: 400,
             headers: { 'Content-Type': 'application/json', ...corsHeaders },
           }
         );
+      } else {
+        // Orphaned auth user - delete and recreate
+        console.log('Found orphaned auth user, cleaning up...');
+        await supabaseAdmin.auth.admin.deleteUser(existingUser.id);
       }
     }
 
