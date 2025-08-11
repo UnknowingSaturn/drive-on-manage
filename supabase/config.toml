@@ -1,10 +1,10 @@
 project_id = "ttnlrnmdxkecomdylckl"
 
-[functions.create-driver]
-verify_jwt = false
-
 [functions.send-driver-credentials]
 verify_jwt = false
 
-[functions.remove-driver]
+[functions.send-invoices]
+verify_jwt = false
+
+[functions.server-validation]
 verify_jwt = false
