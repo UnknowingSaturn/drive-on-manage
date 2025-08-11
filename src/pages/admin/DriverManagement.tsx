@@ -217,117 +217,26 @@ const DriverManagement = () => {
         throw new Error('A user with this email already exists in your company');
       }
 
-      // Step 1: Create user via simple edge function
-      const { data: createResult, error: createError } = await supabase.functions.invoke('simple-create-driver', {
+      // Step 1: Create everything via comprehensive edge function
+      const { data: createResult, error: createError } = await supabase.functions.invoke('comprehensive-create-driver', {
         body: {
           email: driverData.email,
           firstName: driverData.firstName,
           lastName: driverData.lastName,
           phone: driverData.phone,
-          companyId: companyId
+          companyId: companyId,
+          parcelRate: parseFloat(driverData.parcelRate) || 0.75,
+          coverRate: parseFloat(driverData.coverRate) || 1.0
         }
       });
 
       if (createError || !createResult?.success) {
-        throw new Error(createError?.message || 'Failed to create user account');
+        throw new Error(createError?.message || 'Failed to create driver account');
       }
 
-      // Step 2: Ensure profile exists before creating driver profile
-      console.log('Checking for profile creation...');
-      
-      // Wait and retry to find the profile (auth trigger should create it)
-      let profileExists = false;
-      let attempts = 0;
-      const maxAttempts = 10;
-      
-      while (!profileExists && attempts < maxAttempts) {
-        const { data: profileCheck } = await supabase
-          .from('profiles')
-          .select('id')
-          .eq('user_id', createResult.userId)
-          .maybeSingle();
-          
-        if (profileCheck) {
-          profileExists = true;
-          console.log('Profile found:', profileCheck);
-        } else {
-          attempts++;
-          console.log(`Profile not found, attempt ${attempts}/${maxAttempts}`);
-          await new Promise(resolve => setTimeout(resolve, 500));
-        }
-      }
-      
-      if (!profileExists) {
-        // Create profile manually if auth trigger failed (removed company_id since we no longer have that column)
-        console.log('Creating profile manually...');
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .insert({
-            user_id: createResult.userId,
-            email: driverData.email,
-            first_name: driverData.firstName,
-            last_name: driverData.lastName,
-            phone: driverData.phone || null,
-            user_type: 'driver',
-            is_active: true
-          });
-          
-        if (profileError) {
-          // If it's a duplicate key error, the profile was created by the auth trigger in the meantime
-          if (profileError.code === '23505') {
-            console.log('Profile was created by auth trigger during our check - continuing...');
-          } else {
-            console.error('Manual profile creation failed:', profileError);
-            throw new Error(`Failed to create user profile: ${profileError.message}`);
-          }
-        } else {
-          console.log('Profile created manually');
-        }
-      } else {
-        console.log('Profile already exists (auth trigger worked)');
-      }
+      console.log('Driver created successfully:', createResult);
 
-      // Step 3: Create driver profile
-      console.log('Creating driver profile with company_id:', companyId);
-      const { data: driverProfile, error: driverProfileError } = await supabase
-        .from('driver_profiles')
-        .insert({
-          user_id: createResult.userId,
-          company_id: companyId,
-          parcel_rate: parseFloat(driverData.parcelRate) || 0.75,
-          cover_rate: parseFloat(driverData.coverRate) || 1.0,
-          status: 'pending_onboarding',
-          requires_onboarding: true,
-          first_login_completed: false
-        })
-        .select()
-        .single();
-
-      if (driverProfileError) {
-        console.error('Driver profile creation failed:', driverProfileError);
-        throw new Error(`Failed to create driver profile: ${driverProfileError.message}`);
-      }
-
-      console.log('Driver profile created successfully:', driverProfile);
-
-      // Step 4: Create user-company association (NEW - this is critical for the new system)
-      console.log('Creating user-company association...');
-      const { error: userCompanyError } = await supabase
-        .from('user_companies')
-        .insert({
-          user_id: createResult.userId,
-          company_id: companyId,
-          role: 'member'  // drivers are members, not admins
-        });
-
-      if (userCompanyError) {
-        console.error('User-company association failed:', userCompanyError);
-        throw new Error(`Failed to associate user with company: ${userCompanyError.message}`);
-      }
-
-      console.log('User-company association created successfully');
-
-      // Step 5: Send credentials email
+      // Step 2: Send credentials email
       const { error: emailError } = await supabase.functions.invoke('send-driver-credentials', {
         body: {
           email: driverData.email,
