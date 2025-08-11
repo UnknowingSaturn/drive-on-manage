@@ -49,15 +49,27 @@ const handler = async (req: Request): Promise<Response> => {
     
     console.log('Request data:', { email, firstName, lastName, phone, companyId, parcelRate, coverRate });
 
-    // Check for duplicate email first
+    // Check for existing setup more comprehensively
     const { data: existingProfile } = await supabaseAdmin
       .from('profiles')
-      .select('id')
+      .select('id, user_id')
       .eq('email', email)
       .maybeSingle();
 
     if (existingProfile) {
-      throw new Error('A user with this email already exists');
+      // Check if this user already has a driver profile for this company
+      const { data: existingDriver } = await supabaseAdmin
+        .from('driver_profiles')
+        .select('id')
+        .eq('user_id', existingProfile.user_id)
+        .eq('company_id', companyId)
+        .maybeSingle();
+        
+      if (existingDriver) {
+        throw new Error('A driver with this email already exists in this company');
+      } else {
+        throw new Error('A user with this email already exists');
+      }
     }
 
     // Generate password
