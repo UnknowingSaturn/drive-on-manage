@@ -146,13 +146,13 @@ export function useRealtimeValidation(options: RealtimeValidationOptions = {}) {
       }
 
       if (!sodData) {
-        const message = 'No SOD entry found for today. Please complete Start of Day first.';
+        // SOD is now optional - allow EOD without SOD but with a warning
         toast({
-          title: "SOD Required",
-          description: message,
-          variant: "destructive"
+          title: "No Start of Day Found",
+          description: "SOD not completed, but EOD can still be submitted.",
+          variant: "default"
         });
-        return { isValid: false, error: message };
+        return { isValid: true, warning: 'No SOD entry found - proceeding without parcel count validation' };
       }
 
       const startingCount = sodData.parcel_count;

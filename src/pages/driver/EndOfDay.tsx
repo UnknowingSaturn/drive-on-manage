@@ -92,6 +92,7 @@ const EndOfDay = () => {
       newErrors.parcelsDelivered = 'Please enter a valid number of parcels delivered';
     }
 
+    // Optional validation: only check if SOD exists
     if (todaySOD && parseInt(formData.parcelsDelivered) > todaySOD.parcel_count) {
       newErrors.parcelsDelivered = `Cannot exceed starting parcel count (${todaySOD.parcel_count})`;
     }
@@ -209,7 +210,7 @@ const EndOfDay = () => {
   };
 
   const isAlreadyCompleted = todayEOD?.timestamp;
-  const canSubmitEOD = todaySOD?.parcel_count;
+  const canSubmitEOD = true; // SOD is now optional
 
   if (isLoading) {
     return (
@@ -315,17 +316,6 @@ const EndOfDay = () => {
                       </div>
                     )}
                   </div>
-                ) : !canSubmitEOD ? (
-                  <div className="text-center py-8">
-                    <AlertTriangle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                    <p className="text-muted-foreground mb-2">Please complete your Start of Day first</p>
-                    <Button 
-                      onClick={() => navigate('/driver/start-of-day')}
-                      variant="outline"
-                    >
-                      Go to Start of Day
-                    </Button>
-                  </div>
                 ) : (
                   <div className="text-center py-8">
                     <Package className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
@@ -336,7 +326,7 @@ const EndOfDay = () => {
             </Card>
 
             {/* Pay Calculation Preview */}
-            {!isAlreadyCompleted && canSubmitEOD && formData.parcelsDelivered && (
+            {!isAlreadyCompleted && formData.parcelsDelivered && (
               <Card className="logistics-card">
                 <CardHeader>
                   <CardTitle className="flex items-center">
@@ -370,7 +360,7 @@ const EndOfDay = () => {
             )}
 
             {/* End of Day Form */}
-            {!isAlreadyCompleted && canSubmitEOD && (
+            {!isAlreadyCompleted && (
               <Card className="logistics-card">
                 <CardHeader>
                   <CardTitle className="flex items-center">
@@ -398,7 +388,7 @@ const EndOfDay = () => {
                           setFormData(prev => ({ ...prev, parcelsDelivered: e.target.value }));
                           if (errors.parcelsDelivered) setErrors(prev => ({ ...prev, parcelsDelivered: '' }));
                         }}
-                        placeholder={`Enter delivered count (started with ${todaySOD?.parcel_count || 0})`}
+                        placeholder={todaySOD ? `Enter delivered count (started with ${todaySOD.parcel_count})` : "Enter delivered count"}
                         className={errors.parcelsDelivered ? 'border-destructive' : ''}
                       />
                       {errors.parcelsDelivered && (
