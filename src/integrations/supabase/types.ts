@@ -976,7 +976,6 @@ export type Database = {
       }
       profiles: {
         Row: {
-          company_id: string | null
           created_at: string
           email: string
           first_name: string | null
@@ -989,7 +988,6 @@ export type Database = {
           user_type: string
         }
         Insert: {
-          company_id?: string | null
           created_at?: string
           email: string
           first_name?: string | null
@@ -1002,7 +1000,6 @@ export type Database = {
           user_type: string
         }
         Update: {
-          company_id?: string | null
           created_at?: string
           email?: string
           first_name?: string | null
@@ -1233,6 +1230,41 @@ export type Database = {
         }
         Relationships: []
       }
+      user_companies: {
+        Row: {
+          company_id: string
+          created_at: string
+          id: string
+          role: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          id?: string
+          role?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          id?: string
+          role?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_companies_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       vans: {
         Row: {
           company_id: string
@@ -1429,6 +1461,14 @@ export type Database = {
       test_validation_system: {
         Args: Record<PropertyKey, never>
         Returns: Json
+      }
+      user_has_company_role: {
+        Args: {
+          user_id_param: string
+          company_id_param: string
+          role_param?: string
+        }
+        Returns: boolean
       }
     }
     Enums: {
