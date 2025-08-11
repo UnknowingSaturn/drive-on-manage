@@ -7,7 +7,6 @@ import EarningsWidget from '@/components/driver/EarningsWidget';
 import LeaderboardWidget from '@/components/driver/LeaderboardWidget';
 import FeedbackWidget from '@/components/driver/FeedbackWidget';
 import ExpenseWidget from '@/components/driver/ExpenseWidget';
-import TodaySchedule from '@/components/driver/TodaySchedule';
 import { SidebarProvider, SidebarTrigger, SidebarInset } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/AppSidebar';
 import { MobileNav } from '@/components/MobileNav';
@@ -294,9 +293,6 @@ const Dashboard = () => {
                 </CardContent>
               </Card>
             </div>
-
-            {/* Today's Schedule */}
-            <TodaySchedule />
 
             {/* Integrated Driver Features */}
             <div className="mobile-grid gap-4 md:gap-6">

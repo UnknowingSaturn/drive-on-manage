@@ -71,8 +71,8 @@ const ScheduleView = () => {
     enabled: !!profile?.company_id
   });
 
-  // Fetch schedule assignments for the current week with real-time updates
-  const { data: scheduleAssignments, isLoading: scheduleLoading, refetch } = useQuery({
+  // Fetch schedule assignments for the current week
+  const { data: scheduleAssignments, isLoading: scheduleLoading } = useQuery({
     queryKey: ['schedules', profile?.company_id, weekStart.toISOString()],
     queryFn: async () => {
       if (!profile?.company_id) return [];
@@ -86,9 +86,10 @@ const ScheduleView = () => {
           driver:driver_profiles(
             id,
             parcel_rate,
+            parcel_rate,
             profiles:profiles(first_name, last_name)
           ),
-          round:rounds(round_number, description, rate)
+          round:rounds(round_number, description, base_rate)
         `)
         .eq('company_id', profile.company_id)
         .gte('scheduled_date', format(weekStart, 'yyyy-MM-dd'))
@@ -99,123 +100,90 @@ const ScheduleView = () => {
       return data || [];
     },
     enabled: !!profile?.company_id,
-    refetchInterval: 10000 // More frequent updates for admins
+    refetchInterval: 30000
   });
 
-  // Set up real-time subscription for schedule changes
-  React.useEffect(() => {
-    if (!profile?.company_id) return;
-
-    const channel = supabase
-      .channel('admin-schedule-updates')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'schedules',
-          filter: `company_id=eq.${profile.company_id}`
-        },
-        () => {
-          console.log('Schedule updated, refetching...');
-          refetch();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [profile?.company_id, refetch]);
-
-  // Convert schedule data to support multiple assignments per driver per day
+  // Convert schedule data to grid format
   const schedule = React.useMemo(() => {
-    const scheduleGrid: {[driverId: string]: {[dayKey: string]: any[]}} = {};
+    const scheduleGrid: {[roundId: string]: {[dayKey: string]: any}} = {};
     
     scheduleAssignments?.forEach(assignment => {
       const dayKey = format(new Date(assignment.scheduled_date), 'EEE');
-      const driverId = assignment.driver_id;
+      const roundId = assignment.round_id;
       
-      if (!scheduleGrid[driverId]) {
-        scheduleGrid[driverId] = {};
+      if (!scheduleGrid[roundId]) {
+        scheduleGrid[roundId] = {};
       }
       
-      if (!scheduleGrid[driverId][dayKey]) {
-        scheduleGrid[driverId][dayKey] = [];
-      }
-      
-      scheduleGrid[driverId][dayKey].push({
+      scheduleGrid[roundId][dayKey] = {
         id: assignment.id,
-        round_id: assignment.round_id,
+        driver_id: assignment.driver_id,
         driver_rate: assignment.driver_rate,
-        driver: assignment.driver,
-        round: assignment.round
-      });
+        driver: assignment.driver
+      };
     });
     
     return scheduleGrid;
   }, [scheduleAssignments]);
 
-  // Save schedule mutation - supports multiple round assignments
+  // Save schedule mutation
   const saveScheduleMutation = useMutation({
-    mutationFn: async ({ roundId, dayKey, driverId, remove = false, assignmentId }: {
+    mutationFn: async ({ roundId, dayKey, driverId, remove = false }: {
       roundId: string;
       dayKey: string;
       driverId?: string;
       remove?: boolean;
-      assignmentId?: string;
     }) => {
       const scheduledDate = format(weekDays.find(day => format(day, 'EEE') === dayKey)!, 'yyyy-MM-dd');
+      const existingAssignment = schedule[roundId]?.[dayKey];
       
-      if (remove && assignmentId) {
-        // Remove specific assignment
-        const { error } = await supabase
-          .from('schedules')
-          .delete()
-          .eq('id', assignmentId);
-        
-        if (error) throw error;
-        return;
-      }
-
-      if (!driverId || !roundId) return;
-
-      // Check if this driver already has this round on this day
-      const existingAssignment = scheduleAssignments?.find(assignment => 
-        assignment.driver_id === driverId &&
-        assignment.round_id === roundId &&
-        format(new Date(assignment.scheduled_date), 'EEE') === dayKey
-      );
-
-      if (existingAssignment) {
-        toast({
-          title: "Assignment already exists",
-          description: "This driver is already assigned to this round on this day.",
-          variant: "destructive",
-        });
+      if (remove || !driverId) {
+        // Remove assignment
+        if (existingAssignment?.id) {
+          const { error } = await supabase
+            .from('schedules')
+            .delete()
+            .eq('id', existingAssignment.id);
+          
+          if (error) throw error;
+        }
         return;
       }
 
       // Get driver rate
       const driver = drivers?.find(d => d.id === driverId);
       const round = rounds?.find(r => r.id === roundId);
-      const driverRate = round?.rate || driver?.parcel_rate || 0;
+      const driverRate = driver?.parcel_rate || round?.parcel_rate || 0;
 
-      // Create new assignment
-      const { error } = await supabase
-        .from('schedules')
-        .insert({
-          company_id: profile!.company_id!,
-          round_id: roundId,
-          driver_id: driverId,
-          scheduled_date: scheduledDate,
-          week_start_date: format(weekStart, 'yyyy-MM-dd'),
-          driver_rate: driverRate,
-          created_by: profile!.user_id,
-          status: 'scheduled'
-        });
-      
-      if (error) throw error;
+      if (existingAssignment?.id) {
+        // Update existing assignment
+        const { error } = await supabase
+          .from('schedules')
+          .update({
+            driver_id: driverId,
+            driver_rate: driverRate,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', existingAssignment.id);
+        
+        if (error) throw error;
+      } else {
+        // Create new assignment
+        const { error } = await supabase
+          .from('schedules')
+          .insert({
+            company_id: profile!.company_id!,
+            round_id: roundId,
+            driver_id: driverId,
+            scheduled_date: scheduledDate,
+            week_start_date: format(weekStart, 'yyyy-MM-dd'),
+            driver_rate: driverRate,
+            created_by: profile!.user_id,
+            status: 'scheduled'
+          });
+        
+        if (error) throw error;
+      }
     },
     onSuccess: () => {
       setHasUnsavedChanges(false);
@@ -240,25 +208,25 @@ const ScheduleView = () => {
     return profile ? `${profile.first_name} ${profile.last_name}` : null;
   };
 
-  const getDriverAssignments = (driverId: string, dayKey: string) => {
-    return schedule[driverId]?.[dayKey] || [];
+  const getAssignmentStatus = (roundId: string, dayKey: string) => {
+    return schedule[roundId]?.[dayKey] ? 'covered' : 'uncovered';
   };
 
-  const isRoundAssigned = (roundId: string, dayKey: string) => {
-    return scheduleAssignments?.some(assignment => 
-      assignment.round_id === roundId && 
-      format(new Date(assignment.scheduled_date), 'EEE') === dayKey
-    );
+  const getCellBackgroundColor = (roundId: string, dayKey: string) => {
+    const status = getAssignmentStatus(roundId, dayKey);
+    return status === 'covered' 
+      ? 'bg-green-50 hover:bg-green-100 border-green-200' 
+      : 'bg-red-50 hover:bg-red-100 border-red-200';
   };
 
-  const handleAddAssignment = (roundId: string, dayKey: string, driverId: string) => {
+  const handleAssignment = (roundId: string, dayKey: string, driverId: string | null) => {
     setHasUnsavedChanges(true);
-    saveScheduleMutation.mutate({ roundId, dayKey, driverId });
-  };
-
-  const handleRemoveAssignment = (assignmentId: string, roundId: string, dayKey: string) => {
-    setHasUnsavedChanges(true);
-    saveScheduleMutation.mutate({ roundId, dayKey, remove: true, assignmentId });
+    
+    if (driverId === '__unassigned__' || !driverId) {
+      saveScheduleMutation.mutate({ roundId, dayKey, remove: true });
+    } else {
+      saveScheduleMutation.mutate({ roundId, dayKey, driverId });
+    }
   };
 
   const navigateWeek = (direction: 'prev' | 'next') => {
@@ -367,12 +335,11 @@ const ScheduleView = () => {
         </Card>
       </div>
 
-      {/* Driver-Based Schedule Grid */}
       <Card>
         <CardHeader>
-          <CardTitle>Driver Schedule Matrix</CardTitle>
+          <CardTitle>Weekly Schedule</CardTitle>
           <CardDescription>
-            Assign multiple rounds to each driver per day
+            Assign drivers to rounds for each day of the week
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -386,11 +353,11 @@ const ScheduleView = () => {
               <table className="w-full border-collapse border border-border">
                 <thead>
                   <tr>
-                    <th className="text-left p-3 border border-border font-medium min-w-[180px] bg-muted/50">
-                      Driver
+                    <th className="text-left p-3 border border-border font-medium min-w-[140px] bg-muted/50">
+                      Round
                     </th>
                     {weekDays.map((day, index) => (
-                      <th key={index} className="text-center p-3 border border-border font-medium min-w-[200px] bg-muted/50">
+                      <th key={index} className="text-center p-3 border border-border font-medium min-w-[160px] bg-muted/50">
                         <div className="text-sm text-muted-foreground">
                           {format(day, 'EEEE')}
                         </div>
@@ -402,67 +369,74 @@ const ScheduleView = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {drivers?.map((driver) => (
-                    <tr key={driver.id} className="hover:bg-muted/30">
+                  {rounds?.map((round) => (
+                    <tr key={round.id} className="hover:bg-muted/30">
                       <td className="p-3 border border-border bg-muted/30">
-                        <div className="font-medium">
-                          {driver.profiles?.first_name} {driver.profiles?.last_name}
+                        <div className="font-medium text-sm">{round.round_number}</div>
+                        <div className="text-xs text-muted-foreground truncate max-w-[120px]">
+                          {round.description}
                         </div>
-                        <div className="text-xs text-muted-foreground">
-                          £{driver.parcel_rate || 0}/parcel base rate
-                        </div>
+                        {round.base_rate && (
+                          <div className="text-xs text-green-600 font-medium mt-1">
+                            £{round.base_rate}/day
+                          </div>
+                        )}
                       </td>
                       {weekDays.map((day, dayIndex) => {
                         const dayKey = format(day, 'EEE');
-                        const assignments = getDriverAssignments(driver.id, dayKey);
+                        const assignment = schedule[round.id]?.[dayKey];
+                        const status = getAssignmentStatus(round.id, dayKey);
+                        const assignedDriver = getDriverName(assignment);
+                        const cellBgColor = getCellBackgroundColor(round.id, dayKey);
                         
                         return (
-                          <td key={dayIndex} className="p-2 border border-border">
-                            <div className="space-y-2 min-h-[120px]">
-                              {/* Existing Assignments */}
-                              {assignments.map((assignment, idx) => (
-                                <div key={idx} className="bg-green-50 border border-green-200 rounded p-2">
-                                  <div className="flex justify-between items-start">
-                                    <div className="flex-1">
-                                      <div className="font-medium text-xs">
-                                        {assignment.round?.round_number}
-                                      </div>
-                                      <div className="text-xs text-green-600 font-medium">
-                                        £{assignment.driver_rate}/parcel
-                                      </div>
-                                    </div>
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      className="h-4 w-4 p-0 hover:bg-destructive hover:text-destructive-foreground"
-                                      onClick={() => handleRemoveAssignment(assignment.id, assignment.round_id, dayKey)}
-                                    >
-                                      ×
-                                    </Button>
-                                  </div>
-                                </div>
-                              ))}
-                              
-                              {/* Add New Assignment */}
+                          <td key={dayIndex} className={`p-2 border border-border text-center ${cellBgColor}`}>
+                            <div className="space-y-2">
                               <Select
-                                value=""
-                                onValueChange={(roundId) => {
-                                  if (roundId && roundId !== '__placeholder__') {
-                                    handleAddAssignment(roundId, dayKey, driver.id);
-                                  }
-                                }}
+                                value={assignment?.driver_id || '__unassigned__'}
+                                onValueChange={(value) => 
+                                  handleAssignment(round.id, dayKey, value === '__unassigned__' ? null : value)
+                                }
+                                disabled={saveScheduleMutation.isPending}
                               >
-                                <SelectTrigger className="w-full text-xs bg-background border-dashed border-primary/50">
-                                  <SelectValue placeholder="+ Add round" />
+                                <SelectTrigger className="w-full text-xs bg-background/90 border-border/50">
+                                  <SelectValue placeholder="Assign driver" />
                                 </SelectTrigger>
-                                <SelectContent>
-                                  {rounds?.map((round) => (
-                                    <SelectItem key={round.id} value={round.id}>
-                                      {round.round_number}
+                                <SelectContent className="bg-background border border-border shadow-lg z-50">
+                                  <SelectItem value="__unassigned__" className="text-muted-foreground">
+                                    Unassigned
+                                  </SelectItem>
+                                  {drivers?.map((driver) => (
+                                    <SelectItem key={driver.id} value={driver.id} className="hover:bg-muted">
+                                      <div className="flex flex-col items-start">
+                                        <span className="font-medium">
+                                          {driver.profiles?.first_name} {driver.profiles?.last_name}
+                                        </span>
+                                        {driver.parcel_rate && (
+                                          <span className="text-xs text-muted-foreground">
+                                            £{driver.parcel_rate}/parcel
+                                          </span>
+                                        )}
+                                      </div>
                                     </SelectItem>
                                   ))}
                                 </SelectContent>
                               </Select>
+                              
+                              <div className="flex flex-col space-y-1">
+                                <Badge 
+                                  variant={status === 'covered' ? 'default' : 'destructive'}
+                                  className="text-xs"
+                                >
+                                  {status === 'covered' ? 'Assigned' : 'Vacant'}
+                                </Badge>
+                                
+                                {assignment?.driver_rate && (
+                                  <div className="text-xs text-muted-foreground bg-background/50 rounded px-1 py-0.5">
+                                    £{assignment.driver_rate}/day
+                                  </div>
+                                )}
+                              </div>
                             </div>
                           </td>
                         );
@@ -471,6 +445,14 @@ const ScheduleView = () => {
                   ))}
                 </tbody>
               </table>
+            </div>
+          )}
+          
+          {rounds?.length === 0 && (
+            <div className="text-center py-8 text-muted-foreground">
+              <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <h3 className="text-lg font-medium mb-2">No rounds available</h3>
+              <p>Create rounds first to schedule driver assignments.</p>
             </div>
           )}
         </CardContent>
