@@ -84,7 +84,7 @@ const DriverManagement = () => {
       
       console.log('Fetching drivers for company_ids:', companyIds);
       
-      // Use a single query with manual join - this is more reliable than Supabase's automatic joins
+      // Use the new database function to get drivers with their profile information
       const { data: driversWithProfiles, error: driversError } = await supabase
         .rpc('get_drivers_with_profiles', { 
           company_ids: companyIds 
@@ -104,14 +104,14 @@ const DriverManagement = () => {
         throw driversError;
       }
 
-      // Transform driver data for the UI
-      return (drivers || []).map((driver: any) => ({
+      // Transform the data for the UI
+      return (driversWithProfiles || []).map((driver: any) => ({
         ...driver,
         type: 'active' as const,
-        name: driver.user_profile ? `${driver.user_profile.first_name} ${driver.user_profile.last_name}` : 'Unknown',
-        email: driver.user_profile?.email || 'No email',
-        phone: driver.user_profile?.phone || '',
-        isActive: driver.user_profile?.is_active ?? true,
+        name: `${driver.first_name || ''} ${driver.last_name || ''}`.trim() || 'Unknown',
+        email: driver.email || 'No email',
+        phone: driver.phone || '',
+        isActive: driver.is_active ?? true,
         status: driver.first_login_completed ? 'active' : 'pending_first_login',
         onboardingCompletedAt: driver.onboarding_completed_at
       }));
@@ -421,9 +421,9 @@ const DriverManagement = () => {
   const openEditDialog = (driver: any) => {
     setSelectedDriver(driver);
     setEditFormData({
-      firstName: driver.user_profile?.first_name || '',
-      lastName: driver.user_profile?.last_name || '',
-      phone: driver.user_profile?.phone || '',
+      firstName: driver.first_name || '',
+      lastName: driver.last_name || '',
+      phone: driver.phone || '',
       parcelRate: driver.parcel_rate?.toString() || '',
       coverRate: driver.cover_rate?.toString() || '',
       status: driver.status || 'active',

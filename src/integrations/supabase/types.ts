@@ -1434,6 +1434,38 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: Json
       }
+      get_drivers_with_profiles: {
+        Args: { company_ids: string[] }
+        Returns: {
+          id: string
+          user_id: string
+          company_id: string
+          driving_license_number: string
+          license_expiry: string
+          right_to_work_document: string
+          insurance_document: string
+          driving_license_document: string
+          parcel_rate: number
+          assigned_van_id: string
+          status: string
+          created_at: string
+          updated_at: string
+          avatar_url: string
+          cover_rate: number
+          first_login_completed: boolean
+          requires_onboarding: boolean
+          onboarding_completed_at: string
+          emergency_contact_name: string
+          emergency_contact_phone: string
+          emergency_contact_relation: string
+          vehicle_notes: string
+          first_name: string
+          last_name: string
+          email: string
+          phone: string
+          is_active: boolean
+        }[]
+      }
       get_validation_summary: {
         Args: Record<PropertyKey, never>
         Returns: Json
