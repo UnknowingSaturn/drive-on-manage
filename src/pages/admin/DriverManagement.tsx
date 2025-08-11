@@ -73,9 +73,22 @@ const DriverManagement = () => {
   const { data: drivers = [], isLoading, error } = useQuery({
     queryKey: ['drivers', profile?.company_id],
     queryFn: async () => {
-      if (!profile?.company_id) return [];
+      if (!profile?.company_id) {
+        console.log('No company_id in profile:', profile);
+        return [];
+      }
       
-      // Fetch active driver profiles with van assignments and profile data
+      console.log('Fetching drivers for company_id:', profile.company_id);
+      
+      // First, try a simpler query to debug
+      const { data: testData, error: testError } = await supabase
+        .from('driver_profiles')
+        .select('*')
+        .eq('company_id', profile.company_id);
+        
+      console.log('Simple driver_profiles query result:', { testData, testError });
+      
+      // Then try the full query
       const { data: drivers, error: driversError } = await supabase
         .from('driver_profiles')
         .select(`
@@ -85,6 +98,8 @@ const DriverManagement = () => {
         `)
         .eq('company_id', profile.company_id)
         .order('created_at', { ascending: false });
+
+      console.log('Full query result:', { drivers, driversError });
 
       if (driversError) {
         console.error('Error fetching drivers:', driversError);
