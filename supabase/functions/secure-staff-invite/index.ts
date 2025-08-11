@@ -410,9 +410,9 @@ serve(async (req) => {
       });
     }
 
-    // Generate secure onboarding URL
-    const baseUrl = 'https://5ece6ac1-a29e-48e5-8b0e-6b9cb11d1253.lovableproject.com';
-    const onboardingUrl = `${baseUrl}/onboarding?token=${inviteToken}`;
+    // Generate secure onboarding URL - use request origin for dynamic URL
+    const origin = req.headers.get('origin') || req.headers.get('referer')?.split('/').slice(0, 3).join('/') || 'https://5ece6ac1-a29e-48e5-8b0e-6b9cb11d1253.lovableproject.com';
+    const onboardingUrl = `${origin}/onboarding?token=${inviteToken}`;
 
     // Send secure invitation email
     try {
