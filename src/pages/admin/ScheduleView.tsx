@@ -337,122 +337,112 @@ const ScheduleView = () => {
 
       <Card>
         <CardHeader>
-          <CardTitle>Weekly Schedule</CardTitle>
+          <CardTitle>Round Assignment Schedule</CardTitle>
           <CardDescription>
-            Assign drivers to rounds for each day of the week
+            Select drivers for each round across the week. Each slot represents one day assignment.
           </CardDescription>
         </CardHeader>
         <CardContent>
           {scheduleLoading ? (
             <div className="flex items-center justify-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mr-4"></div>
-              <span>Loading schedule...</span>
+              <span>Loading rounds and assignments...</span>
+            </div>
+          ) : rounds?.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <MapPin className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <h3 className="text-lg font-medium mb-2">No rounds available</h3>
+              <p>Create rounds first to schedule driver assignments.</p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse border border-border">
-                <thead>
-                  <tr>
-                    <th className="text-left p-3 border border-border font-medium min-w-[140px] bg-muted/50">
-                      Round
-                    </th>
-                    {weekDays.map((day, index) => (
-                      <th key={index} className="text-center p-3 border border-border font-medium min-w-[160px] bg-muted/50">
-                        <div className="text-sm text-muted-foreground">
-                          {format(day, 'EEEE')}
-                        </div>
-                        <div className="text-base font-semibold">
-                          {format(day, 'dd/MM')}
-                        </div>
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {rounds?.map((round) => (
-                    <tr key={round.id} className="hover:bg-muted/30">
-                      <td className="p-3 border border-border bg-muted/30">
-                        <div className="font-medium text-sm">{round.round_number}</div>
-                        <div className="text-xs text-muted-foreground truncate max-w-[120px]">
-                          {round.description}
-                        </div>
-                        {round.base_rate && (
-                          <div className="text-xs text-green-600 font-medium mt-1">
-                            £{round.base_rate}/day
-                          </div>
-                        )}
-                      </td>
+            <div className="space-y-4">
+              {/* Rounds List with Assignment Slots */}
+              {rounds?.map((round) => (
+                <Card key={round.id} className="border border-border">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle className="text-lg font-semibold">
+                          Round {round.round_number}
+                        </CardTitle>
+                        <CardDescription className="mt-1">
+                          {round.description || 'No description available'}
+                        </CardDescription>
+                      </div>
+                      {round.base_rate && (
+                        <Badge variant="secondary" className="text-sm">
+                          £{round.base_rate}/day
+                        </Badge>
+                      )}
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-7 gap-3">
                       {weekDays.map((day, dayIndex) => {
                         const dayKey = format(day, 'EEE');
                         const assignment = schedule[round.id]?.[dayKey];
                         const status = getAssignmentStatus(round.id, dayKey);
-                        const assignedDriver = getDriverName(assignment);
-                        const cellBgColor = getCellBackgroundColor(round.id, dayKey);
+                        const cellBgColor = status === 'covered' 
+                          ? 'bg-green-50 border-green-200' 
+                          : 'bg-red-50 border-red-200';
                         
                         return (
-                          <td key={dayIndex} className={`p-2 border border-border text-center ${cellBgColor}`}>
-                            <div className="space-y-2">
-                              <Select
-                                value={assignment?.driver_id || '__unassigned__'}
-                                onValueChange={(value) => 
-                                  handleAssignment(round.id, dayKey, value === '__unassigned__' ? null : value)
-                                }
-                                disabled={saveScheduleMutation.isPending}
-                              >
-                                <SelectTrigger className="w-full text-xs bg-background/90 border-border/50">
-                                  <SelectValue placeholder="Assign driver" />
-                                </SelectTrigger>
-                                <SelectContent className="bg-background border border-border shadow-lg z-50">
-                                  <SelectItem value="__unassigned__" className="text-muted-foreground">
-                                    Unassigned
-                                  </SelectItem>
-                                  {drivers?.map((driver) => (
-                                    <SelectItem key={driver.id} value={driver.id} className="hover:bg-muted">
-                                      <div className="flex flex-col items-start">
-                                        <span className="font-medium">
-                                          {driver.profiles?.first_name} {driver.profiles?.last_name}
-                                        </span>
-                                        {driver.parcel_rate && (
-                                          <span className="text-xs text-muted-foreground">
-                                            £{driver.parcel_rate}/parcel
-                                          </span>
-                                        )}
-                                      </div>
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                              
-                              <div className="flex flex-col space-y-1">
-                                <Badge 
-                                  variant={status === 'covered' ? 'default' : 'destructive'}
-                                  className="text-xs"
-                                >
-                                  {status === 'covered' ? 'Assigned' : 'Vacant'}
-                                </Badge>
-                                
-                                {assignment?.driver_rate && (
-                                  <div className="text-xs text-muted-foreground bg-background/50 rounded px-1 py-0.5">
-                                    £{assignment.driver_rate}/day
-                                  </div>
-                                )}
+                          <div key={dayIndex} className={`p-3 rounded-lg border-2 ${cellBgColor}`}>
+                            <div className="text-center mb-2">
+                              <div className="text-xs font-medium text-muted-foreground">
+                                {format(day, 'EEE')}
+                              </div>
+                              <div className="text-sm font-semibold">
+                                {format(day, 'dd/MM')}
                               </div>
                             </div>
-                          </td>
+                            
+                            <Select
+                              value={assignment?.driver_id || '__unassigned__'}
+                              onValueChange={(value) => 
+                                handleAssignment(round.id, dayKey, value === '__unassigned__' ? null : value)
+                              }
+                              disabled={saveScheduleMutation.isPending}
+                            >
+                              <SelectTrigger className="w-full text-xs">
+                                <SelectValue placeholder="Select driver" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="__unassigned__" className="text-muted-foreground">
+                                  Unassigned
+                                </SelectItem>
+                                {drivers?.map((driver) => (
+                                  <SelectItem key={driver.id} value={driver.id}>
+                                    <div className="flex flex-col items-start">
+                                      <span className="font-medium text-xs">
+                                        {driver.profiles?.first_name} {driver.profiles?.last_name}
+                                      </span>
+                                      {driver.parcel_rate && (
+                                        <span className="text-xs text-muted-foreground">
+                                          £{driver.parcel_rate}/parcel
+                                        </span>
+                                      )}
+                                    </div>
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            
+                            <div className="mt-2 text-center">
+                              <Badge 
+                                variant={status === 'covered' ? 'default' : 'destructive'}
+                                className="text-xs"
+                              >
+                                {status === 'covered' ? 'Assigned' : 'Open'}
+                              </Badge>
+                            </div>
+                          </div>
                         );
                       })}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-          
-          {rounds?.length === 0 && (
-            <div className="text-center py-8 text-muted-foreground">
-              <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <h3 className="text-lg font-medium mb-2">No rounds available</h3>
-              <p>Create rounds first to schedule driver assignments.</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
             </div>
           )}
         </CardContent>
