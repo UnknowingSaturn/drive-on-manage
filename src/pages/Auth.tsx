@@ -10,8 +10,10 @@ import { Truck, Users, Shield } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const Auth = () => {
-  const { user, signIn, signUp, loading } = useAuth();
+  const { user, signIn, signUp, resetPassword, loading } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [forgotPasswordEmail, setForgotPasswordEmail] = useState('');
 
   // Sign In form state
   const [signInData, setSignInData] = useState({
@@ -65,6 +67,20 @@ const Auth = () => {
     }
   };
 
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!forgotPasswordEmail) return;
+
+    setIsSubmitting(true);
+    try {
+      await resetPassword(forgotPasswordEmail);
+      setShowForgotPassword(false);
+      setForgotPasswordEmail('');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -102,39 +118,91 @@ const Auth = () => {
               </TabsList>
 
               <TabsContent value="signin" className="space-y-4">
-                <form onSubmit={handleSignIn} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="signin-email">Email</Label>
-                    <Input
-                      id="signin-email"
-                      type="email"
-                      placeholder="Enter your email"
-                      value={signInData.email}
-                      onChange={(e) => setSignInData({ ...signInData, email: e.target.value })}
-                      required
-                      className="touch-target"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="signin-password">Password</Label>
-                    <Input
-                      id="signin-password"
-                      type="password"
-                      placeholder="Enter your password"
-                      value={signInData.password}
-                      onChange={(e) => setSignInData({ ...signInData, password: e.target.value })}
-                      required
-                      className="touch-target"
-                    />
-                  </div>
-                  <Button 
-                    type="submit" 
-                    className="w-full mobile-button" 
-                    disabled={isSubmitting}
-                  >
-                    {isSubmitting ? 'Signing In...' : 'Sign In'}
-                  </Button>
-                </form>
+                {!showForgotPassword ? (
+                  <form onSubmit={handleSignIn} className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="signin-email">Email</Label>
+                      <Input
+                        id="signin-email"
+                        type="email"
+                        placeholder="Enter your email"
+                        value={signInData.email}
+                        onChange={(e) => setSignInData({ ...signInData, email: e.target.value })}
+                        required
+                        className="touch-target"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="signin-password">Password</Label>
+                      <Input
+                        id="signin-password"
+                        type="password"
+                        placeholder="Enter your password"
+                        value={signInData.password}
+                        onChange={(e) => setSignInData({ ...signInData, password: e.target.value })}
+                        required
+                        className="touch-target"
+                      />
+                    </div>
+                    <Button 
+                      type="submit" 
+                      className="w-full mobile-button" 
+                      disabled={isSubmitting}
+                    >
+                      {isSubmitting ? 'Signing In...' : 'Sign In'}
+                    </Button>
+                    
+                    <div className="text-center">
+                      <Button
+                        type="button"
+                        variant="link"
+                        onClick={() => setShowForgotPassword(true)}
+                        className="text-sm text-muted-foreground hover:text-primary"
+                      >
+                        Forgot your password?
+                      </Button>
+                    </div>
+                  </form>
+                ) : (
+                  <form onSubmit={handleForgotPassword} className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="forgot-email">Email Address</Label>
+                      <Input
+                        id="forgot-email"
+                        type="email"
+                        placeholder="Enter your email address"
+                        value={forgotPasswordEmail}
+                        onChange={(e) => setForgotPasswordEmail(e.target.value)}
+                        required
+                        className="touch-target"
+                      />
+                      <p className="text-sm text-muted-foreground">
+                        We'll send you a link to reset your password.
+                      </p>
+                    </div>
+                    <Button 
+                      type="submit" 
+                      className="w-full mobile-button" 
+                      disabled={isSubmitting || !forgotPasswordEmail}
+                    >
+                      {isSubmitting ? 'Sending Reset Link...' : 'Send Reset Link'}
+                    </Button>
+                    
+                    <div className="text-center">
+                      <Button
+                        type="button"
+                        variant="link"
+                        onClick={() => {
+                          setShowForgotPassword(false);
+                          setForgotPasswordEmail('');
+                        }}
+                        className="text-sm text-muted-foreground hover:text-primary"
+                      >
+                        Back to Sign In
+                      </Button>
+                    </div>
+                  </form>
+                )}
               </TabsContent>
 
               <TabsContent value="signup" className="space-y-4">

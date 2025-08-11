@@ -24,6 +24,8 @@ interface AuthContextType {
   signUp: (email: string, password: string, userData: { first_name: string; last_name: string; user_type: 'admin' }) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
+  resetPassword: (email: string) => Promise<{ error: any }>;
+  updatePassword: (password: string) => Promise<{ error: any }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -233,6 +235,76 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const resetPassword = async (email: string) => {
+    try {
+      const { cleanupAuthState, sanitizeInput } = await import('@/lib/security');
+      
+      // Clean up any existing auth state
+      cleanupAuthState();
+      
+      const redirectUrl = `${window.location.origin}/reset-password`;
+      
+      const { error } = await supabase.auth.resetPasswordForEmail(
+        sanitizeInput(email),
+        {
+          redirectTo: redirectUrl,
+        }
+      );
+
+      if (error) {
+        toast({
+          variant: "destructive",
+          title: "Password Reset Failed",
+          description: error.message,
+        });
+      } else {
+        toast({
+          title: "Password Reset Email Sent",
+          description: "Please check your email for the password reset link.",
+        });
+      }
+
+      return { error };
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Password Reset Error",
+        description: error.message,
+      });
+      return { error };
+    }
+  };
+
+  const updatePassword = async (password: string) => {
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: password
+      });
+
+      if (error) {
+        toast({
+          variant: "destructive",
+          title: "Password Update Failed",
+          description: error.message,
+        });
+      } else {
+        toast({
+          title: "Password Updated",
+          description: "Your password has been successfully updated.",
+        });
+      }
+
+      return { error };
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Password Update Error",
+        description: error.message,
+      });
+      return { error };
+    }
+  };
+
   const value = {
     user,
     profile,
@@ -242,6 +314,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     signUp,
     signOut,
     refreshProfile,
+    resetPassword,
+    updatePassword,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

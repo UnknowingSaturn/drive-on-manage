@@ -23,6 +23,7 @@ import Finance from "./pages/admin/Finance";
 import DriverEngagement from "./pages/admin/DriverEngagement";
 import DriverOnboarding from "./pages/DriverOnboarding";
 import AdminSettings from "./pages/admin/Settings";
+import ResetPassword from "./pages/ResetPassword";
 
 // Driver pages
 import StartOfDay from "./pages/driver/StartOfDay";
@@ -49,6 +50,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/not-authorized" element={<NotAuthorized />} />
             <Route path="/onboarding" element={<DriverOnboarding />} />
             <Route path="/dashboard" element={
