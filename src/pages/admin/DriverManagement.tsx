@@ -82,47 +82,20 @@ const DriverManagement = () => {
       const companyIds = profile.user_companies.map(uc => uc.company_id);
       console.log('Fetching drivers for company_ids:', companyIds);
       
-      // Debug: Check raw driver profiles first
-      const { data: rawDrivers, error: rawError } = await supabase
-        .from('driver_profiles')
-        .select('*')
-        .eq('company_id', companyIds[0]);
-        
-      console.log('Raw driver profiles:', { rawDrivers, rawError });
+      console.log('Fetching drivers for company_ids:', companyIds);
       
-      // Debug: Check profiles that should match
-      if (rawDrivers && rawDrivers.length > 0) {
-        const userIds = rawDrivers.map(d => d.user_id);
-        const { data: rawProfiles, error: profilesError } = await supabase
-          .from('profiles')
-          .select('*')
-          .in('user_id', userIds);
-        console.log('Matching profiles:', { rawProfiles, profilesError, userIds });
-      }
-      
-      // Main query - get driver profiles first
-      const { data: drivers, error: driversError } = await supabase
-        .from('driver_profiles')
-        .select(`
-          *,
-          assigned_van:vans(id, registration, make, model)
-        `)
-        .in('company_id', companyIds)
-        .order('created_at', { ascending: false });
-        
-      // Get profiles separately to avoid foreign key issues
-      if (drivers && drivers.length > 0) {
-        const userIds = drivers.map(d => d.user_id);
-        const { data: profiles } = await supabase
-          .from('profiles')
-          .select('user_id, first_name, last_name, email, phone, is_active')
-          .in('user_id', userIds);
-          
-        // Match profiles to drivers
-        drivers.forEach((driver: any) => {
-          driver.user_profile = profiles?.find(p => p.user_id === driver.user_id);
+      // Use a single query with manual join - this is more reliable than Supabase's automatic joins
+      const { data: driversWithProfiles, error: driversError } = await supabase
+        .rpc('get_drivers_with_profiles', { 
+          company_ids: companyIds 
         });
+
+      if (driversError) {
+        console.error('Error fetching drivers:', driversError);
+        return [];
       }
+
+      console.log('Drivers with profiles:', driversWithProfiles);
 
       console.log('Full query result:', { drivers, driversError });
 
