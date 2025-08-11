@@ -229,11 +229,11 @@ const DriverOnboarding = () => {
       return;
     }
 
-    // Validate documents
-    if (!uploadedDocs.drivingLicense || !uploadedDocs.rightToWork || !uploadedDocs.insurance) {
+    // Validate documents (insurance is optional)
+    if (!uploadedDocs.drivingLicense || !uploadedDocs.rightToWork) {
       toast({
         title: "Missing documents",
-        description: "Please upload all required documents before completing onboarding.",
+        description: "Please upload driving license and right to work documents before completing onboarding.",
         variant: "destructive",
       });
       return;
@@ -242,10 +242,10 @@ const DriverOnboarding = () => {
     completeOnboardingMutation.mutate(formData);
   };
 
-  // Calculate progress
+  // Calculate progress (insurance is optional)
   const getProgress = () => {
     let completed = 0;
-    const total = 8;
+    const total = 7; // Changed from 8 to 7 since insurance is optional
 
     if (formData.firstName) completed++;
     if (formData.lastName) completed++;
@@ -254,7 +254,7 @@ const DriverOnboarding = () => {
     if (formData.licenseExpiry) completed++;
     if (uploadedDocs.drivingLicense) completed++;
     if (uploadedDocs.rightToWork) completed++;
-    if (uploadedDocs.insurance) completed++;
+    // Insurance is optional, so don't count it for completion
 
     return Math.round((completed / total) * 100);
   };
@@ -310,7 +310,7 @@ const DriverOnboarding = () => {
                 <span>License Details</span>
               </div>
               <div className="flex items-center space-x-1">
-                {uploadedDocs.drivingLicense && uploadedDocs.rightToWork && uploadedDocs.insurance ? (
+                {uploadedDocs.drivingLicense && uploadedDocs.rightToWork ? (
                   <CheckCircle2 className="h-3 w-3 text-green-600" />
                 ) : (
                   <Clock className="h-3 w-3 text-muted-foreground" />
@@ -471,7 +471,7 @@ const DriverOnboarding = () => {
                 Required Documents
               </CardTitle>
               <CardDescription>
-                Upload your right to work and insurance documents
+                Upload your right to work document (insurance optional)
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -517,10 +517,10 @@ const DriverOnboarding = () => {
                 <div className="text-center">
                   <FileText className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
                   <p className="text-sm font-medium mb-1">
-                    {uploadedDocs.insurance ? 'Insurance Document Uploaded' : 'Upload Insurance Document *'}
+                    {uploadedDocs.insurance ? 'Insurance Document Uploaded' : 'Upload Insurance Document (Optional)'}
                   </p>
                   <p className="text-xs text-muted-foreground mb-3">
-                    Valid driving insurance certificate
+                    Valid driving insurance certificate (optional)
                   </p>
                   <Button 
                     type="button"

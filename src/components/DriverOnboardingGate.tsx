@@ -63,13 +63,13 @@ const DriverOnboardingGate: React.FC<DriverOnboardingGateProps> = ({ children })
       return <Navigate to="/driver/onboarding" replace />;
     }
 
-    // Check if all required onboarding fields are completed
+    // Check if all required onboarding fields are completed (insurance is optional)
     const isOnboardingComplete = !!(
       driverProfile.driving_license_number &&
       driverProfile.license_expiry &&
       driverProfile.driving_license_document &&
       driverProfile.right_to_work_document &&
-      driverProfile.insurance_document &&
+      // insurance_document is optional
       !driverProfile.requires_onboarding &&
       driverProfile.status !== 'pending_onboarding'
     );
