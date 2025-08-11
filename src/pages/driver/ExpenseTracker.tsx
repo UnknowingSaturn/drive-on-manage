@@ -11,6 +11,9 @@ import { Camera, Receipt, DollarSign, Upload, Download, Clock, CheckCircle, XCir
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { SidebarProvider, SidebarTrigger, SidebarInset } from '@/components/ui/sidebar';
+import { AppSidebar } from '@/components/AppSidebar';
+import { MobileNav } from '@/components/MobileNav';
 
 const ExpenseTracker = () => {
   const { profile } = useAuth();
@@ -163,13 +166,24 @@ const ExpenseTracker = () => {
     .reduce((sum, e) => sum + Number(e.amount), 0) || 0;
 
   return (
-    <div className="p-6 space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Expense Tracker</h1>
-        <p className="text-muted-foreground">Log fuel, tolls, parking and other business expenses</p>
-      </div>
+    <SidebarProvider>
+      <div className="min-h-screen flex w-full bg-background">
+        <AppSidebar />
+        
+        <SidebarInset className="flex-1">
+          <header className="border-b bg-card sticky top-0 z-10">
+            <div className="flex items-center px-4 py-4">
+              <SidebarTrigger className="mr-4" />
+              <MobileNav className="md:hidden mr-4" />
+              <div>
+                <h1 className="text-xl font-semibold text-foreground">Expense Tracker</h1>
+                <p className="text-sm text-muted-foreground">Log fuel, tolls, parking and other business expenses</p>
+              </div>
+            </div>
+          </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <main className="p-6 space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Pending Expenses</CardTitle>
@@ -341,7 +355,10 @@ const ExpenseTracker = () => {
           )}
         </CardContent>
       </Card>
-    </div>
+          </main>
+        </SidebarInset>
+      </div>
+    </SidebarProvider>
   );
 };
 

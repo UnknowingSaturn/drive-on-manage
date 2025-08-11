@@ -6,6 +6,9 @@ import { DollarSign, TrendingUp, Target, Clock } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { format, startOfToday, startOfWeek, startOfMonth } from 'date-fns';
+import { SidebarProvider, SidebarTrigger, SidebarInset } from '@/components/ui/sidebar';
+import { AppSidebar } from '@/components/AppSidebar';
+import { MobileNav } from '@/components/MobileNav';
 
 const EarningsTracker = () => {
   const { profile } = useAuth();
@@ -148,56 +151,70 @@ const EarningsTracker = () => {
   };
 
   return (
-    <div className="p-6 space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Live Earnings Tracker</h1>
-        <p className="text-muted-foreground">Track your earnings and progress towards your targets</p>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <EarningsCard
-          title="Today's Earnings"
-          icon={DollarSign}
-          earnings={earnings?.today}
-          target={150}
-          period="today"
-        />
+    <SidebarProvider>
+      <div className="min-h-screen flex w-full bg-background">
+        <AppSidebar />
         
-        <EarningsCard
-          title="This Week"
-          icon={TrendingUp}
-          earnings={earnings?.week}
-          target={750}
-          period="week"
-        />
-        
-        <EarningsCard
-          title="This Month"
-          icon={Target}
-          earnings={earnings?.month}
-          target={3000}
-          period="month"
-        />
-      </div>
+        <SidebarInset className="flex-1">
+          <header className="border-b bg-card sticky top-0 z-10">
+            <div className="flex items-center px-4 py-4">
+              <SidebarTrigger className="mr-4" />
+              <MobileNav className="md:hidden mr-4" />
+              <div>
+                <h1 className="text-xl font-semibold text-foreground">Earnings Tracker</h1>
+                <p className="text-sm text-muted-foreground">Track your earnings and progress towards your targets</p>
+              </div>
+            </div>
+          </header>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Clock className="h-5 w-5" />
-            Recent Activity
-          </CardTitle>
-          <CardDescription>
-            Your earnings are updated automatically after each End of Day submission
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="text-center py-8 text-muted-foreground">
-            <Clock className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p>Complete your End of Day report to see today's earnings update here</p>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+          <main className="p-6 space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <EarningsCard
+                title="Today's Earnings"
+                icon={DollarSign}
+                earnings={earnings?.today}
+                target={150}
+                period="today"
+              />
+              
+              <EarningsCard
+                title="This Week"
+                icon={TrendingUp}
+                earnings={earnings?.week}
+                target={750}
+                period="week"
+              />
+              
+              <EarningsCard
+                title="This Month"
+                icon={Target}
+                earnings={earnings?.month}
+                target={3000}
+                period="month"
+              />
+            </div>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Clock className="h-5 w-5" />
+                  Recent Activity
+                </CardTitle>
+                <CardDescription>
+                  Your earnings are updated automatically after each End of Day submission
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="text-center py-8 text-muted-foreground">
+                  <Clock className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>Complete your End of Day report to see today's earnings update here</p>
+                </div>
+              </CardContent>
+            </Card>
+          </main>
+        </SidebarInset>
+      </div>
+    </SidebarProvider>
   );
 };
 

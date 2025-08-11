@@ -6,6 +6,9 @@ import { Progress } from '@/components/ui/progress';
 import { Trophy, Medal, Award, Star, Target, Truck, Clock, Shield } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { SidebarProvider, SidebarTrigger, SidebarInset } from '@/components/ui/sidebar';
+import { AppSidebar } from '@/components/AppSidebar';
+import { MobileNav } from '@/components/MobileNav';
 
 const Leaderboard = () => {
   const { profile } = useAuth();
@@ -108,143 +111,157 @@ const Leaderboard = () => {
   };
 
   return (
-    <div className="p-6 space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Driver Leaderboard</h1>
-        <p className="text-muted-foreground">See how you stack up against other drivers</p>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Leaderboard */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Trophy className="h-5 w-5" />
-              Monthly Rankings
-            </CardTitle>
-            <CardDescription>Based on parcels delivered, accuracy, and earnings</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {leaderboardData.map((driver) => (
-                <div
-                  key={driver.rank}
-                  className={`flex items-center justify-between p-3 rounded-lg border ${
-                    driver.name === 'You' ? 'bg-primary/5 border-primary' : ''
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    {getRankIcon(driver.rank)}
-                    <div>
-                      <div className={`font-medium ${driver.name === 'You' ? 'text-primary' : ''}`}>
-                        {driver.name}
-                      </div>
-                      <div className="text-sm text-muted-foreground">
-                        {driver.parcels} parcels • {driver.accuracy}% accuracy
-                      </div>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="font-bold">£{driver.earnings}</div>
-                    <div className="text-sm text-muted-foreground">this month</div>
-                  </div>
-                </div>
-              ))}
+    <SidebarProvider>
+      <div className="min-h-screen flex w-full bg-background">
+        <AppSidebar />
+        
+        <SidebarInset className="flex-1">
+          <header className="border-b bg-card sticky top-0 z-10">
+            <div className="flex items-center px-4 py-4">
+              <SidebarTrigger className="mr-4" />
+              <MobileNav className="md:hidden mr-4" />
+              <div>
+                <h1 className="text-xl font-semibold text-foreground">Driver Leaderboard</h1>
+                <p className="text-sm text-muted-foreground">See how you stack up against other drivers</p>
+              </div>
             </div>
-          </CardContent>
-        </Card>
+          </header>
 
-        {/* Achievements */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Award className="h-5 w-5" />
-              Achievements & Badges
-            </CardTitle>
-            <CardDescription>Track your progress and earn rewards</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {availableBadges.map((badge) => {
-                const IconComponent = badge.icon;
-                const progressPercentage = (badge.progress / badge.target) * 100;
-                
-                return (
-                  <div key={badge.id} className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <IconComponent className={`h-5 w-5 ${badge.completed ? 'text-yellow-500' : 'text-muted-foreground'}`} />
-                        <div>
-                          <div className="font-medium flex items-center gap-2">
-                            {badge.name}
-                            {badge.completed && (
-                              <Badge variant="secondary" className="text-xs">
-                                <Star className="h-3 w-3 mr-1" />
-                                Earned
-                              </Badge>
-                            )}
+          <main className="p-6 space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Leaderboard */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Trophy className="h-5 w-5" />
+                    Monthly Rankings
+                  </CardTitle>
+                  <CardDescription>Based on parcels delivered, accuracy, and earnings</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {leaderboardData.map((driver) => (
+                      <div
+                        key={driver.rank}
+                        className={`flex items-center justify-between p-3 rounded-lg border ${
+                          driver.name === 'You' ? 'bg-primary/5 border-primary' : ''
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          {getRankIcon(driver.rank)}
+                          <div>
+                            <div className={`font-medium ${driver.name === 'You' ? 'text-primary' : ''}`}>
+                              {driver.name}
+                            </div>
+                            <div className="text-sm text-muted-foreground">
+                              {driver.parcels} parcels • {driver.accuracy}% accuracy
+                            </div>
                           </div>
-                          <div className="text-xs text-muted-foreground">{badge.description}</div>
+                        </div>
+                        <div className="text-right">
+                          <div className="font-bold">£{driver.earnings}</div>
+                          <div className="text-sm text-muted-foreground">this month</div>
                         </div>
                       </div>
-                    </div>
-                    {!badge.completed && (
-                      <div className="space-y-1">
-                        <Progress value={progressPercentage} />
-                        <div className="text-xs text-muted-foreground text-right">
-                          {badge.progress}/{badge.target}
-                        </div>
-                      </div>
-                    )}
+                    ))}
                   </div>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+                </CardContent>
+              </Card>
 
-      {/* Recent Achievements */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Star className="h-5 w-5" />
-            Recent Achievements
-          </CardTitle>
-          <CardDescription>Your latest earned badges and milestones</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {achievements?.length ? (
-            <div className="space-y-4">
-              {achievements.slice(0, 5).map((achievement: any) => (
-                <div key={achievement.id} className="flex items-center gap-3 p-3 border rounded-lg">
-                  <Award className="h-8 w-8 text-yellow-500" />
-                  <div className="flex-1">
-                    <div className="font-medium">{achievement.achievement_name}</div>
-                    <div className="text-sm text-muted-foreground">{achievement.description}</div>
-                    <div className="text-xs text-muted-foreground">
-                      Earned on {new Date(achievement.earned_at).toLocaleDateString()}
-                    </div>
+              {/* Achievements */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Award className="h-5 w-5" />
+                    Achievements & Badges
+                  </CardTitle>
+                  <CardDescription>Track your progress and earn rewards</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {availableBadges.map((badge) => {
+                      const IconComponent = badge.icon;
+                      const progressPercentage = (badge.progress / badge.target) * 100;
+                      
+                      return (
+                        <div key={badge.id} className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <IconComponent className={`h-5 w-5 ${badge.completed ? 'text-yellow-500' : 'text-muted-foreground'}`} />
+                              <div>
+                                <div className="font-medium flex items-center gap-2">
+                                  {badge.name}
+                                  {badge.completed && (
+                                    <Badge variant="secondary" className="text-xs">
+                                      <Star className="h-3 w-3 mr-1" />
+                                      Earned
+                                    </Badge>
+                                  )}
+                                </div>
+                                <div className="text-xs text-muted-foreground">{badge.description}</div>
+                              </div>
+                            </div>
+                          </div>
+                          {!badge.completed && (
+                            <div className="space-y-1">
+                              <Progress value={progressPercentage} />
+                              <div className="text-xs text-muted-foreground text-right">
+                                {badge.progress}/{badge.target}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
-                  {achievement.is_completed && (
-                    <Badge variant="secondary">
-                      <Star className="h-3 w-3 mr-1" />
-                      Completed
-                    </Badge>
-                  )}
-                </div>
-              ))}
+                </CardContent>
+              </Card>
             </div>
-          ) : (
-            <div className="text-center py-8 text-muted-foreground">
-              <Award className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>No achievements earned yet</p>
-              <p className="text-sm">Complete deliveries and maintain high performance to earn badges!</p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    </div>
+
+            {/* Recent Achievements */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Star className="h-5 w-5" />
+                  Recent Achievements
+                </CardTitle>
+                <CardDescription>Your latest earned badges and milestones</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {achievements?.length ? (
+                  <div className="space-y-4">
+                    {achievements.slice(0, 5).map((achievement: any) => (
+                      <div key={achievement.id} className="flex items-center gap-3 p-3 border rounded-lg">
+                        <Award className="h-8 w-8 text-yellow-500" />
+                        <div className="flex-1">
+                          <div className="font-medium">{achievement.achievement_name}</div>
+                          <div className="text-sm text-muted-foreground">{achievement.description}</div>
+                          <div className="text-xs text-muted-foreground">
+                            Earned on {new Date(achievement.earned_at).toLocaleDateString()}
+                          </div>
+                        </div>
+                        {achievement.is_completed && (
+                          <Badge variant="secondary">
+                            <Star className="h-3 w-3 mr-1" />
+                            Completed
+                          </Badge>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Award className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p>No achievements earned yet</p>
+                    <p className="text-sm">Complete deliveries and maintain high performance to earn badges!</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </main>
+        </SidebarInset>
+      </div>
+    </SidebarProvider>
   );
 };
 

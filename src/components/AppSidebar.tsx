@@ -13,7 +13,9 @@ import {
   AlertTriangle,
   MessageCircle,
   Building2,
-  Calculator
+  Calculator,
+  Trophy,
+  Receipt
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -51,6 +53,9 @@ const driverItems = [
   { title: "Start of Day", url: "/driver/start-of-day", icon: Clock },
   { title: "End of Day", url: "/driver/end-of-day", icon: CheckCircle2 },
   { title: "Vehicle Check", url: "/driver/vehicle-check", icon: Truck },
+  { title: "Earnings", url: "/driver/earnings", icon: Calculator },
+  { title: "Leaderboard", url: "/driver/leaderboard", icon: Trophy },
+  { title: "Expenses", url: "/driver/expenses", icon: Receipt },
   { title: "Incident Report", url: "/driver/incident-report", icon: AlertTriangle },
   { title: "News & Chat", url: "/driver/news-chat", icon: MessageCircle },
 ];
