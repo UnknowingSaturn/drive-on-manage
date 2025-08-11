@@ -6,6 +6,9 @@ verify_jwt = false
 [functions.delete-driver-comprehensive]
 verify_jwt = false
 
+[functions.resend-driver-credentials]
+verify_jwt = false
+
 [functions.send-driver-credentials]
 verify_jwt = false
 

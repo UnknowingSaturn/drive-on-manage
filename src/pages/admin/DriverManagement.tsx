@@ -18,6 +18,7 @@ import { ConfirmDelete } from '@/components/ConfirmDelete';
 import { DriverDetailsModal } from '@/components/DriverDetailsModal';
 import { SmartSearch } from '@/components/SmartSearch';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { resendDriverCredentials } from '@/lib/resend-credentials';
 import { Progress } from '@/components/ui/progress';
 import { validateForm, sanitizeInput, emailSchema, nameSchema, phoneSchema, parcelRateSchema } from '@/lib/security';
 import { format } from 'date-fns';
@@ -392,6 +393,26 @@ const DriverManagement = () => {
     onError: (error: any) => {
       toast({
         title: "Error updating driver",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Resend credentials mutation
+  const resendCredentialsMutation = useMutation({
+    mutationFn: async (email: string) => {
+      return await resendDriverCredentials(email);
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Credentials sent",
+        description: `New login credentials have been sent to the driver's email. New password: ${data.newPassword}`,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error sending credentials",
         description: error.message,
         variant: "destructive",
       });
@@ -801,47 +822,56 @@ const DriverManagement = () => {
                                    driver.status}
                                 </Badge>
                               </TableCell>
-                              <TableCell>
-                                <div className="flex items-center space-x-2">
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => openDetailsModal(driver)}
-                                  >
-                                    <Eye className="h-3 w-3 mr-1" />
-                                    Details
-                                  </Button>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => openEditDialog(driver)}
-                                  >
-                                    <Edit className="h-3 w-3" />
-                                  </Button>
-                                  {driver.driving_license_document && (
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={() => toggleDocumentView(driver.id)}
-                                    >
-                                      {showDocuments[driver.id] ? (
-                                        <EyeOff className="h-3 w-3" />
-                                      ) : (
-                                        <Eye className="h-3 w-3" />
-                                      )}
-                                    </Button>
-                                  )}
-                                  <ConfirmDelete
-                                    title="Remove Driver"
-                                    description={`Are you sure you want to remove ${driver.name}? This will delete their account and all associated data.`}
-                                    onConfirm={() => deleteDriverMutation.mutate(driver.id)}
-                                  >
-                                    <Button variant="outline" size="sm">
-                                      <Trash2 className="h-3 w-3" />
-                                    </Button>
-                                  </ConfirmDelete>
-                                </div>
-                              </TableCell>
+                               <TableCell>
+                                 <div className="flex items-center space-x-2">
+                                   <Button
+                                     variant="outline"
+                                     size="sm"
+                                     onClick={() => openDetailsModal(driver)}
+                                   >
+                                     <Eye className="h-3 w-3 mr-1" />
+                                     Details
+                                   </Button>
+                                   <Button
+                                     variant="outline"
+                                     size="sm"
+                                     onClick={() => openEditDialog(driver)}
+                                   >
+                                     <Edit className="h-3 w-3" />
+                                   </Button>
+                                   <Button
+                                     variant="outline"
+                                     size="sm"
+                                     onClick={() => resendCredentialsMutation.mutate(driver.email)}
+                                     disabled={resendCredentialsMutation.isPending}
+                                   >
+                                     <Mail className="h-3 w-3 mr-1" />
+                                     Resend
+                                   </Button>
+                                   {driver.driving_license_document && (
+                                     <Button
+                                       variant="outline"
+                                       size="sm"
+                                       onClick={() => toggleDocumentView(driver.id)}
+                                     >
+                                       {showDocuments[driver.id] ? (
+                                         <EyeOff className="h-3 w-3" />
+                                       ) : (
+                                         <Eye className="h-3 w-3" />
+                                       )}
+                                     </Button>
+                                   )}
+                                   <ConfirmDelete
+                                     title="Remove Driver"
+                                     description={`Are you sure you want to remove ${driver.name}? This will delete their account and all associated data.`}
+                                     onConfirm={() => deleteDriverMutation.mutate(driver.id)}
+                                   >
+                                     <Button variant="outline" size="sm">
+                                       <Trash2 className="h-3 w-3" />
+                                     </Button>
+                                   </ConfirmDelete>
+                                 </div>
+                               </TableCell>
                             </TableRow>
                             {/* Onboarding completion info */}
                             {driver.onboardingCompletedAt && (
