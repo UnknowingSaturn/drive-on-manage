@@ -23,6 +23,26 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
+    // Log the raw request for debugging
+    console.log('Request method:', req.method);
+    console.log('Request headers:', Object.fromEntries(req.headers.entries()));
+    
+    // Parse request body
+    let requestBody;
+    try {
+      requestBody = await req.json();
+      console.log('Parsed request body:', requestBody);
+    } catch (parseError) {
+      console.error('Failed to parse request body:', parseError);
+      return new Response(
+        JSON.stringify({ error: 'Invalid JSON in request body' }),
+        {
+          status: 400,
+          headers: { 'Content-Type': 'application/json', ...corsHeaders },
+        }
+      );
+    }
+
     // Create admin client with service role
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
@@ -43,7 +63,7 @@ const handler = async (req: Request): Promise<Response> => {
       parcelRate,
       coverRate,
       companyId
-    }: CreateDriverRequest = await req.json();
+    }: CreateDriverRequest = requestBody;
 
     console.log('Creating driver with admin API:', {
       email,
@@ -54,6 +74,18 @@ const handler = async (req: Request): Promise<Response> => {
       coverRate,
       companyId
     });
+
+    // Validate required fields
+    if (!email || !firstName || !lastName || !companyId) {
+      console.error('Missing required fields:', { email: !!email, firstName: !!firstName, lastName: !!lastName, companyId: !!companyId });
+      return new Response(
+        JSON.stringify({ error: 'Missing required fields: email, firstName, lastName, and companyId are required' }),
+        {
+          status: 400,
+          headers: { 'Content-Type': 'application/json', ...corsHeaders },
+        }
+      );
+    }
 
     // Check if user already exists in auth.users
     const { data: existingUsers, error: listError } = await supabaseAdmin.auth.admin.listUsers();
