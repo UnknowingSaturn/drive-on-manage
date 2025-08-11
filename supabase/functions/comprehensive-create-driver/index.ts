@@ -49,7 +49,7 @@ const handler = async (req: Request): Promise<Response> => {
     
     console.log('Request data:', { email, firstName, lastName, phone, companyId, parcelRate, coverRate });
 
-    // Check for duplicate email
+    // Check for duplicate email first
     const { data: existingProfile } = await supabaseAdmin
       .from('profiles')
       .select('id')
