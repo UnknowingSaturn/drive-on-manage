@@ -131,26 +131,25 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log('User created successfully:', userData.user.id);
 
-    // Create profile record
+    // Wait a moment for the trigger to create the profile, then update it
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    // Update the profile created by the trigger with additional driver info
     const { error: profileError } = await supabaseAdmin
       .from('profiles')
-      .insert({
-        user_id: userData.user.id,
-        email,
-        first_name: firstName,
-        last_name: lastName,
+      .update({
         phone,
-        user_type: 'driver',
         company_id: companyId,
         is_active: true
-      });
+      })
+      .eq('user_id', userData.user.id);
 
     if (profileError) {
-      console.error('Error creating profile:', profileError);
-      // Cleanup: delete the user if profile creation fails
+      console.error('Error updating profile:', profileError);
+      // Cleanup: delete the user if profile update fails
       await supabaseAdmin.auth.admin.deleteUser(userData.user.id);
       return new Response(
-        JSON.stringify({ error: 'Failed to create profile' }),
+        JSON.stringify({ error: 'Failed to update profile with driver information' }),
         {
           status: 400,
           headers: { 'Content-Type': 'application/json', ...corsHeaders },
