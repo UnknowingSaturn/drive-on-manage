@@ -28,8 +28,9 @@ const driverCreateSchema = z.object({
   email: emailSchema,
   firstName: nameSchema,
   lastName: nameSchema,
-  phone: phoneSchema,
-  parcelRate: z.string().optional()
+  phone: phoneSchema.optional(),
+  parcelRate: z.string().optional(),
+  coverRate: z.string().optional()
 });
 
 const DriverManagement = () => {
@@ -153,9 +154,14 @@ const DriverManagement = () => {
   // Create driver mutation with direct Supabase Admin API calls
   const createDriverMutation = useMutation({
     mutationFn: async (driverData: typeof formData) => {
+      console.log('Form data before validation:', driverData);
+      
       // Validate all form data
       const validation = validateForm(driverData, driverCreateSchema);
+      console.log('Validation result:', validation);
+      
       if (!validation.success) {
+        console.log('Validation errors:', validation.errors);
         setFormErrors(validation.errors || {});
         setShowFormErrors(true);
         throw new Error('Please fix the form errors before submitting');
@@ -564,8 +570,8 @@ const DriverManagement = () => {
                       )}
                     </div>
                     
-                    <div className="space-y-2">
-                      <Label htmlFor="phone">Phone Number *</Label>
+                     <div className="space-y-2">
+                       <Label htmlFor="phone">Phone Number</Label>
                       <Input
                         id="phone"
                         type="tel"

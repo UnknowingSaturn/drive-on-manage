@@ -254,10 +254,21 @@ const handler = async (req: Request): Promise<Response> => {
 
   } catch (error: any) {
     console.error('Error in create-driver-admin function:', error);
+    console.error('Error details:', {
+      name: error.name,
+      message: error.message,
+      stack: error.stack,
+      code: error.code,
+      details: error.details
+    });
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        error: error.message || 'Unknown error occurred',
+        details: error.details || null,
+        code: error.code || null
+      }),
       {
-      status: 500,
+        status: 500,
         headers: { 'Content-Type': 'application/json', ...corsHeaders },
       }
     );
