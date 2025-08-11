@@ -150,7 +150,7 @@ const DriverManagement = () => {
     }
   };
 
-  // Create driver mutation
+  // Create driver mutation with direct Supabase Admin API calls
   const createDriverMutation = useMutation({
     mutationFn: async (driverData: typeof formData) => {
       // Validate all form data
@@ -226,32 +226,101 @@ const DriverManagement = () => {
 
       const tempPassword = generateTempPassword();
 
-      // Call the create-driver edge function with service role permissions
-      const { data: createResult, error: createUserError } = await supabase.functions.invoke('create-driver', {
-        body: {
-          email: sanitizedData.email,
-          firstName: sanitizedData.firstName,
-          lastName: sanitizedData.lastName,
-          phone: sanitizedData.phone,
-          parcelRate: sanitizedData.parcelRate,
-          companyId: companyId
+      // Create user directly with Supabase Admin API
+      const { data: userData, error: createUserError } = await supabase.auth.admin.createUser({
+        email: sanitizedData.email,
+        password: tempPassword,
+        email_confirm: true,
+        user_metadata: {
+          role: 'driver',
+          company_id: companyId,
+          first_name: sanitizedData.firstName,
+          last_name: sanitizedData.lastName,
+          user_type: 'driver'
         }
       });
 
       if (createUserError) {
-        console.error('Failed to create driver:', createUserError);
+        console.error('Failed to create user:', createUserError);
         throw new Error(`Failed to create driver account: ${createUserError.message}`);
       }
 
-      if (!createResult?.success) {
-        throw new Error('Driver creation failed - no success response returned');
+      if (!userData.user) {
+        throw new Error('Driver creation failed - no user returned');
       }
 
-      console.log('Driver created successfully via edge function:', createResult.userId);
+      console.log('User created successfully:', userData.user.id);
+
+      // Wait for trigger to create profile, then update with additional info
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Update the profile created by the trigger with driver-specific info
+      const { error: profileUpdateError } = await supabase
+        .from('profiles')
+        .update({
+          phone: sanitizedData.phone,
+          company_id: companyId,
+          is_active: true
+        })
+        .eq('user_id', userData.user.id);
+
+      if (profileUpdateError) {
+        console.error('Error updating profile:', profileUpdateError);
+        // Cleanup: delete the user if profile update fails
+        await supabase.auth.admin.deleteUser(userData.user.id);
+        throw new Error('Failed to update profile with driver information');
+      }
+
+      // Create driver profile with onboarding status
+      const { error: driverProfileError } = await supabase
+        .from('driver_profiles')
+        .insert({
+          id: userData.user.id,
+          user_id: userData.user.id,
+          company_id: companyId,
+          driving_license_number: '',
+          emergency_contact_name: '',
+          emergency_contact_phone: '',
+          parcel_rate: parseFloat(sanitizedData.parcelRate) || 0.75,
+          cover_rate: parseFloat(sanitizedData.coverRate) || 1.0,
+          status: 'pending_onboarding',
+          requires_onboarding: true,
+          first_login_completed: false
+        });
+
+      if (driverProfileError) {
+        console.error('Error creating driver profile:', driverProfileError);
+        // Cleanup: delete the user and profile if driver profile creation fails
+        await supabase.auth.admin.deleteUser(userData.user.id);
+        await supabase.from('profiles').delete().eq('user_id', userData.user.id);
+        throw new Error('Failed to create driver profile');
+      }
+
+      console.log('Driver profile created successfully');
+
+      // Send credentials email (optional - can be handled separately)
+      try {
+        const { error: emailError } = await supabase.functions.invoke('send-driver-credentials', {
+          body: {
+            email: sanitizedData.email,
+            firstName: sanitizedData.firstName,
+            lastName: sanitizedData.lastName,
+            tempPassword
+          }
+        });
+
+        if (emailError) {
+          console.error('Error sending credentials email:', emailError);
+          // Don't fail the whole operation if email fails
+        }
+      } catch (emailError) {
+        console.error('Email sending failed:', emailError);
+        // Don't fail the whole operation if email fails
+      }
 
       return {
-        userId: createResult.userId,
-        tempPassword: createResult.tempPassword,
+        userId: userData.user.id,
+        tempPassword,
         success: true
       };
     },
@@ -305,12 +374,12 @@ const DriverManagement = () => {
     }
   });
 
-  // Delete driver mutation
+  // Delete driver mutation with direct API calls
   const deleteDriverMutation = useMutation({
     mutationFn: async (driverId: string) => {
       const { data: driverProfile, error: fetchError } = await supabase
         .from('driver_profiles')
-        .select('user_id, status')
+        .select('user_id, status, company_id')
         .eq('id', driverId)
         .single();
 
@@ -319,25 +388,79 @@ const DriverManagement = () => {
         throw new Error(`Failed to fetch driver profile: ${fetchError.message}`);
       }
 
-      // Use edge function for proper cleanup
-      const { data, error } = await supabase.functions.invoke('remove-driver', {
-        body: {
-          driverId: driverId,
-          cleanupUser: true // Always clean up user account
+      const userId = driverProfile.user_id;
+      const isPending = driverProfile.status === 'pending_onboarding';
+
+      // Check if driver has any active logs
+      const { data: activeLogs } = await supabase
+        .from('daily_logs')
+        .select('id')
+        .eq('driver_id', driverId)
+        .eq('status', 'in_progress')
+        .limit(1);
+
+      if (activeLogs && activeLogs.length > 0) {
+        throw new Error('Cannot remove driver with active daily logs. Please complete or cancel their current shift first.');
+      }
+
+      // Check if user has other roles in the system
+      const { data: otherProfiles, error: profileCheckError } = await supabase
+        .from('profiles')
+        .select('user_type, company_id')
+        .eq('user_id', userId);
+
+      if (profileCheckError) {
+        console.error('Error checking other profiles:', profileCheckError);
+      }
+
+      const hasOtherRoles = otherProfiles && otherProfiles.some(p => 
+        p.user_type === 'admin' || p.company_id !== driverProfile.company_id
+      );
+
+      // Delete driver profile first
+      const { error: profileError } = await supabase
+        .from('driver_profiles')
+        .delete()
+        .eq('id', driverId);
+
+      if (profileError) {
+        throw new Error(`Failed to delete driver profile: ${profileError.message}`);
+      }
+
+      // For pending drivers or if user has no other roles, clean up completely
+      if (isPending || !hasOtherRoles) {
+        // Delete user profile
+        const { error: deleteProfileError } = await supabase
+          .from('profiles')
+          .delete()
+          .eq('user_id', userId);
+
+        if (deleteProfileError) {
+          console.error('Error deleting profile:', deleteProfileError);
+          // Don't throw error - driver profile is already deleted
         }
-      });
 
-      if (error) {
-        console.error('Edge function error:', error);
-        throw new Error(`Failed to remove driver: ${error.message || 'Unknown error'}`);
+        // Delete user account (only for pending drivers or users with no other roles)
+        if (isPending || !hasOtherRoles) {
+          try {
+            const { error: deleteUserError } = await supabase.auth.admin.deleteUser(userId);
+            if (deleteUserError) {
+              console.error('Error deleting user account:', deleteUserError);
+              // Don't throw error - driver profile is already deleted
+            }
+          } catch (authError) {
+            console.error('Auth deletion error:', authError);
+            // Don't throw error - driver profile is already deleted
+          }
+        }
       }
 
-      if (!data?.success) {
-        console.error('Edge function returned failure:', data);
-        throw new Error(data?.error || 'Failed to remove driver');
-      }
-
-      return data;
+      return {
+        success: true,
+        message: 'Driver removed successfully',
+        cleanedUp: isPending || !hasOtherRoles,
+        driverId: driverId
+      };
     },
     onSuccess: (data) => {
       toast({

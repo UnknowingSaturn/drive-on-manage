@@ -53,8 +53,13 @@ const DriverOnboardingGate: React.FC<DriverOnboardingGateProps> = ({ children })
 
   // Driver users - check onboarding status
   if (profile?.user_type === 'driver') {
-    // No driver profile exists or first login not completed
-    if (!driverProfile || !driverProfile.first_login_completed) {
+    // No driver profile exists or requires onboarding
+    if (!driverProfile || driverProfile.requires_onboarding || driverProfile.status === 'pending_onboarding') {
+      return <Navigate to="/driver/onboarding" replace />;
+    }
+
+    // First login check
+    if (!driverProfile.first_login_completed) {
       return <Navigate to="/driver/onboarding" replace />;
     }
 
@@ -64,7 +69,9 @@ const DriverOnboardingGate: React.FC<DriverOnboardingGateProps> = ({ children })
       driverProfile.license_expiry &&
       driverProfile.driving_license_document &&
       driverProfile.right_to_work_document &&
-      driverProfile.insurance_document
+      driverProfile.insurance_document &&
+      !driverProfile.requires_onboarding &&
+      driverProfile.status !== 'pending_onboarding'
     );
 
     if (!isOnboardingComplete) {
