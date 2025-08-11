@@ -192,7 +192,6 @@ const handler = async (req: Request): Promise<Response> => {
     const { error: driverProfileError } = await supabaseAdmin
       .from('driver_profiles')
       .insert({
-        id: userData.user.id,
         user_id: userData.user.id,
         company_id: companyId,
         driving_license_number: '',
