@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 // Core validation schemas for all forms
-export const createDriverInvitationSchema = z.object({
+export const createDriverSchema = z.object({
   email: z.string().email('Invalid email format'),
   first_name: z.string().min(1, 'First name is required').max(50, 'First name too long'),
   last_name: z.string().min(1, 'Last name is required').max(50, 'Last name too long'),
@@ -10,8 +10,7 @@ export const createDriverInvitationSchema = z.object({
   company_id: z.string().uuid('Invalid company ID'),
 });
 
-export const driverOnboardingSchema = z.object({
-  employee_id: z.string().min(1, 'Employee ID is required').max(20, 'Employee ID too long'),
+export const driverProfileUpdateSchema = z.object({
   driving_license_number: z.string().min(1, 'License number is required').max(50, 'License number too long'),
   license_expiry: z.string().refine((date) => {
     const expiry = new Date(date);

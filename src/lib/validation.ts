@@ -8,8 +8,8 @@ export const parcelCountSchema = z.number().int().min(0, 'Parcel count cannot be
 export const mileageSchema = z.number().int().min(0, 'Mileage cannot be negative').max(999999, 'Invalid mileage');
 export const payRateSchema = z.number().min(0, 'Rate cannot be negative').max(1000, 'Rate too high');
 
-// Onboarding validation
-export const driverOnboardingSchema = z.object({
+// Driver profile update validation
+export const driverProfileUpdateSchema = z.object({
   firstName: nameSchema,
   lastName: nameSchema,
   email: emailSchema,
@@ -51,9 +51,9 @@ export class ValidationError extends Error {
   }
 }
 
-export function validateOnboarding(data: unknown) {
+export function validateDriverProfile(data: unknown) {
   try {
-    return driverOnboardingSchema.parse(data);
+    return driverProfileUpdateSchema.parse(data);
   } catch (error) {
     if (error instanceof z.ZodError) {
       const firstError = error.errors[0];

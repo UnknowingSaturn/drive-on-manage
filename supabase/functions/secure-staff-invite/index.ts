@@ -83,82 +83,53 @@ const validateUuid = (id: string): { valid: boolean; error?: string } => {
   return { valid: true };
 };
 
-// Rate limiting check
+// Rate limiting check (simplified without invitation tables)
 const checkRateLimit = async (supabase: any, userId: string, companyId: string): Promise<{ allowed: boolean; error?: string }> => {
+  // Simple rate limiting: max 10 driver creations per hour per admin
   const now = new Date();
   const oneHour = new Date(now.getTime() - 60 * 60 * 1000);
   
-  // Get current rate limit record
-  const { data: rateLimit, error } = await supabase
-    .from('invitation_rate_limits')
-    .select('*')
-    .eq('user_id', userId)
+  // Count driver profiles created by this admin in the last hour
+  const { count, error } = await supabase
+    .from('driver_profiles')
+    .select('*', { count: 'exact', head: true })
     .eq('company_id', companyId)
-    .gte('window_start', oneHour.toISOString())
-    .maybeSingle();
+    .gte('created_at', oneHour.toISOString());
 
-  if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
+  if (error) {
     console.error('Rate limit check error:', error);
     return { allowed: true }; // Fail open for now
   }
 
-  const maxInvitationsPerHour = 10; // Security limit
+  const maxCreationsPerHour = 10;
   
-  if (rateLimit) {
-    if (rateLimit.invitations_sent >= maxInvitationsPerHour) {
-      return { 
-        allowed: false, 
-        error: `Rate limit exceeded. Maximum ${maxInvitationsPerHour} invitations per hour allowed.` 
-      };
-    }
-    
-    // Update count
-    await supabase
-      .from('invitation_rate_limits')
-      .update({ 
-        invitations_sent: rateLimit.invitations_sent + 1,
-        updated_at: now.toISOString()
-      })
-      .eq('id', rateLimit.id);
-  } else {
-    // Create new rate limit record
-    await supabase
-      .from('invitation_rate_limits')
-      .insert({
-        user_id: userId,
-        company_id: companyId,
-        invitations_sent: 1,
-        window_start: now.toISOString()
-      });
+  if (count >= maxCreationsPerHour) {
+    return { 
+      allowed: false, 
+      error: `Rate limit exceeded. Maximum ${maxCreationsPerHour} driver creations per hour allowed.` 
+    };
   }
 
   return { allowed: true };
 };
 
-// Audit logging
+// Audit logging (simplified without invitation tables)
 const logAuditEvent = async (
   supabase: any, 
-  invitationId: string | null, 
   action: string, 
   performedBy: string, 
   details: any,
   req: Request
 ) => {
-  const userAgent = req.headers.get('user-agent') || 'unknown';
-  const xForwardedFor = req.headers.get('x-forwarded-for');
-  const xRealIp = req.headers.get('x-real-ip');
-  const ipAddress = xForwardedFor || xRealIp || 'unknown';
-
-  await supabase
-    .from('invitation_audit_log')
-    .insert({
-      invitation_id: invitationId,
-      action,
-      performed_by: performedBy,
-      details,
-      ip_address: ipAddress,
-      user_agent: userAgent
-    });
+  // Simple audit logging - could expand this to use a dedicated audit table
+  console.log('Audit Event:', {
+    action,
+    performed_by: performedBy,
+    details,
+    timestamp: new Date().toISOString(),
+    ip: req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown',
+    user_agent: req.headers.get('user-agent') || 'unknown'
+  });
 };
 
 // Generate secure temporary password
@@ -311,7 +282,7 @@ serve(async (req) => {
       .single();
 
     if (profileError || !profile || profile.user_type !== 'admin' || profile.company_id !== companyId) {
-      await logAuditEvent(supabase, null, 'UNAUTHORIZED_INVITE_ATTEMPT', user.id, { 
+      await logAuditEvent(supabase, 'UNAUTHORIZED_DRIVER_CREATE_ATTEMPT', user.id, { 
         attempted_company: companyId,
         user_company: profile?.company_id,
         user_type: profile?.user_type 
@@ -329,8 +300,8 @@ serve(async (req) => {
     // Rate limiting check
     const rateLimitCheck = await checkRateLimit(supabase, user.id, companyId);
     if (!rateLimitCheck.allowed) {
-      await logAuditEvent(supabase, null, 'RATE_LIMIT_EXCEEDED', user.id, { 
-        attempted_email: sanitizeInput(email) 
+      await logAuditEvent(supabase, 'RATE_LIMIT_EXCEEDED', user.id, { 
+        attempted_email: sanitizedData.email 
       }, req);
       
       return new Response(JSON.stringify({
@@ -432,8 +403,9 @@ serve(async (req) => {
         company_id: companyId,
         parcel_rate: sanitizedData.parcelRate,
         cover_rate: sanitizedData.coverRate,
-        status: 'pending',
-        onboarding_progress: { step: 'created', completed_steps: [] }
+        status: 'active',
+        first_login_completed: false,
+        requires_onboarding: true
       })
       .select()
       .single();

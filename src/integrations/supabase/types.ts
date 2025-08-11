@@ -1379,10 +1379,6 @@ export type Database = {
         }
         Returns: Json
       }
-      generate_invite_token: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
       generate_invoice_number: {
         Args: Record<PropertyKey, never>
         Returns: string
@@ -1418,10 +1414,6 @@ export type Database = {
       test_validation_system: {
         Args: Record<PropertyKey, never>
         Returns: Json
-      }
-      validate_invitation_token: {
-        Args: { token_param: string }
-        Returns: boolean
       }
     }
     Enums: {

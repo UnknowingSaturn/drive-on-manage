@@ -1,11 +1,5 @@
 project_id = "ttnlrnmdxkecomdylckl"
 
-[functions.invite-driver]
-verify_jwt = false
-
-[functions.enhanced-driver-invite]
-verify_jwt = false
-
 [functions.secure-staff-invite]
 verify_jwt = true
 
