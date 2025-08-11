@@ -199,7 +199,54 @@ const DriverManagement = () => {
         throw new Error(createError?.message || 'Failed to create user account');
       }
 
-      // Step 2: Create driver profile directly after user creation
+      // Step 2: Ensure profile exists before creating driver profile
+      console.log('Checking for profile creation...');
+      
+      // Wait and retry to find the profile (auth trigger should create it)
+      let profileExists = false;
+      let attempts = 0;
+      const maxAttempts = 10;
+      
+      while (!profileExists && attempts < maxAttempts) {
+        const { data: profileCheck } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('user_id', createResult.userId)
+          .maybeSingle();
+          
+        if (profileCheck) {
+          profileExists = true;
+          console.log('Profile found:', profileCheck);
+        } else {
+          attempts++;
+          console.log(`Profile not found, attempt ${attempts}/${maxAttempts}`);
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
+      }
+      
+      if (!profileExists) {
+        // Create profile manually if auth trigger failed
+        console.log('Creating profile manually...');
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .insert({
+            user_id: createResult.userId,
+            email: driverData.email,
+            first_name: driverData.firstName,
+            last_name: driverData.lastName,
+            phone: driverData.phone || null,
+            user_type: 'driver',
+            company_id: companyId,
+            is_active: true
+          });
+          
+        if (profileError) {
+          console.error('Manual profile creation failed:', profileError);
+          throw new Error(`Failed to create user profile: ${profileError.message}`);
+        }
+      }
+
+      // Step 3: Create driver profile
       console.log('Creating driver profile with company_id:', companyId);
       const { data: driverProfile, error: driverProfileError } = await supabase
         .from('driver_profiles')
