@@ -57,41 +57,48 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const fetchProfile = async (userId: string): Promise<Profile | null> => {
     try {
-      const { data, error } = await supabase
+      // First fetch the basic profile
+      const { data: profileData, error: profileError } = await supabase
         .from('profiles')
-        .select(`
-          *,
-          user_companies (
-            company_id,
-            role,
-            companies (
-              id,
-              name
-            )
-          )
-        `)
+        .select('*')
         .eq('user_id', userId)
         .single();
 
-      if (error) {
-        console.error('Error fetching profile:', error);
+      if (profileError) {
+        console.error('Error fetching profile:', profileError);
         return null;
       }
 
-      // Transform data to match Profile interface with proper typing
+      // Then fetch user companies separately
+      const { data: userCompanies, error: companiesError } = await supabase
+        .from('user_companies')
+        .select(`
+          company_id,
+          role,
+          companies (
+            id,
+            name
+          )
+        `)
+        .eq('user_id', userId);
+
+      if (companiesError) {
+        console.error('Error fetching user companies:', companiesError);
+        // Don't fail completely, just continue without company data
+      }
+
+      // Transform data to match Profile interface
       const profile: Profile = {
-        id: data.id,
-        user_id: data.user_id,
-        email: data.email,
-        first_name: data.first_name,
-        last_name: data.last_name,
-        phone: data.phone,
-        user_type: data.user_type as 'admin' | 'driver',
-        is_active: data.is_active,
-        company_id: Array.isArray(data.user_companies) && data.user_companies.length > 0 
-          ? data.user_companies[0].company_id 
-          : undefined,
-        user_companies: Array.isArray(data.user_companies) ? data.user_companies : undefined
+        id: profileData.id,
+        user_id: profileData.user_id,
+        email: profileData.email,
+        first_name: profileData.first_name,
+        last_name: profileData.last_name,
+        phone: profileData.phone,
+        user_type: profileData.user_type as 'admin' | 'driver',
+        is_active: profileData.is_active,
+        company_id: userCompanies?.length > 0 ? userCompanies[0].company_id : undefined,
+        user_companies: userCompanies || []
       };
       
       return profile;
