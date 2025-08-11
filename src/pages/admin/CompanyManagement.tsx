@@ -86,14 +86,17 @@ const CompanyManagement = () => {
         throw error;
       }
 
-      // Update user profile to assign the company
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .update({ company_id: company.id })
-        .eq('user_id', session.user.id);
+      // Create user-company association
+      const { error: userCompanyError } = await supabase
+        .from('user_companies')
+        .insert({
+          user_id: session.user.id,
+          company_id: company.id,
+          role: 'admin'
+        });
 
-      if (profileError) {
-        console.error('Error updating profile:', profileError);
+      if (userCompanyError) {
+        console.error('Error creating user-company association:', userCompanyError);
         throw new Error('Company created but failed to assign to profile');
       }
 

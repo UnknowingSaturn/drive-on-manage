@@ -70,16 +70,17 @@ const DriverManagement = () => {
     refreshProfile();
   }, []);
 
-  // Fetch drivers for the company
+  // Fetch drivers for the companies the user has access to
   const { data: drivers = [], isLoading, error } = useQuery({
-    queryKey: ['drivers', profile?.company_id],
+    queryKey: ['drivers', profile?.user_companies],
     queryFn: async () => {
-      if (!profile?.company_id) {
-        console.log('No company_id in profile:', profile);
+      if (!profile?.user_companies?.length) {
+        console.log('No user_companies in profile:', profile);
         return [];
       }
       
-      console.log('Fetching drivers for company_id:', profile.company_id);
+      const companyIds = profile.user_companies.map(uc => uc.company_id);
+      console.log('Fetching drivers for company_ids:', companyIds);
       
       // First, try a simpler query to debug
       const { data: testData, error: testError } = await supabase
@@ -97,7 +98,7 @@ const DriverManagement = () => {
           assigned_van:vans(id, registration, make, model),
           profiles!inner(first_name, last_name, email, phone, is_active)
         `)
-        .eq('company_id', profile.company_id)
+        .in('company_id', companyIds)
         .order('created_at', { ascending: false });
 
       console.log('Full query result:', { drivers, driversError });
@@ -119,7 +120,7 @@ const DriverManagement = () => {
         onboardingCompletedAt: driver.onboarding_completed_at
       }));
     },
-    enabled: !!profile?.company_id,
+    enabled: !!profile?.user_companies?.length,
     refetchInterval: 30000 // Refresh every 30 seconds for real-time updates
   });
 
@@ -138,23 +139,25 @@ const DriverManagement = () => {
     }
   });
 
-  // Fetch available vans for assignment
+  // Fetch available vans for assignment from all user's companies
   const { data: vans = [] } = useQuery({
-    queryKey: ['vans', profile?.company_id],
+    queryKey: ['vans', profile?.user_companies],
     queryFn: async () => {
-      if (!profile?.company_id) return [];
+      if (!profile?.user_companies?.length) return [];
+      
+      const companyIds = profile.user_companies.map((uc: any) => uc.company_id);
       
       const { data, error } = await supabase
         .from('vans')
         .select('id, registration, make, model, is_active')
-        .eq('company_id', profile.company_id)
+        .in('company_id', companyIds)
         .eq('is_active', true)
         .order('registration');
 
       if (error) throw error;
       return data;
     },
-    enabled: !!profile?.company_id
+    enabled: !!profile?.user_companies?.length
   });
 
   // Set initial filtered data when drivers change
@@ -208,7 +211,6 @@ const DriverManagement = () => {
         .from('profiles')
         .select('id')
         .eq('email', driverData.email)
-        .eq('company_id', companyId)
         .maybeSingle();
 
       if (existingProfile) {

@@ -11,8 +11,18 @@ interface Profile {
   last_name?: string;
   phone?: string;
   user_type: 'admin' | 'driver';
-  company_id?: string;
   is_active: boolean;
+  // Legacy company_id for backward compatibility
+  company_id?: string;
+  // New multi-company structure
+  user_companies?: Array<{
+    company_id: string;
+    role: string;
+    companies: {
+      id: string;
+      name: string;
+    };
+  }>;
 }
 
 interface AuthContextType {
@@ -49,7 +59,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('*')
+        .select(`
+          *,
+          user_companies (
+            company_id,
+            role,
+            companies (
+              id,
+              name
+            )
+          )
+        `)
         .eq('user_id', userId)
         .single();
 
@@ -58,8 +78,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return null;
       }
 
-      // Type assertion to ensure user_type is correctly typed
-      return data as Profile;
+      // Transform data to match Profile interface with proper typing
+      const profile: Profile = {
+        id: data.id,
+        user_id: data.user_id,
+        email: data.email,
+        first_name: data.first_name,
+        last_name: data.last_name,
+        phone: data.phone,
+        user_type: data.user_type as 'admin' | 'driver',
+        is_active: data.is_active,
+        company_id: Array.isArray(data.user_companies) && data.user_companies.length > 0 
+          ? data.user_companies[0].company_id 
+          : undefined,
+        user_companies: Array.isArray(data.user_companies) ? data.user_companies : undefined
+      };
+      
+      return profile;
     } catch (error) {
       console.error('Error in fetchProfile:', error);
       return null;
