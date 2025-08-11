@@ -50,7 +50,8 @@ const DriverManagement = () => {
     lastName: '',
     phone: '',
     parcelRate: '',
-    coverRate: ''
+    coverRate: '',
+    companyId: ''
   });
   const [editFormData, setEditFormData] = useState({
     firstName: '',
@@ -122,6 +123,21 @@ const DriverManagement = () => {
     refetchInterval: 30000 // Refresh every 30 seconds for real-time updates
   });
 
+  // Fetch available companies
+  const { data: companies = [] } = useQuery({
+    queryKey: ['companies'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('companies')
+        .select('id, name')
+        .eq('is_active', true)
+        .order('name');
+
+      if (error) throw error;
+      return data;
+    }
+  });
+
   // Fetch available vans for assignment
   const { data: vans = [] } = useQuery({
     queryKey: ['vans', profile?.company_id],
@@ -177,14 +193,14 @@ const DriverManagement = () => {
       console.log('Creating driver with simplified approach:', driverData);
       
       // Basic validation
-      if (!driverData.email || !driverData.firstName || !driverData.lastName) {
-        throw new Error('Please fill in all required fields');
+      if (!driverData.email || !driverData.firstName || !driverData.lastName || !driverData.companyId) {
+        throw new Error('Please fill in all required fields including company selection');
       }
 
-      const companyId = profile?.company_id;
+      const companyId = driverData.companyId;
       console.log('Using company_id for driver creation:', companyId);
       if (!companyId) {
-        throw new Error('No company assigned to your profile');
+        throw new Error('Please select a company for the driver');
       }
 
       // Check for duplicate email
@@ -320,7 +336,8 @@ const DriverManagement = () => {
         lastName: '',
         phone: '',
         parcelRate: '',
-        coverRate: ''
+        coverRate: '',
+        companyId: ''
       });
       setFormErrors({});
       setShowFormErrors(false);
@@ -626,9 +643,31 @@ const DriverManagement = () => {
                       {formErrors.phone && (
                         <span className="text-sm text-red-500">{formErrors.phone}</span>
                       )}
-                    </div>
-                    
-                    <div className="grid grid-cols-2 gap-4">
+                     </div>
+                     
+                     <div className="space-y-2">
+                       <Label htmlFor="companyId">Company *</Label>
+                       <Select
+                         value={formData.companyId}
+                         onValueChange={(value) => handleInputChange('companyId', value)}
+                       >
+                         <SelectTrigger>
+                           <SelectValue placeholder="Select company" />
+                         </SelectTrigger>
+                         <SelectContent>
+                           {companies.map((company) => (
+                             <SelectItem key={company.id} value={company.id}>
+                               {company.name}
+                             </SelectItem>
+                           ))}
+                         </SelectContent>
+                       </Select>
+                       {formErrors.companyId && (
+                         <span className="text-sm text-red-500">{formErrors.companyId}</span>
+                       )}
+                     </div>
+                     
+                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="parcelRate">Parcel Rate (£)</Label>
                         <Input
