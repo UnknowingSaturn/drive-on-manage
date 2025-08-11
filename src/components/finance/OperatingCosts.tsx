@@ -13,6 +13,8 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format, startOfMonth, endOfMonth } from 'date-fns';
+import { EditableCostCell } from './EditableCostCell';
+import { CostEditModal } from './CostEditModal';
 
 const COST_CATEGORIES = [
   { id: 'fuel', name: 'Fuel', icon: Fuel },
@@ -27,6 +29,8 @@ export const OperatingCosts = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [selectedCost, setSelectedCost] = useState<any>(null);
   const [selectedPeriod, setSelectedPeriod] = useState({
     start: format(startOfMonth(new Date()), 'yyyy-MM-dd'),
     end: format(endOfMonth(new Date()), 'yyyy-MM-dd')
@@ -102,6 +106,39 @@ export const OperatingCosts = () => {
     },
   });
 
+  // Update cost mutation
+  const updateCostMutation = useMutation({
+    mutationFn: async (updatedCost: any) => {
+      const { error } = await supabase
+        .from('operating_costs')
+        .update({
+          category: updatedCost.category,
+          description: updatedCost.description,
+          amount: updatedCost.amount,
+          date: updatedCost.date
+        })
+        .eq('id', updatedCost.id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({
+        title: "Cost updated successfully",
+        description: "The operating cost has been updated.",
+      });
+      setIsEditModalOpen(false);
+      setSelectedCost(null);
+      queryClient.invalidateQueries({ queryKey: ['operating-costs'] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error updating cost",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   // Delete cost mutation
   const deleteCostMutation = useMutation({
     mutationFn: async (costId: string) => {
@@ -127,6 +164,36 @@ export const OperatingCosts = () => {
       });
     },
   });
+
+  // Handle inline cell updates
+  const handleCellUpdate = async (costId: string, field: string, value: any) => {
+    try {
+      const { error } = await supabase
+        .from('operating_costs')
+        .update({ [field]: value })
+        .eq('id', costId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Cost updated",
+        description: `${field} has been updated successfully.`,
+      });
+
+      queryClient.invalidateQueries({ queryKey: ['operating-costs'] });
+    } catch (error: any) {
+      toast({
+        title: "Error updating cost",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleEditCost = (cost: any) => {
+    setSelectedCost(cost);
+    setIsEditModalOpen(true);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -354,18 +421,44 @@ export const OperatingCosts = () => {
                   const category = COST_CATEGORIES.find(cat => cat.id === cost.category);
                   return (
                     <TableRow key={cost.id}>
-                      <TableCell>{new Date(cost.date).toLocaleDateString()}</TableCell>
+                      <TableCell>
+                        <EditableCostCell
+                          value={cost.date}
+                          onSave={(value) => handleCellUpdate(cost.id, 'date', value)}
+                          type="date"
+                          formatValue={(date) => new Date(date).toLocaleDateString()}
+                        />
+                      </TableCell>
                       <TableCell>
                         <div className="flex items-center space-x-2">
                           {category && <category.icon className="h-4 w-4 text-primary" />}
                           <span>{category?.name || cost.category}</span>
                         </div>
                       </TableCell>
-                      <TableCell>{cost.description}</TableCell>
-                      <TableCell className="font-medium">£{cost.amount.toFixed(2)}</TableCell>
+                      <TableCell>
+                        <EditableCostCell
+                          value={cost.description}
+                          onSave={(value) => handleCellUpdate(cost.id, 'description', value)}
+                          type="text"
+                        />
+                      </TableCell>
+                      <TableCell className="font-medium">
+                        <EditableCostCell
+                          value={cost.amount}
+                          onSave={(value) => handleCellUpdate(cost.id, 'amount', value)}
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          formatValue={(amount) => `£${amount.toFixed(2)}`}
+                        />
+                      </TableCell>
                       <TableCell>
                         <div className="flex space-x-1">
-                          <Button size="sm" variant="outline">
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => handleEditCost(cost)}
+                          >
                             <Edit className="h-3 w-3" />
                           </Button>
                           <Button 
@@ -386,6 +479,15 @@ export const OperatingCosts = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Edit Modal */}
+      <CostEditModal
+        open={isEditModalOpen}
+        onOpenChange={setIsEditModalOpen}
+        cost={selectedCost}
+        onSave={(updatedCost) => updateCostMutation.mutate(updatedCost)}
+        isLoading={updateCostMutation.isPending}
+      />
     </div>
   );
 };
