@@ -77,7 +77,7 @@ const handler = async (req: Request): Promise<Response> => {
         .from('profiles')
         .select('id, company_id')
         .eq('user_id', existingUser.id)
-        .single();
+        .maybeSingle();
       
       if (existingProfile) {
         return new Response(
@@ -199,7 +199,7 @@ const handler = async (req: Request): Promise<Response> => {
         emergency_contact_phone: '',
         parcel_rate: parseFloat(String(parcelRate)) || 0.75,
         cover_rate: parseFloat(String(coverRate)) || 1.0,
-        status: 'pending_onboarding',
+        status: 'pending',
         requires_onboarding: true,
         first_login_completed: false
       });
