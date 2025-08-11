@@ -20,6 +20,8 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
+    console.log('Starting driver creation process...');
+    
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
@@ -31,12 +33,17 @@ const handler = async (req: Request): Promise<Response> => {
       }
     );
 
+    console.log('Supabase admin client created');
+
     const { email, firstName, lastName, phone, companyId }: CreateDriverRequest = await req.json();
+    console.log('Request data:', { email, firstName, lastName, phone, companyId });
 
     // Simple password generation
     const tempPassword = Math.random().toString(36).slice(-8) + 'A1!';
+    console.log('Generated temp password');
 
     // Single operation: Create user with all metadata (removed company_id since we no longer have that column)
+    console.log('Creating user with metadata...');
     const { data: userData, error: createError } = await supabaseAdmin.auth.admin.createUser({
       email,
       password: tempPassword,
@@ -49,9 +56,14 @@ const handler = async (req: Request): Promise<Response> => {
       email_confirm: true
     });
 
+    console.log('User creation result:', { userData: !!userData, createError });
+
     if (createError || !userData.user) {
+      console.error('User creation failed:', createError);
       throw new Error(createError?.message || 'Failed to create user');
     }
+
+    console.log('User created successfully, user ID:', userData.user.id);
 
     return new Response(
       JSON.stringify({
@@ -66,6 +78,7 @@ const handler = async (req: Request): Promise<Response> => {
     );
 
   } catch (error: any) {
+    console.error('Edge function error:', error);
     return new Response(
       JSON.stringify({ error: error.message }),
       {
