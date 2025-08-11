@@ -231,7 +231,7 @@ const handler = async (req: Request): Promise<Response> => {
         emergency_contact_phone: '',
         parcel_rate: parseFloat(String(parcelRate)) || 0.75,
         cover_rate: parseFloat(String(coverRate)) || 1.0,
-        status: 'pending',
+        status: 'pending_onboarding',
         requires_onboarding: true,
         first_login_completed: false
       });

@@ -67,7 +67,7 @@ const DriverOnboarding = () => {
         .from('driver_profiles')
         .select('*')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
       
       if (error && error.code !== 'PGRST116') throw error;
       return data;
@@ -132,11 +132,10 @@ const DriverOnboarding = () => {
         // Update driver profile with document URL
         const { error: updateError } = await supabase
           .from('driver_profiles')
-          .upsert({
-            user_id: user!.id,
-            company_id: profile!.company_id!,
+          .update({
             [`${documentType}_document`]: result.data.path
-          });
+          })
+          .eq('user_id', user!.id);
 
         if (updateError) throw updateError;
 
@@ -183,9 +182,7 @@ const DriverOnboarding = () => {
       // Update driver profile
       const { error: driverError } = await supabase
         .from('driver_profiles')
-        .upsert({
-          user_id: user!.id,
-          company_id: profile!.company_id!,
+        .update({
           driving_license_number: data.licenseNumber,
           license_expiry: data.licenseExpiry,
           emergency_contact_name: data.emergencyContactName || null,
@@ -196,7 +193,8 @@ const DriverOnboarding = () => {
           onboarding_completed_at: new Date().toISOString(),
           requires_onboarding: false,
           status: 'active'
-        });
+        })
+        .eq('user_id', user!.id);
 
       if (driverError) throw driverError;
     },
