@@ -1448,6 +1448,15 @@ export type Database = {
           should_cleanup: boolean
         }[]
       }
+      send_driver_credentials_email: {
+        Args: {
+          driver_email: string
+          driver_name: string
+          temp_password: string
+          company_id_param: string
+        }
+        Returns: undefined
+      }
       test_auth_context: {
         Args: Record<PropertyKey, never>
         Returns: {

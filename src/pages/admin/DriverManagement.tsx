@@ -90,13 +90,13 @@ const DriverManagement = () => {
         
       console.log('Simple driver_profiles query result:', { testData, testError });
       
-      // Then try the full query
+      // Then try the full query with LEFT join instead of INNER
       const { data: drivers, error: driversError } = await supabase
         .from('driver_profiles')
         .select(`
           *,
           assigned_van:vans(id, registration, make, model),
-          profiles!inner(first_name, last_name, email, phone, is_active)
+          profiles!left(first_name, last_name, email, phone, is_active)
         `)
         .in('company_id', companyIds)
         .order('created_at', { ascending: false });
@@ -112,10 +112,10 @@ const DriverManagement = () => {
       return (drivers || []).map(driver => ({
         ...driver,
         type: 'active' as const,
-        name: `${driver.profiles.first_name} ${driver.profiles.last_name}`,
-        email: driver.profiles.email,
-        phone: driver.profiles.phone,
-        isActive: driver.profiles.is_active,
+        name: driver.profiles ? `${driver.profiles.first_name} ${driver.profiles.last_name}` : 'Unknown',
+        email: driver.profiles?.email || 'No email',
+        phone: driver.profiles?.phone || '',
+        isActive: driver.profiles?.is_active ?? true,
         status: driver.first_login_completed ? 'active' : 'pending_first_login',
         onboardingCompletedAt: driver.onboarding_completed_at
       }));

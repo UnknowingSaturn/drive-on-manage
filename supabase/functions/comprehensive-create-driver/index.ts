@@ -184,6 +184,24 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log('Driver profile created successfully:', driverProfile);
 
+    // Send credentials email
+    try {
+      console.log('Sending credentials email...');
+      const emailResponse = await supabaseAdmin.functions.invoke('send-driver-credentials', {
+        body: {
+          email: email,
+          firstName: firstName,
+          lastName: lastName,
+          tempPassword: tempPassword,
+          companyId: companyId
+        }
+      });
+      console.log('Email response:', emailResponse);
+    } catch (emailError) {
+      console.error('Email sending failed:', emailError);
+      // Don't fail the whole operation if email fails
+    }
+
     return new Response(
       JSON.stringify({
         success: true,
