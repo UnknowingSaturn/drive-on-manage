@@ -21,9 +21,17 @@ const Dashboard = () => {
   const isAdmin = profile?.user_type === 'admin';
   const isDriver = profile?.user_type === 'driver';
 
+  console.log('Dashboard render:', { 
+    userType: profile?.user_type, 
+    isAdmin, 
+    isDriver, 
+    profile 
+  });
+
   // Redirect admins to admin dashboard
   useEffect(() => {
     if (isAdmin) {
+      console.log('Admin detected, redirecting to admin dashboard');
       navigate('/admin/dashboard', { replace: true });
     }
   }, [isAdmin, navigate]);

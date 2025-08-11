@@ -65,6 +65,13 @@ export function AppSidebar() {
   const items = isAdmin ? adminItems : driverItems;
   const collapsed = state === "collapsed";
 
+  console.log('AppSidebar render:', { 
+    userType: profile?.user_type, 
+    isAdmin, 
+    itemsCount: items.length,
+    profile: profile 
+  });
+
   const isActive = (path: string) => currentPath === path;
 
   const getNavCls = ({ isActive }: { isActive: boolean }) =>

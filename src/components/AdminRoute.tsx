@@ -24,7 +24,15 @@ const AdminRoute: React.FC<AdminRouteProps> = ({ children }) => {
     return <Navigate to="/auth" replace />;
   }
 
+  console.log('AdminRoute check:', { 
+    user: !!user, 
+    userType: profile?.user_type, 
+    isAdmin: profile?.user_type === 'admin',
+    profile 
+  });
+
   if (profile?.user_type !== 'admin') {
+    console.log('Access denied: User is not admin, redirecting to driver dashboard');
     return <Navigate to="/dashboard" replace />;
   }
 
