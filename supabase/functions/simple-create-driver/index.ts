@@ -36,7 +36,7 @@ const handler = async (req: Request): Promise<Response> => {
     // Simple password generation
     const tempPassword = Math.random().toString(36).slice(-8) + 'A1!';
 
-    // Single operation: Create user with all metadata
+    // Single operation: Create user with all metadata (removed company_id since we no longer have that column)
     const { data: userData, error: createError } = await supabaseAdmin.auth.admin.createUser({
       email,
       password: tempPassword,
@@ -44,8 +44,7 @@ const handler = async (req: Request): Promise<Response> => {
         first_name: firstName,
         last_name: lastName,
         phone: phone || null,
-        user_type: 'driver',
-        company_id: companyId
+        user_type: 'driver'
       },
       email_confirm: true
     });
