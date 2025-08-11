@@ -188,7 +188,12 @@ const DriverOnboarding = () => {
           company_id: profile!.company_id!,
           driving_license_number: data.licenseNumber,
           license_expiry: data.licenseExpiry,
+          emergency_contact_name: data.emergencyContactName || null,
+          emergency_contact_phone: data.emergencyContactPhone || null,
+          emergency_contact_relation: data.emergencyContactRelation || null,
+          vehicle_notes: data.vehicleNotes || null,
           first_login_completed: true,
+          onboarding_completed_at: new Date().toISOString(),
           requires_onboarding: false,
           status: 'active'
         });

@@ -478,16 +478,21 @@ export type Database = {
           created_at: string
           driving_license_document: string | null
           driving_license_number: string | null
+          emergency_contact_name: string | null
+          emergency_contact_phone: string | null
+          emergency_contact_relation: string | null
           first_login_completed: boolean | null
           id: string
           insurance_document: string | null
           license_expiry: string | null
+          onboarding_completed_at: string | null
           parcel_rate: number | null
           requires_onboarding: boolean | null
           right_to_work_document: string | null
           status: string | null
           updated_at: string
           user_id: string
+          vehicle_notes: string | null
         }
         Insert: {
           assigned_van_id?: string | null
@@ -497,16 +502,21 @@ export type Database = {
           created_at?: string
           driving_license_document?: string | null
           driving_license_number?: string | null
+          emergency_contact_name?: string | null
+          emergency_contact_phone?: string | null
+          emergency_contact_relation?: string | null
           first_login_completed?: boolean | null
           id?: string
           insurance_document?: string | null
           license_expiry?: string | null
+          onboarding_completed_at?: string | null
           parcel_rate?: number | null
           requires_onboarding?: boolean | null
           right_to_work_document?: string | null
           status?: string | null
           updated_at?: string
           user_id: string
+          vehicle_notes?: string | null
         }
         Update: {
           assigned_van_id?: string | null
@@ -516,16 +526,21 @@ export type Database = {
           created_at?: string
           driving_license_document?: string | null
           driving_license_number?: string | null
+          emergency_contact_name?: string | null
+          emergency_contact_phone?: string | null
+          emergency_contact_relation?: string | null
           first_login_completed?: boolean | null
           id?: string
           insurance_document?: string | null
           license_expiry?: string | null
+          onboarding_completed_at?: string | null
           parcel_rate?: number | null
           requires_onboarding?: boolean | null
           right_to_work_document?: string | null
           status?: string | null
           updated_at?: string
           user_id?: string
+          vehicle_notes?: string | null
         }
         Relationships: [
           {
