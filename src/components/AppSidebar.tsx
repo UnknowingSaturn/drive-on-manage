@@ -36,7 +36,7 @@ import { Badge } from "@/components/ui/badge";
 
 const adminItems = [
   { title: "Dashboard", url: "/admin/dashboard", icon: LayoutDashboard },
-  { title: "Companies", url: "/admin/companies", icon: Building2 },
+  { title: "Locations", url: "/admin/companies", icon: Building2 },
   { title: "Driver Management", url: "/admin/drivers", icon: Users },
   { title: "Van Management", url: "/admin/vans", icon: Truck },
   { title: "Round Management", url: "/admin/rounds", icon: MapPin },
