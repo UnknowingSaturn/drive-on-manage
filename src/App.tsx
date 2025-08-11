@@ -21,7 +21,7 @@ import ScheduleView from "./pages/admin/ScheduleView";
 import EODReports from "./pages/admin/EODReports";
 import Finance from "./pages/admin/Finance";
 import DriverEngagement from "./pages/admin/DriverEngagement";
-import DriverOnboarding from "./pages/DriverOnboarding";
+
 import AdminSettings from "./pages/admin/Settings";
 import ResetPassword from "./pages/ResetPassword";
 
@@ -52,7 +52,7 @@ const App = () => (
             <Route path="/auth" element={<Auth />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/not-authorized" element={<NotAuthorized />} />
-            <Route path="/onboarding" element={<DriverOnboarding />} />
+            
             <Route path="/dashboard" element={
               <ProtectedRoute>
                 <Dashboard />

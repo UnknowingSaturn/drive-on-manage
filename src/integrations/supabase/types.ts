@@ -415,60 +415,6 @@ export type Database = {
         }
         Relationships: []
       }
-      driver_invitations: {
-        Row: {
-          accepted_at: string | null
-          company_id: string
-          created_at: string
-          created_by: string
-          driver_profile_id: string | null
-          email: string
-          expires_at: string
-          first_name: string
-          hourly_rate: number | null
-          id: string
-          invite_token: string
-          last_name: string
-          phone: string | null
-          status: string
-          updated_at: string
-        }
-        Insert: {
-          accepted_at?: string | null
-          company_id: string
-          created_at?: string
-          created_by: string
-          driver_profile_id?: string | null
-          email: string
-          expires_at?: string
-          first_name: string
-          hourly_rate?: number | null
-          id?: string
-          invite_token: string
-          last_name: string
-          phone?: string | null
-          status?: string
-          updated_at?: string
-        }
-        Update: {
-          accepted_at?: string | null
-          company_id?: string
-          created_at?: string
-          created_by?: string
-          driver_profile_id?: string | null
-          email?: string
-          expires_at?: string
-          first_name?: string
-          hourly_rate?: number | null
-          id?: string
-          invite_token?: string
-          last_name?: string
-          phone?: string | null
-          status?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
       driver_invoices: {
         Row: {
           billing_period_end: string
@@ -532,13 +478,12 @@ export type Database = {
           created_at: string
           driving_license_document: string | null
           driving_license_number: string | null
-          employee_id: string | null
+          first_login_completed: boolean | null
           id: string
           insurance_document: string | null
           license_expiry: string | null
-          onboarding_completed_at: string | null
-          onboarding_progress: Json | null
           parcel_rate: number | null
+          requires_onboarding: boolean | null
           right_to_work_document: string | null
           status: string | null
           updated_at: string
@@ -552,13 +497,12 @@ export type Database = {
           created_at?: string
           driving_license_document?: string | null
           driving_license_number?: string | null
-          employee_id?: string | null
+          first_login_completed?: boolean | null
           id?: string
           insurance_document?: string | null
           license_expiry?: string | null
-          onboarding_completed_at?: string | null
-          onboarding_progress?: Json | null
           parcel_rate?: number | null
+          requires_onboarding?: boolean | null
           right_to_work_document?: string | null
           status?: string | null
           updated_at?: string
@@ -572,13 +516,12 @@ export type Database = {
           created_at?: string
           driving_license_document?: string | null
           driving_license_number?: string | null
-          employee_id?: string | null
+          first_login_completed?: boolean | null
           id?: string
           insurance_document?: string | null
           license_expiry?: string | null
-          onboarding_completed_at?: string | null
-          onboarding_progress?: Json | null
           parcel_rate?: number | null
+          requires_onboarding?: boolean | null
           right_to_work_document?: string | null
           status?: string | null
           updated_at?: string
@@ -829,69 +772,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      invitation_audit_log: {
-        Row: {
-          action: string
-          created_at: string | null
-          details: Json | null
-          id: string
-          invitation_id: string | null
-          ip_address: string | null
-          performed_by: string
-          user_agent: string | null
-        }
-        Insert: {
-          action: string
-          created_at?: string | null
-          details?: Json | null
-          id?: string
-          invitation_id?: string | null
-          ip_address?: string | null
-          performed_by: string
-          user_agent?: string | null
-        }
-        Update: {
-          action?: string
-          created_at?: string | null
-          details?: Json | null
-          id?: string
-          invitation_id?: string | null
-          ip_address?: string | null
-          performed_by?: string
-          user_agent?: string | null
-        }
-        Relationships: []
-      }
-      invitation_rate_limits: {
-        Row: {
-          company_id: string
-          created_at: string | null
-          id: string
-          invitations_sent: number | null
-          updated_at: string | null
-          user_id: string
-          window_start: string | null
-        }
-        Insert: {
-          company_id: string
-          created_at?: string | null
-          id?: string
-          invitations_sent?: number | null
-          updated_at?: string | null
-          user_id: string
-          window_start?: string | null
-        }
-        Update: {
-          company_id?: string
-          created_at?: string | null
-          id?: string
-          invitations_sent?: number | null
-          updated_at?: string | null
-          user_id?: string
-          window_start?: string | null
-        }
-        Relationships: []
       }
       messages: {
         Row: {
