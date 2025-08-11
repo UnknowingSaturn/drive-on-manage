@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import DriverOnboardingGate from "@/components/DriverOnboardingGate";
 import AdminRoute from "@/components/AdminRoute";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
@@ -36,6 +37,7 @@ import EarningsTracker from "./pages/driver/EarningsTracker";
 import RouteFeedback from "./pages/driver/RouteFeedback";
 import Leaderboard from "./pages/driver/Leaderboard";
 import ExpenseTracker from "./pages/driver/ExpenseTracker";
+import DriverOnboarding from "./pages/driver/Onboarding";
 
 const queryClient = new QueryClient();
 
@@ -55,7 +57,9 @@ const App = () => (
             
             <Route path="/dashboard" element={
               <ProtectedRoute>
-                <Dashboard />
+                <DriverOnboardingGate>
+                  <Dashboard />
+                </DriverOnboardingGate>
               </ProtectedRoute>
             } />
             <Route path="/admin/dashboard" element={
@@ -130,54 +134,82 @@ const App = () => (
             } />
             
             {/* Driver Routes */}
+            {/* Onboarding route - no onboarding gate */}
+            <Route path="/driver/onboarding" element={
+              <ProtectedRoute>
+                <DriverOnboarding />
+              </ProtectedRoute>
+            } />
+            
+            {/* Protected driver routes with onboarding gate */}
             <Route path="/driver/profile" element={
               <ProtectedRoute>
-                <Profile />
+                <DriverOnboardingGate>
+                  <Profile />
+                </DriverOnboardingGate>
               </ProtectedRoute>
             } />
             <Route path="/driver/start-of-day" element={
               <ProtectedRoute>
-                <StartOfDay />
+                <DriverOnboardingGate>
+                  <StartOfDay />
+                </DriverOnboardingGate>
               </ProtectedRoute>
             } />
             <Route path="/driver/end-of-day" element={
               <ProtectedRoute>
-                <EndOfDay />
+                <DriverOnboardingGate>
+                  <EndOfDay />
+                </DriverOnboardingGate>
               </ProtectedRoute>
             } />
             <Route path="/driver/vehicle-check" element={
               <ProtectedRoute>
-                <VehicleCheck />
+                <DriverOnboardingGate>
+                  <VehicleCheck />
+                </DriverOnboardingGate>
               </ProtectedRoute>
             } />
             <Route path="/driver/incident-report" element={
               <ProtectedRoute>
-                <IncidentReport />
+                <DriverOnboardingGate>
+                  <IncidentReport />
+                </DriverOnboardingGate>
               </ProtectedRoute>
             } />
             <Route path="/driver/news-chat" element={
               <ProtectedRoute>
-                <NewsChat />
+                <DriverOnboardingGate>
+                  <NewsChat />
+                </DriverOnboardingGate>
               </ProtectedRoute>
             } />
             <Route path="/driver/earnings" element={
               <ProtectedRoute>
-                <EarningsTracker />
+                <DriverOnboardingGate>
+                  <EarningsTracker />
+                </DriverOnboardingGate>
               </ProtectedRoute>
             } />
             <Route path="/driver/feedback" element={
               <ProtectedRoute>
-                <RouteFeedback />
+                <DriverOnboardingGate>
+                  <RouteFeedback />
+                </DriverOnboardingGate>
               </ProtectedRoute>
             } />
             <Route path="/driver/leaderboard" element={
               <ProtectedRoute>
-                <Leaderboard />
+                <DriverOnboardingGate>
+                  <Leaderboard />
+                </DriverOnboardingGate>
               </ProtectedRoute>
             } />
             <Route path="/driver/expenses" element={
               <ProtectedRoute>
-                <ExpenseTracker />
+                <DriverOnboardingGate>
+                  <ExpenseTracker />
+                </DriverOnboardingGate>
               </ProtectedRoute>
             } />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
