@@ -94,13 +94,18 @@ export function generateSecureFilePath(
 }
 
 export function validateStoragePath(path: string, userId: string): boolean {
+  console.log('Validating storage path:', path);
+  console.log('User ID:', userId);
+  
   // Check for directory traversal
   if (path.includes('..') || path.includes('//') || path.includes('\\')) {
+    console.error('Directory traversal detected');
     return false;
   }
 
   // Ensure path starts with user ID
   if (!path.startsWith(`${userId}/`)) {
+    console.error('Path does not start with user ID');
     return false;
   }
 
@@ -116,10 +121,17 @@ export function validateStoragePath(path: string, userId: string): boolean {
     'eod_screenshots'
   ];
   const pathParts = path.split('/');
+  console.log('Path parts:', pathParts);
+  console.log('Allowed folders:', allowedFolders);
+  console.log('Folder from path:', pathParts[1]);
+  console.log('Is folder allowed:', allowedFolders.includes(pathParts[1]));
+  
   if (pathParts.length < 3 || !allowedFolders.includes(pathParts[1])) {
+    console.error('Invalid folder or path structure');
     return false;
   }
 
+  console.log('Storage path validation passed');
   return true;
 }
 
@@ -189,9 +201,15 @@ export async function processSecureUpload(
 
     // Generate secure path
     const filePath = generateSecureFilePath(userId, folder, validation.sanitizedName!);
+    console.log('Generated file path:', filePath);
+    console.log('User ID:', userId);
+    console.log('Folder:', folder);
+    console.log('Sanitized name:', validation.sanitizedName);
     
     // Validate storage path
     if (!validateStoragePath(filePath, userId)) {
+      console.error('Storage path validation failed for:', filePath);
+      console.error('Path parts:', filePath.split('/'));
       return { success: false, error: 'Invalid storage path' };
     }
 
