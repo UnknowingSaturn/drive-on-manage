@@ -258,7 +258,7 @@ const DriverManagement = () => {
       }
       
       if (!profileExists) {
-        // Create profile manually if auth trigger failed
+        // Create profile manually if auth trigger failed (removed company_id since we no longer have that column)
         console.log('Creating profile manually...');
         const { error: profileError } = await supabase
           .from('profiles')
@@ -269,7 +269,6 @@ const DriverManagement = () => {
             last_name: driverData.lastName,
             phone: driverData.phone || null,
             user_type: 'driver',
-            company_id: companyId,
             is_active: true
           });
           
@@ -302,7 +301,24 @@ const DriverManagement = () => {
 
       console.log('Driver profile created successfully:', driverProfile);
 
-      // Step 3: Send credentials email
+      // Step 4: Create user-company association (NEW - this is critical for the new system)
+      console.log('Creating user-company association...');
+      const { error: userCompanyError } = await supabase
+        .from('user_companies')
+        .insert({
+          user_id: createResult.userId,
+          company_id: companyId,
+          role: 'member'  // drivers are members, not admins
+        });
+
+      if (userCompanyError) {
+        console.error('User-company association failed:', userCompanyError);
+        throw new Error(`Failed to associate user with company: ${userCompanyError.message}`);
+      }
+
+      console.log('User-company association created successfully');
+
+      // Step 5: Send credentials email
       const { error: emailError } = await supabase.functions.invoke('send-driver-credentials', {
         body: {
           email: driverData.email,
