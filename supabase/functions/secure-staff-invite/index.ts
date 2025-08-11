@@ -12,7 +12,8 @@ interface SecureInviteRequest {
   firstName: string;
   lastName: string;
   phone?: string;
-  hourlyRate?: string;
+  parcelRate?: string;
+  coverRate?: string;
   companyId: string;
 }
 
@@ -65,11 +66,11 @@ const validatePhone = (phone: string): { valid: boolean; error?: string } => {
   return { valid: true };
 };
 
-const validateHourlyRate = (rate: string): { valid: boolean; error?: string } => {
+const validateParcelRate = (rate: string): { valid: boolean; error?: string } => {
   if (!rate) return { valid: true }; // Optional field
   const numRate = parseFloat(rate);
-  if (isNaN(numRate) || numRate < 0 || numRate > 1000) {
-    return { valid: false, error: 'Hourly rate must be between 0-1000' };
+  if (isNaN(numRate) || numRate < 0 || numRate > 50) {
+    return { valid: false, error: 'Parcel rate must be between 0-50' };
   }
   return { valid: true };
 };
@@ -160,11 +161,29 @@ const logAuditEvent = async (
     });
 };
 
-// Generate cryptographically secure token
-const generateSecureToken = (): string => {
-  const array = new Uint8Array(32);
-  crypto.getRandomValues(array);
-  return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
+// Generate secure temporary password
+const generateTempPassword = (): string => {
+  const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  const lowercase = 'abcdefghijklmnopqrstuvwxyz';
+  const numbers = '0123456789';
+  const symbols = '!@#$%^&*';
+  
+  const all = uppercase + lowercase + numbers + symbols;
+  let password = '';
+  
+  // Ensure at least one character from each category
+  password += uppercase[Math.floor(Math.random() * uppercase.length)];
+  password += lowercase[Math.floor(Math.random() * lowercase.length)];
+  password += numbers[Math.floor(Math.random() * numbers.length)];
+  password += symbols[Math.floor(Math.random() * symbols.length)];
+  
+  // Fill the rest randomly
+  for (let i = password.length; i < 12; i++) {
+    password += all[Math.floor(Math.random() * all.length)];
+  }
+  
+  // Shuffle the password
+  return password.split('').sort(() => Math.random() - 0.5).join('');
 };
 
 serve(async (req) => {
@@ -214,7 +233,7 @@ serve(async (req) => {
       });
     }
 
-    const { email, firstName, lastName, phone, hourlyRate, companyId } = requestBody;
+    const { email, firstName, lastName, phone, parcelRate, coverRate, companyId } = requestBody;
 
     // Comprehensive input validation with sanitization
     const validationErrors: string[] = [];
@@ -231,8 +250,11 @@ serve(async (req) => {
     const phoneValidation = validatePhone(phone || '');
     if (!phoneValidation.valid) validationErrors.push(phoneValidation.error!);
     
-    const rateValidation = validateHourlyRate(hourlyRate || '');
-    if (!rateValidation.valid) validationErrors.push(rateValidation.error!);
+    const parcelRateValidation = validateParcelRate(parcelRate || '');
+    if (!parcelRateValidation.valid) validationErrors.push(parcelRateValidation.error!);
+    
+    const coverRateValidation = validateParcelRate(coverRate || '');
+    if (!coverRateValidation.valid) validationErrors.push(coverRateValidation.error!);
     
     const companyValidation = validateUuid(companyId);
     if (!companyValidation.valid) validationErrors.push(companyValidation.error!);
@@ -326,141 +348,171 @@ serve(async (req) => {
       firstName: sanitizeInput(firstName),
       lastName: sanitizeInput(lastName),
       phone: phone ? sanitizeInput(phone) : null,
-      hourlyRate: hourlyRate ? parseFloat(hourlyRate) : null
+      parcelRate: parcelRate ? parseFloat(parcelRate) : null,
+      coverRate: coverRate ? parseFloat(coverRate) : null
     };
 
-    // Check for existing invitations and drivers
-    const { data: existingInvite } = await supabase
-      .from('driver_invitations')
-      .select('id, status, expires_at')
-      .eq('email', sanitizedData.email)
-      .eq('company_id', companyId)
-      .eq('status', 'pending')
-      .maybeSingle();
-
-    if (existingInvite && new Date(existingInvite.expires_at) > new Date()) {
+    // Check for existing driver with same email (skip invitations check)
+    const { data: existingUser } = await supabase.auth.admin.listUsers({
+      page: 1,
+      perPage: 1000
+    });
+    
+    const userWithEmail = existingUser.users?.find(u => u.email === sanitizedData.email);
+    if (userWithEmail) {
       return new Response(JSON.stringify({
-        error: 'Invitation exists',
-        message: 'An active invitation for this email already exists'
+        error: 'User exists',
+        message: 'A user with this email already exists'
       }), {
         status: 409,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    // Check for existing driver with same email
-    const { data: existingDrivers } = await supabase
-      .from('driver_profiles')
-      .select('user_id')
-      .eq('company_id', companyId);
-
-    if (existingDrivers && existingDrivers.length > 0) {
-      const userIds = existingDrivers.map(d => d.user_id);
-      const { data: profilesWithEmail } = await supabase
-        .from('profiles')
-        .select('user_id')
-        .eq('email', sanitizedData.email)
-        .in('user_id', userIds);
-
-      if (profilesWithEmail && profilesWithEmail.length > 0) {
-        return new Response(JSON.stringify({
-          error: 'Driver exists',
-          message: 'A driver with this email already exists in your company'
-        }), {
-          status: 409,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-    }
-
-    // Generate secure token with expiration (7 days)
-    const inviteToken = generateSecureToken();
-    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-
-    // Create invitation record
-    const { data: invitation, error: inviteError } = await supabase
-      .from('driver_invitations')
-      .insert({
-        email: sanitizedData.email,
+    // Generate temporary password
+    const tempPassword = generateTempPassword();
+    
+    // Create user account with temporary password
+    const { data: newUser, error: createUserError } = await supabase.auth.admin.createUser({
+      email: sanitizedData.email,
+      password: tempPassword,
+      email_confirm: true,
+      user_metadata: {
         first_name: sanitizedData.firstName,
         last_name: sanitizedData.lastName,
-        phone: sanitizedData.phone,
-        hourly_rate: sanitizedData.hourlyRate,
-        company_id: companyId,
-        invite_token: inviteToken,
-        created_by: user.id,
-        expires_at: expiresAt.toISOString()
-      })
-      .select()
-      .single();
+        user_type: 'driver',
+        onboarding_incomplete: true,
+        requires_password_change: true
+      }
+    });
 
-    if (inviteError) {
-      console.error('Failed to create invitation:', inviteError);
-      await logAuditEvent(supabase, null, 'INVITATION_CREATION_FAILED', user.id, { 
-        error: inviteError.message,
-        email: sanitizedData.email 
-      }, req);
-      
+    if (createUserError) {
+      console.error('Failed to create user:', createUserError);
       return new Response(JSON.stringify({
-        error: 'Database error',
-        message: 'Failed to create invitation'
+        error: 'User creation failed',
+        message: 'Failed to create user account'
       }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    // Generate secure onboarding URL - use request origin for dynamic URL
-    const origin = req.headers.get('origin') || req.headers.get('referer')?.split('/').slice(0, 3).join('/') || 'https://5ece6ac1-a29e-48e5-8b0e-6b9cb11d1253.lovableproject.com';
-    const onboardingUrl = `${origin}/onboarding?token=${inviteToken}`;
+    // Create user profile
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .insert({
+        user_id: newUser.user.id,
+        email: sanitizedData.email,
+        first_name: sanitizedData.firstName,
+        last_name: sanitizedData.lastName,
+        phone: sanitizedData.phone,
+        user_type: 'driver',
+        company_id: companyId,
+        is_active: true
+      });
 
-    // Send secure invitation email
+    if (profileError) {
+      console.error('Failed to create profile:', profileError);
+      // Clean up user if profile creation fails
+      await supabase.auth.admin.deleteUser(newUser.user.id);
+      return new Response(JSON.stringify({
+        error: 'Profile creation failed',
+        message: 'Failed to create user profile'
+      }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Create driver profile
+    const { data: driverProfile, error: driverError } = await supabase
+      .from('driver_profiles')
+      .insert({
+        user_id: newUser.user.id,
+        company_id: companyId,
+        parcel_rate: sanitizedData.parcelRate,
+        cover_rate: sanitizedData.coverRate,
+        status: 'pending',
+        onboarding_progress: { step: 'created', completed_steps: [] }
+      })
+      .select()
+      .single();
+
+    if (driverError) {
+      console.error('Failed to create driver profile:', driverError);
+      // Clean up user and profile if driver profile creation fails
+      await supabase.auth.admin.deleteUser(newUser.user.id);
+      return new Response(JSON.stringify({
+        error: 'Driver profile creation failed',
+        message: 'Failed to create driver profile'
+      }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Get company info for email
+    const { data: company } = await supabase
+      .from('companies')
+      .select('name')
+      .eq('id', companyId)
+      .single();
+
+    // Generate login URL
+    const origin = req.headers.get('origin') || req.headers.get('referer')?.split('/').slice(0, 3).join('/') || 'https://5ece6ac1-a29e-48e5-8b0e-6b9cb11d1253.lovableproject.com';
+    const loginUrl = `${origin}/auth`;
+
+    // Send driver credentials email
     try {
       const emailResponse = await resend.emails.send({
         from: "Driver Portal <noreply@unflawed.uk>",
         to: [sanitizedData.email],
-        subject: "🚗 Secure Driver Invitation - Complete Your Onboarding",
+        subject: `🚗 Welcome to ${company?.name || 'our Driver Team'} - Your Login Credentials`,
         html: `
           <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f8f9fa;">
             <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 12px 12px 0 0; text-align: center;">
-              <h1 style="color: white; margin: 0; font-size: 28px;">🚗 Driver Invitation</h1>
-              <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0 0;">Secure Access • Expires in 7 Days</p>
+              <h1 style="color: white; margin: 0; font-size: 28px;">🚗 Welcome to the Team!</h1>
+              <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0 0;">Your Driver Account is Ready</p>
             </div>
             
             <div style="background-color: white; padding: 30px; border-radius: 0 0 12px 12px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
               <p style="color: #4a5568; font-size: 16px; line-height: 1.6;">Hi <strong>${sanitizedData.firstName}</strong>,</p>
               
               <p style="color: #4a5568; font-size: 16px; line-height: 1.6;">
-                You've been securely invited to join our driver team. This invitation contains advanced security features to protect your data.
+                Welcome to ${company?.name || 'our driver team'}! Your account has been created and you can now log in using the credentials below.
               </p>
               
               <div style="background: #f7fafc; border-left: 4px solid #4299e1; padding: 20px; margin: 25px 0; border-radius: 0 8px 8px 0;">
-                <h3 style="margin: 0 0 15px 0; color: #2d3748;">🔐 Security Features</h3>
-                <ul style="margin: 0; color: #4a5568; line-height: 1.8;">
-                  <li>Cryptographically secure invitation token</li>
-                  <li>Input validation and XSS protection</li>
-                  <li>Rate limiting and audit logging</li>
-                  <li>7-day expiration for enhanced security</li>
-                </ul>
+                <h3 style="margin: 0 0 15px 0; color: #2d3748;">🔑 Your Login Credentials</h3>
+                <div style="background: #fff; padding: 15px; border-radius: 6px; border: 1px solid #e2e8f0;">
+                  <p style="margin: 0 0 10px 0; color: #4a5568;"><strong>Email:</strong> ${sanitizedData.email}</p>
+                  <p style="margin: 0; color: #4a5568;"><strong>Temporary Password:</strong> <code style="background: #edf2f7; padding: 2px 6px; border-radius: 4px; font-family: monospace;">${tempPassword}</code></p>
+                </div>
               </div>
               
               <div style="text-align: center; margin: 30px 0;">
-                <a href="${onboardingUrl}" 
+                <a href="${loginUrl}" 
                    style="background: linear-gradient(90deg, #4299e1, #3182ce); color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; display: inline-block; box-shadow: 0 4px 12px rgba(66, 153, 225, 0.3);">
-                  🚀 Start Secure Onboarding
+                  🚀 Login Now
                 </a>
+              </div>
+              
+              <div style="background-color: #fef5e7; border-left: 4px solid #ed8936; padding: 15px; margin: 20px 0; border-radius: 0 8px 8px 0;">
+                <p style="margin: 0; color: #9c4221; font-weight: 500;">
+                  ⚠️ <strong>Important:</strong> You must complete your onboarding profile before gaining full access to driver features. You'll be prompted to do this after your first login.
+                </p>
               </div>
               
               <div style="background-color: #fed7d7; border-left: 4px solid #e53e3e; padding: 15px; margin: 20px 0; border-radius: 0 8px 8px 0;">
                 <p style="margin: 0; color: #9b2c2c; font-weight: 500;">
-                  ⚠️ <strong>Security Notice:</strong> This link expires on ${expiresAt.toLocaleDateString()}. Do not share this invitation with others.
+                  🔒 <strong>Security Notice:</strong> Please change your password after logging in. Keep your login credentials secure and do not share them with others.
                 </p>
               </div>
               
               <div style="margin-top: 30px; padding: 20px; background-color: #f7fafc; border-radius: 8px; text-align: center;">
                 <p style="color: #718096; font-size: 14px; margin: 0;">
-                  If you have questions, contact your administrator.<br>
-                  <strong>This is a secure, one-time use invitation token.</strong>
+                  If you have questions or need help, contact your administrator.<br>
+                  <strong>Welcome to ${company?.name || 'the team'}!</strong>
                 </p>
               </div>
             </div>
@@ -468,51 +520,46 @@ serve(async (req) => {
         `,
       });
 
-      // Log successful invitation
-      await logAuditEvent(supabase, invitation.id, 'INVITATION_SENT', user.id, {
+      // Log successful driver creation
+      await logAuditEvent(supabase, driverProfile.id, 'DRIVER_CREATED', user.id, {
         recipient_email: sanitizedData.email,
         recipient_name: `${sanitizedData.firstName} ${sanitizedData.lastName}`,
         email_id: emailResponse.id,
-        expires_at: expiresAt.toISOString()
+        user_id: newUser.user.id,
+        driver_profile_id: driverProfile.id
       }, req);
 
       return new Response(JSON.stringify({
         success: true,
-        invitationId: invitation.id,
-        message: 'Secure driver invitation sent successfully',
-        emailId: emailResponse.id,
-        expiresAt: invitation.expires_at,
-        securityFeatures: [
-          'XSS/SQL injection protection',
-          'Rate limiting enabled',
-          'Audit logging active',
-          'Secure token generation',
-          'Permission validation'
-        ]
+        message: 'Driver account created successfully',
+        driverId: driverProfile.id,
+        userId: newUser.user.id,
+        emailSent: true
       }), {
         status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
 
-    } catch (emailError) {
-      console.error('Email delivery failed:', emailError);
+    } catch (emailError: any) {
+      console.error('Email sending failed:', emailError);
       
-      // Clean up invitation on email failure
-      await supabase
-        .from('driver_invitations')
-        .delete()
-        .eq('id', invitation.id);
-
-      await logAuditEvent(supabase, invitation.id, 'EMAIL_DELIVERY_FAILED', user.id, {
-        email_error: emailError.message,
-        recipient: sanitizedData.email
+      // Note: Don't clean up user account if email fails, admin should be notified
+      await logAuditEvent(supabase, driverProfile.id, 'EMAIL_SENDING_FAILED', user.id, {
+        error: emailError.message,
+        recipient_email: sanitizedData.email,
+        user_id: newUser.user.id,
+        note: 'User account created but email failed'
       }, req);
-
+      
       return new Response(JSON.stringify({
-        error: 'Email delivery failed',
-        message: 'Failed to send invitation email. The invitation has been cancelled.'
+        success: true,
+        message: 'Driver account created but email delivery failed',
+        driverId: driverProfile.id,
+        userId: newUser.user.id,
+        emailSent: false,
+        warning: 'Please manually provide login credentials to the driver'
       }), {
-        status: 500,
+        status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }

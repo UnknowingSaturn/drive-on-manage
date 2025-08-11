@@ -218,7 +218,7 @@ const DriverManagement = () => {
   };
 
   // Invite driver mutation with enhanced security
-  const inviteDriverMutation = useMutation({
+  const createDriverMutation = useMutation({
     mutationFn: async (driverData: typeof formData) => {
       // Validate all form data
       const validation = validateForm(driverData, driverInviteSchema);
@@ -234,7 +234,8 @@ const DriverManagement = () => {
         firstName: sanitizeInput(driverData.firstName),
         lastName: sanitizeInput(driverData.lastName),
         phone: sanitizeInput(driverData.phone),
-        parcelRate: driverData.parcelRate
+        parcelRate: driverData.parcelRate,
+        coverRate: driverData.coverRate
       };
 
       // Get fresh profile data
@@ -294,10 +295,18 @@ const DriverManagement = () => {
       return data;
     },
     onSuccess: (data) => {
-      toast({
-        title: "🎉 Driver invited successfully!",
-        description: `${formData.firstName} ${formData.lastName} will receive an onboarding email. The invitation expires in 7 days.`,
-      });
+      if (data.emailSent) {
+        toast({
+          title: "🎉 Driver created successfully!",
+          description: `${formData.firstName} ${formData.lastName} has been sent their login credentials via email.`,
+        });
+      } else {
+        toast({
+          title: "⚠️ Driver created with email issue",
+          description: `${formData.firstName} ${formData.lastName}'s account was created but email failed. Please provide credentials manually.`,
+          variant: "default",
+        });
+      }
       setIsDialogOpen(false);
       setFormData({
         email: '',
@@ -484,7 +493,7 @@ const DriverManagement = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setShowFormErrors(true);
-    inviteDriverMutation.mutate(formData);
+    createDriverMutation.mutate(formData);
   };
 
   const handleEditSubmit = (e: React.FormEvent) => {
@@ -726,23 +735,23 @@ const DriverManagement = () => {
                        )}
                     </div>
                     
-                    <Button 
-                      type="submit" 
-                      className="w-full" 
-                      disabled={inviteDriverMutation.isPending}
-                    >
-                      {inviteDriverMutation.isPending ? (
-                        <>
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2"></div>
-                          Sending Invite...
-                        </>
-                      ) : (
-                        <>
-                          <Mail className="h-4 w-4 mr-2" />
-                          Send Invite
-                        </>
-                      )}
-                    </Button>
+                     <Button 
+                       type="submit" 
+                       className="w-full" 
+                       disabled={createDriverMutation.isPending}
+                     >
+                       {createDriverMutation.isPending ? (
+                         <>
+                           <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2"></div>
+                           Creating Driver...
+                         </>
+                       ) : (
+                         <>
+                           <Plus className="h-4 w-4 mr-2" />
+                           Create Driver
+                         </>
+                       )}
+                     </Button>
                   </form>
                 </DialogContent>
               </Dialog>
