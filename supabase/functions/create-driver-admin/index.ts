@@ -226,9 +226,9 @@ const handler = async (req: Request): Promise<Response> => {
       .insert({
         user_id: userData.user.id,
         company_id: companyId,
-        driving_license_number: '',
-        emergency_contact_name: '',
-        emergency_contact_phone: '',
+        driving_license_number: null,
+        emergency_contact_name: null,
+        emergency_contact_phone: null,
         parcel_rate: parseFloat(String(parcelRate)) || 0.75,
         cover_rate: parseFloat(String(coverRate)) || 1.0,
         status: 'pending_onboarding',
