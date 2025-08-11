@@ -76,7 +76,7 @@ const handler = async (req: Request): Promise<Response> => {
     const tempPassword = Math.random().toString(36).slice(-8) + 'A1!';
     console.log('Generated temp password');
 
-    // Step 1: Create user with metadata
+    // Step 1: Create user with metadata (don't auto-confirm to avoid password issues)
     console.log('Creating user with metadata...');
     const { data: userData, error: createError } = await supabaseAdmin.auth.admin.createUser({
       email,
@@ -87,8 +87,19 @@ const handler = async (req: Request): Promise<Response> => {
         phone: phone || null,
         user_type: 'driver'
       },
-      email_confirm: true
+      email_confirm: false // Don't auto-confirm to avoid password being reset
     });
+
+    // Manually confirm the email and ensure password is properly set
+    if (userData.user) {
+      // Update user to confirm email and ensure proper password
+      await supabaseAdmin.auth.admin.updateUserById(userData.user.id, {
+        email_confirm: true,
+        password: tempPassword // Set password again to ensure it's correct
+      });
+      
+      console.log('User email confirmed and password set');
+    }
 
     if (createError || !userData.user) {
       console.error('User creation failed:', createError);

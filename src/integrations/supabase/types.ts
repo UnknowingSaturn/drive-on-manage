@@ -1457,6 +1457,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      set_driver_password: {
+        Args: { user_email: string; new_password: string }
+        Returns: undefined
+      }
       test_auth_context: {
         Args: Record<PropertyKey, never>
         Returns: {

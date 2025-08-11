@@ -82,24 +82,47 @@ const DriverManagement = () => {
       const companyIds = profile.user_companies.map(uc => uc.company_id);
       console.log('Fetching drivers for company_ids:', companyIds);
       
-      // Debug query to see what data exists
-      const { data: testData, error: testError } = await supabase
+      // Debug: Check raw driver profiles first
+      const { data: rawDrivers, error: rawError } = await supabase
         .from('driver_profiles')
-        .select('*, profiles!inner(*)')
+        .select('*')
         .eq('company_id', companyIds[0]);
         
-      console.log('Test query with direct join:', { testData, testError });
+      console.log('Raw driver profiles:', { rawDrivers, rawError });
       
-      // Main query with correct foreign key relationship
+      // Debug: Check profiles that should match
+      if (rawDrivers && rawDrivers.length > 0) {
+        const userIds = rawDrivers.map(d => d.user_id);
+        const { data: rawProfiles, error: profilesError } = await supabase
+          .from('profiles')
+          .select('*')
+          .in('user_id', userIds);
+        console.log('Matching profiles:', { rawProfiles, profilesError, userIds });
+      }
+      
+      // Main query - get driver profiles first
       const { data: drivers, error: driversError } = await supabase
         .from('driver_profiles')
         .select(`
           *,
-          assigned_van:vans(id, registration, make, model),
-          profiles!inner(first_name, last_name, email, phone, is_active)
+          assigned_van:vans(id, registration, make, model)
         `)
         .in('company_id', companyIds)
         .order('created_at', { ascending: false });
+        
+      // Get profiles separately to avoid foreign key issues
+      if (drivers && drivers.length > 0) {
+        const userIds = drivers.map(d => d.user_id);
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('user_id, first_name, last_name, email, phone, is_active')
+          .in('user_id', userIds);
+          
+        // Match profiles to drivers
+        drivers.forEach((driver: any) => {
+          driver.user_profile = profiles?.find(p => p.user_id === driver.user_id);
+        });
+      }
 
       console.log('Full query result:', { drivers, driversError });
 
@@ -109,13 +132,13 @@ const DriverManagement = () => {
       }
 
       // Transform driver data for the UI
-      return (drivers || []).map(driver => ({
+      return (drivers || []).map((driver: any) => ({
         ...driver,
         type: 'active' as const,
-        name: driver.profiles ? `${driver.profiles.first_name} ${driver.profiles.last_name}` : 'Unknown',
-        email: driver.profiles?.email || 'No email',
-        phone: driver.profiles?.phone || '',
-        isActive: driver.profiles?.is_active ?? true,
+        name: driver.user_profile ? `${driver.user_profile.first_name} ${driver.user_profile.last_name}` : 'Unknown',
+        email: driver.user_profile?.email || 'No email',
+        phone: driver.user_profile?.phone || '',
+        isActive: driver.user_profile?.is_active ?? true,
         status: driver.first_login_completed ? 'active' : 'pending_first_login',
         onboardingCompletedAt: driver.onboarding_completed_at
       }));
@@ -425,9 +448,9 @@ const DriverManagement = () => {
   const openEditDialog = (driver: any) => {
     setSelectedDriver(driver);
     setEditFormData({
-      firstName: driver.profiles.first_name || '',
-      lastName: driver.profiles.last_name || '',
-      phone: driver.profiles.phone || '',
+      firstName: driver.user_profile?.first_name || '',
+      lastName: driver.user_profile?.last_name || '',
+      phone: driver.user_profile?.phone || '',
       parcelRate: driver.parcel_rate?.toString() || '',
       coverRate: driver.cover_rate?.toString() || '',
       status: driver.status || 'active',
