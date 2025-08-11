@@ -52,6 +52,24 @@ const handler = async (req: Request): Promise<Response> => {
       companyId
     });
 
+    // Check if user already exists first
+    const { data: existingUser, error: checkError } = await supabaseAdmin.auth.admin.listUsers();
+    
+    if (checkError) {
+      console.error('Error checking existing users:', checkError);
+    } else {
+      const userExists = existingUser.users.find(user => user.email === email);
+      if (userExists) {
+        return new Response(
+          JSON.stringify({ error: `A user with email ${email} already exists. Please use a different email address or contact the existing user to join your company.` }),
+          {
+            status: 400,
+            headers: { 'Content-Type': 'application/json', ...corsHeaders },
+          }
+        );
+      }
+    }
+
     // Generate temporary password
     const tempPassword = `Temp${Math.random().toString(36).slice(2, 10)}!`;
 
