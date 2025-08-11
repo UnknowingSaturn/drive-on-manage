@@ -19,7 +19,15 @@ const CompanyManagement = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [selectedCompany, setSelectedCompany] = useState<any>(null);
   const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    address: ''
+  });
+  const [editFormData, setEditFormData] = useState({
     name: '',
     email: '',
     phone: '',
@@ -60,33 +68,8 @@ const CompanyManagement = () => {
         throw new Error('No valid session found. Please log in again.');
       }
       
-      // Test the authentication context in the database
-      try {
-        const { data: authTest, error: authTestError } = await supabase
-          .rpc('test_auth_context');
-        
-        if (authTestError) {
-          throw new Error(`Database connection error: ${authTestError.message}`);
-        }
-        
-        if (authTest && authTest[0] && authTest[0].current_uid === null) {
-          throw new Error('Authentication context not available in database. Please try again.');
-        }
-      } catch (testError) {
-        console.error('Failed to test auth context:', testError);
-      }
-      
-      // Explicitly set the session to ensure auth context is available
-      await supabase.auth.setSession({
-        access_token: session.access_token,
-        refresh_token: session.refresh_token
-      });
-      
-      // Add a small delay to ensure the auth context is properly set
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
       // Insert company directly
-      const { data, error } = await supabase
+      const { data: company, error } = await supabase
         .from('companies')
         .insert({
           name: companyData.name,
@@ -102,12 +85,24 @@ const CompanyManagement = () => {
         console.error('Database error:', error);
         throw error;
       }
-      return data;
+
+      // Update user profile to assign the company
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({ company_id: company.id })
+        .eq('user_id', session.user.id);
+
+      if (profileError) {
+        console.error('Error updating profile:', profileError);
+        throw new Error('Company created but failed to assign to profile');
+      }
+
+      return company;
     },
     onSuccess: () => {
       toast({
         title: "Location created successfully",
-        description: "The new location has been added.",
+        description: "The new location has been added and assigned to your profile.",
       });
       setIsDialogOpen(false);
       setFormData({
@@ -117,6 +112,8 @@ const CompanyManagement = () => {
         address: ''
       });
       queryClient.invalidateQueries({ queryKey: ['companies'] });
+      // Refresh auth context to get updated profile with company_id
+      window.location.reload();
     },
     onError: (error: any) => {
       toast({
@@ -131,9 +128,97 @@ const CompanyManagement = () => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
+  // Update company mutation
+  const updateCompanyMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string, data: typeof editFormData }) => {
+      const { error } = await supabase
+        .from('companies')
+        .update({
+          name: data.name,
+          email: data.email,
+          phone: data.phone || null,
+          address: data.address || null,
+        })
+        .eq('id', id);
+
+      if (error) throw error;
+      return { id, data };
+    },
+    onSuccess: () => {
+      toast({
+        title: "Location updated successfully",
+        description: "The location has been updated.",
+      });
+      setIsEditDialogOpen(false);
+      setSelectedCompany(null);
+      queryClient.invalidateQueries({ queryKey: ['companies'] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error updating location",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Delete company mutation
+  const deleteCompanyMutation = useMutation({
+    mutationFn: async (companyId: string) => {
+      const { error } = await supabase
+        .from('companies')
+        .delete()
+        .eq('id', companyId);
+
+      if (error) throw error;
+      return companyId;
+    },
+    onSuccess: () => {
+      toast({
+        title: "Location deleted successfully",
+        description: "The location has been removed.",
+      });
+      queryClient.invalidateQueries({ queryKey: ['companies'] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error deleting location",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     createCompanyMutation.mutate(formData);
+  };
+
+  const handleEditSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (selectedCompany) {
+      updateCompanyMutation.mutate({
+        id: selectedCompany.id,
+        data: editFormData
+      });
+    }
+  };
+
+  const handleEditCompany = (company: any) => {
+    setSelectedCompany(company);
+    setEditFormData({
+      name: company.name,
+      email: company.email,
+      phone: company.phone || '',
+      address: company.address || ''
+    });
+    setIsEditDialogOpen(true);
+  };
+
+  const handleDeleteCompany = (companyId: string) => {
+    if (confirm('Are you sure you want to delete this location? This action cannot be undone.')) {
+      deleteCompanyMutation.mutate(companyId);
+    }
   };
 
 
@@ -246,6 +331,68 @@ const CompanyManagement = () => {
                   </form>
                 </DialogContent>
               </Dialog>
+
+              {/* Edit Company Dialog */}
+              <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+                <DialogContent className="sm:max-w-[425px]">
+                  <DialogHeader>
+                    <DialogTitle>Edit Location</DialogTitle>
+                    <DialogDescription>
+                      Update the location information.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <form onSubmit={handleEditSubmit} className="space-y-4">
+                    <div>
+                      <Label htmlFor="edit-name">Location Name <span className="text-destructive">*</span></Label>
+                      <Input
+                        id="edit-name"
+                        value={editFormData.name}
+                        onChange={(e) => setEditFormData(prev => ({ ...prev, name: e.target.value }))}
+                        placeholder="Enter location name"
+                        required
+                      />
+                    </div>
+                    
+                    <div>
+                      <Label htmlFor="edit-email">Location Email <span className="text-destructive">*</span></Label>
+                      <Input
+                        id="edit-email"
+                        type="email"
+                        value={editFormData.email}
+                        onChange={(e) => setEditFormData(prev => ({ ...prev, email: e.target.value }))}
+                        placeholder="location@example.com"
+                        required
+                      />
+                    </div>
+                    
+                    <div>
+                      <Label htmlFor="edit-phone">Phone Number</Label>
+                      <Input
+                        id="edit-phone"
+                        type="tel"
+                        value={editFormData.phone}
+                        onChange={(e) => setEditFormData(prev => ({ ...prev, phone: e.target.value }))}
+                        placeholder="+44 123 456 7890"
+                      />
+                    </div>
+                    
+                    <div>
+                      <Label htmlFor="edit-address">Address</Label>
+                      <Input
+                        id="edit-address"
+                        value={editFormData.address}
+                        onChange={(e) => setEditFormData(prev => ({ ...prev, address: e.target.value }))}
+                        placeholder="Location address"
+                      />
+                    </div>
+                    
+                    <Button type="submit" className="w-full" disabled={updateCompanyMutation.isPending}>
+                      <Building2 className="h-4 w-4 mr-2" />
+                      {updateCompanyMutation.isPending ? 'Updating Location...' : 'Update Location'}
+                    </Button>
+                  </form>
+                </DialogContent>
+              </Dialog>
             </div>
 
             <Card>
@@ -310,10 +457,18 @@ const CompanyManagement = () => {
                         </TableCell>
                         <TableCell>
                           <div className="flex space-x-2">
-                            <Button variant="outline" size="sm">
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => handleEditCompany(company)}
+                            >
                               <Edit className="h-3 w-3" />
                             </Button>
-                            <Button variant="outline" size="sm">
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => handleDeleteCompany(company.id)}
+                            >
                               <Trash2 className="h-3 w-3" />
                             </Button>
                           </div>
