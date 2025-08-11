@@ -82,21 +82,21 @@ const DriverManagement = () => {
       const companyIds = profile.user_companies.map(uc => uc.company_id);
       console.log('Fetching drivers for company_ids:', companyIds);
       
-      // First, try a simpler query to debug
+      // Debug query to see what data exists
       const { data: testData, error: testError } = await supabase
         .from('driver_profiles')
-        .select('*')
-        .eq('company_id', profile.company_id);
+        .select('*, profiles!inner(*)')
+        .eq('company_id', companyIds[0]);
         
-      console.log('Simple driver_profiles query result:', { testData, testError });
+      console.log('Test query with direct join:', { testData, testError });
       
-      // Fetch driver profiles with user data using a proper LEFT JOIN
+      // Main query with correct foreign key relationship
       const { data: drivers, error: driversError } = await supabase
         .from('driver_profiles')
         .select(`
           *,
           assigned_van:vans(id, registration, make, model),
-          user:profiles!user_id(first_name, last_name, email, phone, is_active)
+          profiles!inner(first_name, last_name, email, phone, is_active)
         `)
         .in('company_id', companyIds)
         .order('created_at', { ascending: false });
@@ -112,10 +112,10 @@ const DriverManagement = () => {
       return (drivers || []).map(driver => ({
         ...driver,
         type: 'active' as const,
-        name: driver.user ? `${driver.user.first_name} ${driver.user.last_name}` : 'Unknown',
-        email: driver.user?.email || 'No email',
-        phone: driver.user?.phone || '',
-        isActive: driver.user?.is_active ?? true,
+        name: driver.profiles ? `${driver.profiles.first_name} ${driver.profiles.last_name}` : 'Unknown',
+        email: driver.profiles?.email || 'No email',
+        phone: driver.profiles?.phone || '',
+        isActive: driver.profiles?.is_active ?? true,
         status: driver.first_login_completed ? 'active' : 'pending_first_login',
         onboardingCompletedAt: driver.onboarding_completed_at
       }));
