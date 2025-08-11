@@ -306,93 +306,28 @@ const DriverManagement = () => {
     }
   });
 
-  // Delete driver mutation with direct API calls
+  // Delete driver mutation with edge function
   const deleteDriverMutation = useMutation({
     mutationFn: async (driverId: string) => {
-      const { data: driverProfile, error: fetchError } = await supabase
-        .from('driver_profiles')
-        .select('user_id, status, company_id')
-        .eq('id', driverId)
-        .single();
-
-      if (fetchError) {
-        console.error('Error fetching driver profile:', fetchError);
-        throw new Error(`Failed to fetch driver profile: ${fetchError.message}`);
-      }
-
-      const userId = driverProfile.user_id;
-      const isPending = driverProfile.status === 'pending_onboarding';
-
-      // Check if driver has any active logs
-      const { data: activeLogs } = await supabase
-        .from('daily_logs')
-        .select('id')
-        .eq('driver_id', driverId)
-        .eq('status', 'in_progress')
-        .limit(1);
-
-      if (activeLogs && activeLogs.length > 0) {
-        throw new Error('Cannot remove driver with active daily logs. Please complete or cancel their current shift first.');
-      }
-
-      // Check if user has other roles in the system
-      const { data: otherProfiles, error: profileCheckError } = await supabase
-        .from('profiles')
-        .select('user_type, company_id')
-        .eq('user_id', userId);
-
-      if (profileCheckError) {
-        console.error('Error checking other profiles:', profileCheckError);
-      }
-
-      const hasOtherRoles = otherProfiles && otherProfiles.some(p => 
-        p.user_type === 'admin' || p.company_id !== driverProfile.company_id
-      );
-
-      // Delete driver profile first
-      const { error: profileError } = await supabase
-        .from('driver_profiles')
-        .delete()
-        .eq('id', driverId);
-
-      if (profileError) {
-        throw new Error(`Failed to delete driver profile: ${profileError.message}`);
-      }
-
-      // For pending drivers or if user has no other roles, clean up completely
-      if (isPending || !hasOtherRoles) {
-        // Delete user profile
-        const { error: deleteProfileError } = await supabase
-          .from('profiles')
-          .delete()
-          .eq('user_id', userId);
-
-        if (deleteProfileError) {
-          console.error('Error deleting profile:', deleteProfileError);
-          // Don't throw error - driver profile is already deleted
+      // Call the delete-driver-admin edge function
+      const { data, error } = await supabase.functions.invoke('delete-driver-admin', {
+        body: {
+          driverId: driverId,
+          cleanupUser: true
         }
+      });
 
-        // Delete user account (only for pending drivers or users with no other roles)
-        if (isPending || !hasOtherRoles) {
-          try {
-            const { error: deleteUserError } = await supabase.auth.admin.deleteUser(userId);
-            if (deleteUserError) {
-              console.error('Error deleting user account:', deleteUserError);
-              // Don't throw error - driver profile is already deleted
-            }
-          } catch (authError) {
-            console.error('Auth deletion error:', authError);
-            // Don't throw error - driver profile is already deleted
-          }
-        }
+      if (error) {
+        console.error('Edge function error:', error);
+        throw new Error(`Failed to remove driver: ${error.message || 'Unknown error'}`);
       }
 
-      return {
-        success: true,
-        message: 'Driver removed successfully',
-        cleanedUp: isPending || !hasOtherRoles,
-        driverId: driverId
-      };
+      if (!data?.success) {
+        console.error('Edge function returned failure:', data);
+        throw new Error(data?.error || 'Failed to remove driver');
+      }
+
+      return data;
     },
     onSuccess: (data) => {
       toast({

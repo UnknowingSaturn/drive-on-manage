@@ -3,6 +3,9 @@ project_id = "ttnlrnmdxkecomdylckl"
 [functions.create-driver-admin]
 verify_jwt = false
 
+[functions.delete-driver-admin]
+verify_jwt = false
+
 [functions.send-driver-credentials]
 verify_jwt = false
 
