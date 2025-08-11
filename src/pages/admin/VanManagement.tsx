@@ -7,7 +7,8 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, Truck, AlertTriangle, CheckCircle, Calendar } from 'lucide-react';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Plus, Truck, AlertTriangle, CheckCircle, Calendar, Edit, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -17,11 +18,15 @@ import { AppSidebar } from '@/components/AppSidebar';
 import { ComponentErrorBoundary } from '@/components/ComponentErrorBoundary';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 
+
 const VanManagement = () => {
   const { profile } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editingVan, setEditingVan] = useState<any>(null);
+  const [vanToDelete, setVanToDelete] = useState<any>(null);
   const [formData, setFormData] = useState({
     registration: '',
     make: '',
@@ -94,13 +99,107 @@ const VanManagement = () => {
     },
   });
 
+  // Update van mutation
+  const updateVanMutation = useMutation({
+    mutationFn: async (vanData: { id: string } & typeof formData) => {
+      const { error } = await supabase
+        .from('vans')
+        .update({
+          registration: vanData.registration.toUpperCase(),
+          make: vanData.make,
+          model: vanData.model,
+          year: vanData.year ? parseInt(vanData.year) : null,
+          mot_expiry: vanData.motExpiry || null,
+          service_due: vanData.serviceDue || null,
+        })
+        .eq('id', vanData.id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({
+        title: "Van updated successfully",
+        description: "The vehicle information has been updated.",
+      });
+      setIsEditDialogOpen(false);
+      setEditingVan(null);
+      setFormData({
+        registration: '',
+        make: '',
+        model: '',
+        year: '',
+        motExpiry: '',
+        serviceDue: ''
+      });
+      queryClient.invalidateQueries({ queryKey: ['vans'] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error updating van",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Delete van mutation
+  const deleteVanMutation = useMutation({
+    mutationFn: async (vanId: string) => {
+      const { error } = await supabase
+        .from('vans')
+        .update({ is_active: false })
+        .eq('id', vanId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({
+        title: "Van deleted successfully",
+        description: "The vehicle has been removed from your fleet.",
+      });
+      setVanToDelete(null);
+      queryClient.invalidateQueries({ queryKey: ['vans'] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error deleting van",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleEditVan = (van: any) => {
+    setEditingVan(van);
+    setFormData({
+      registration: van.registration,
+      make: van.make || '',
+      model: van.model || '',
+      year: van.year?.toString() || '',
+      motExpiry: van.mot_expiry || '',
+      serviceDue: van.service_due || ''
+    });
+    setIsEditDialogOpen(true);
+  };
+
+  const handleDeleteVan = (van: any) => {
+    setVanToDelete(van);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     addVanMutation.mutate(formData);
+  };
+
+  const handleEditSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (editingVan) {
+      updateVanMutation.mutate({ ...formData, id: editingVan.id });
+    }
   };
 
   const getStatusBadge = (motExpiry: string | null, serviceDue: string | null) => {
@@ -390,18 +489,25 @@ const VanManagement = () => {
                     {getStatusBadge(van.mot_expiry, van.service_due)}
                   </TableCell>
                   <TableCell>
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => {
-                        toast({
-                          title: "Feature coming soon",
-                          description: "Van editing functionality will be available soon.",
-                        });
-                      }}
-                    >
-                      Edit
-                    </Button>
+                    <div className="flex space-x-1">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => handleEditVan(van)}
+                      >
+                        <Edit className="h-3 w-3 mr-1" />
+                        Edit
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => handleDeleteVan(van)}
+                        className="text-destructive hover:text-destructive"
+                      >
+                        <Trash2 className="h-3 w-3 mr-1" />
+                        Delete
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
@@ -415,6 +521,124 @@ const VanManagement = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Edit Van Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Edit Van</DialogTitle>
+            <DialogDescription>
+              Update the details of this vehicle.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleEditSubmit} className="space-y-4">
+            <div>
+              <Label htmlFor="edit-registration">Registration Number</Label>
+              <Input
+                id="edit-registration"
+                value={formData.registration}
+                onChange={(e) => handleInputChange('registration', e.target.value)}
+                placeholder="e.g. AB12 CDE"
+                required
+              />
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="edit-make">Make</Label>
+                <Input
+                  id="edit-make"
+                  value={formData.make}
+                  onChange={(e) => handleInputChange('make', e.target.value)}
+                  placeholder="e.g. Ford"
+                />
+              </div>
+              <div>
+                <Label htmlFor="edit-model">Model</Label>
+                <Input
+                  id="edit-model"
+                  value={formData.model}
+                  onChange={(e) => handleInputChange('model', e.target.value)}
+                  placeholder="e.g. Transit"
+                />
+              </div>
+            </div>
+            
+            <div>
+              <Label htmlFor="edit-year">Year</Label>
+              <Input
+                id="edit-year"
+                type="number"
+                value={formData.year}
+                onChange={(e) => handleInputChange('year', e.target.value)}
+                placeholder="e.g. 2022"
+                min="1900"
+                max={new Date().getFullYear() + 1}
+              />
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="edit-motExpiry">MOT Expiry</Label>
+                <Input
+                  id="edit-motExpiry"
+                  type="date"
+                  value={formData.motExpiry}
+                  onChange={(e) => handleInputChange('motExpiry', e.target.value)}
+                />
+              </div>
+              <div>
+                <Label htmlFor="edit-serviceDue">Service Due</Label>
+                <Input
+                  id="edit-serviceDue"
+                  type="date"
+                  value={formData.serviceDue}
+                  onChange={(e) => handleInputChange('serviceDue', e.target.value)}
+                />
+              </div>
+            </div>
+            
+            <div className="flex justify-end space-x-2">
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={() => setIsEditDialogOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={updateVanMutation.isPending}>
+                <Truck className="h-4 w-4 mr-2" />
+                {updateVanMutation.isPending ? 'Updating...' : 'Update Van'}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={!!vanToDelete} onOpenChange={(open) => !open && setVanToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center">
+              <AlertTriangle className="h-4 w-4 mr-2 text-destructive" />
+              Delete Van
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {vanToDelete && `Are you sure you want to delete ${vanToDelete.registration}? This action cannot be undone.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteVanMutation.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => vanToDelete && deleteVanMutation.mutate(vanToDelete.id)}
+              disabled={deleteVanMutation.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteVanMutation.isPending ? 'Deleting...' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
           </main>
         </SidebarInset>
       </div>
