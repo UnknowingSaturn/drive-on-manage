@@ -199,11 +199,9 @@ const DriverManagement = () => {
         throw new Error(createError?.message || 'Failed to create user account');
       }
 
-      // Step 2: Let the trigger create the profile, then create driver profile
-      // Wait a moment for the auth trigger to create the profile
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
-      const { error: driverProfileError } = await supabase
+      // Step 2: Create driver profile directly after user creation
+      console.log('Creating driver profile with company_id:', companyId);
+      const { data: driverProfile, error: driverProfileError } = await supabase
         .from('driver_profiles')
         .insert({
           user_id: createResult.userId,
@@ -213,12 +211,31 @@ const DriverManagement = () => {
           status: 'pending_onboarding',
           requires_onboarding: true,
           first_login_completed: false
-        });
+        })
+        .select()
+        .single();
 
       if (driverProfileError) {
-        // If driver profile creation fails, we can still show success
-        // since the user account was created successfully
-        console.warn('Driver profile creation failed, but user was created:', driverProfileError);
+        console.error('Driver profile creation failed:', driverProfileError);
+        throw new Error(`Failed to create driver profile: ${driverProfileError.message}`);
+      }
+
+      console.log('Driver profile created successfully:', driverProfile);
+
+      // Step 3: Send credentials email
+      const { error: emailError } = await supabase.functions.invoke('send-driver-credentials', {
+        body: {
+          email: driverData.email,
+          firstName: driverData.firstName,
+          lastName: driverData.lastName,
+          tempPassword: createResult.tempPassword,
+          companyId: companyId
+        }
+      });
+
+      if (emailError) {
+        console.warn('Failed to send credentials email:', emailError);
+        // Don't fail the whole operation for email issues
       }
 
       return {
