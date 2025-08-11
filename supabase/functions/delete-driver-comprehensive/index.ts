@@ -242,6 +242,26 @@ const handler = async (req: Request): Promise<Response> => {
       deletedRecords.daily_logs = dailyLogsCount || 0;
     }
 
+    console.log('Deleted driver-related records:', deletedRecords);
+
+    // Check if user has other profiles/roles in the system BEFORE deleting anything user-related
+    const { data: otherUserCompanies } = await supabaseAdmin
+      .from('user_companies')
+      .select('company_id, role')
+      .eq('user_id', userId)
+      .neq('company_id', driverProfile.company_id); // Exclude current company
+
+    const { data: otherProfiles } = await supabaseAdmin
+      .from('profiles')
+      .select('user_type')
+      .eq('user_id', userId);
+
+    // Check if user is an admin or has roles in other companies
+    const hasAdminRole = otherProfiles && otherProfiles.some(p => p.user_type === 'admin');
+    const hasOtherCompanyRoles = otherUserCompanies && otherUserCompanies.length > 0;
+
+    console.log('User has other roles:', { hasOtherCompanyRoles, hasAdminRole });
+
     // 14. Delete the driver profile itself
     const { error: driverProfileError } = await supabaseAdmin
       .from('driver_profiles')
@@ -252,24 +272,6 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error(`Failed to delete driver profile: ${driverProfileError.message}`);
     }
     deletedRecords.driver_profiles = 1;
-
-    console.log('Deleted driver-related records:', deletedRecords);
-
-    // Check if user has other profiles/roles in the system
-    const { data: otherUserCompanies } = await supabaseAdmin
-      .from('user_companies')
-      .select('company_id, role')
-      .eq('user_id', userId);
-
-    const { data: otherProfiles } = await supabaseAdmin
-      .from('profiles')
-      .select('user_type')
-      .eq('user_id', userId);
-
-    const hasOtherCompanyRoles = otherUserCompanies && otherUserCompanies.length > 0;
-    const hasAdminRole = otherProfiles && otherProfiles.some(p => p.user_type === 'admin');
-
-    console.log('User has other roles:', { hasOtherCompanyRoles, hasAdminRole });
 
     let authUserDeleted = false;
 
