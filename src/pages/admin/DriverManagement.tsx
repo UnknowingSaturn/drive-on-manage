@@ -226,101 +226,32 @@ const DriverManagement = () => {
 
       const tempPassword = generateTempPassword();
 
-      // Create user account directly using Supabase Admin API
-      const { data: newUser, error: createUserError } = await supabase.auth.admin.createUser({
-        email: sanitizedData.email,
-        password: tempPassword,
-        email_confirm: true,
-        user_metadata: {
-          first_name: sanitizedData.firstName,
-          last_name: sanitizedData.lastName,
-          user_type: 'driver',
-          company_id: companyId,
-          needsOnboarding: true,
-          requiresPasswordChange: true
+      // Call the create-driver edge function with service role permissions
+      const { data: createResult, error: createUserError } = await supabase.functions.invoke('create-driver', {
+        body: {
+          email: sanitizedData.email,
+          firstName: sanitizedData.firstName,
+          lastName: sanitizedData.lastName,
+          phone: sanitizedData.phone,
+          parcelRate: sanitizedData.parcelRate,
+          companyId: companyId
         }
       });
 
       if (createUserError) {
-        console.error('Failed to create user:', createUserError);
-        throw new Error(`Failed to create user account: ${createUserError.message}`);
+        console.error('Failed to create driver:', createUserError);
+        throw new Error(`Failed to create driver account: ${createUserError.message}`);
       }
 
-      if (!newUser?.user) {
-        throw new Error('User creation failed - no user data returned');
+      if (!createResult?.success) {
+        throw new Error('Driver creation failed - no success response returned');
       }
 
-      console.log('User created successfully:', newUser.user.id);
-
-      // Create user profile
-      const { error: profileCreateError } = await supabase
-        .from('profiles')
-        .insert({
-          user_id: newUser.user.id,
-          email: sanitizedData.email,
-          first_name: sanitizedData.firstName,
-          last_name: sanitizedData.lastName,
-          phone: sanitizedData.phone,
-          user_type: 'driver',
-          company_id: companyId,
-          is_active: true
-        });
-
-      if (profileCreateError) {
-        console.error('Failed to create profile:', profileCreateError);
-        // Clean up user if profile creation fails
-        await supabase.auth.admin.deleteUser(newUser.user.id);
-        throw new Error(`Failed to create user profile: ${profileCreateError.message}`);
-      }
-
-      console.log('Profile created successfully');
-
-      // Create driver profile with onboarding flags
-      const { error: driverProfileError } = await supabase
-        .from('driver_profiles')
-        .insert({
-          user_id: newUser.user.id,
-          company_id: companyId,
-          parcel_rate: sanitizedData.parcelRate ? parseFloat(sanitizedData.parcelRate) : null,
-          cover_rate: sanitizedData.coverRate ? parseFloat(sanitizedData.coverRate) : null,
-          status: 'pending',
-          first_login_completed: false,
-          requires_onboarding: true
-        });
-
-      if (driverProfileError) {
-        console.error('Failed to create driver profile:', driverProfileError);
-        // Clean up user and profile if driver profile creation fails
-        await supabase.auth.admin.deleteUser(newUser.user.id);
-        throw new Error(`Failed to create driver profile: ${driverProfileError.message}`);
-      }
-
-      console.log('Driver profile created successfully');
-
-      // Send email with credentials using edge function
-      try {
-        const { error: emailError } = await supabase.functions.invoke('send-driver-credentials', {
-          body: {
-            email: sanitizedData.email,
-            firstName: sanitizedData.firstName,
-            lastName: sanitizedData.lastName,
-            tempPassword: tempPassword,
-            companyId: companyId
-          }
-        });
-
-        if (emailError) {
-          console.warn('Failed to send credentials email:', emailError);
-          // Don't throw error for email failure - driver account is created
-        }
-      } catch (emailError) {
-        console.warn('Email sending failed:', emailError);
-        // Continue - the account is created successfully
-      }
+      console.log('Driver created successfully via edge function:', createResult.userId);
 
       return {
-        user: newUser.user,
-        tempPassword: tempPassword,
+        userId: createResult.userId,
+        tempPassword: createResult.tempPassword,
         success: true
       };
     },
