@@ -305,14 +305,16 @@ const DriverManagement = () => {
     }
   });
 
-  // Delete driver mutation with edge function
+  // Delete driver mutation with comprehensive edge function
   const deleteDriverMutation = useMutation({
     mutationFn: async (driverId: string) => {
-      // Call the delete-driver-admin edge function
-      const { data, error } = await supabase.functions.invoke('delete-driver-admin', {
+      const companyId = profile?.user_companies?.[0]?.company_id;
+      
+      // Call the new comprehensive delete-driver function
+      const { data, error } = await supabase.functions.invoke('delete-driver-comprehensive', {
         body: {
           driverId: driverId,
-          cleanupUser: true
+          companyId: companyId
         }
       });
 
@@ -329,9 +331,10 @@ const DriverManagement = () => {
       return data;
     },
     onSuccess: (data) => {
+      const deletedCount = Object.values(data.deletedRecords || {}).reduce((sum: number, count: number) => sum + count, 0);
       toast({
         title: "Driver removed successfully",
-        description: "Driver account has been removed and cleaned up.",
+        description: `Driver account and ${deletedCount} related records have been removed. ${data.authUserDeleted ? 'User account also deleted.' : 'User account preserved.'}`,
       });
       queryClient.invalidateQueries({ queryKey: ['drivers'] });
     },

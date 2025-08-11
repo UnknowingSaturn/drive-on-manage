@@ -1,9 +1,9 @@
 project_id = "ttnlrnmdxkecomdylckl"
 
-[functions.simple-create-driver]
+[functions.comprehensive-create-driver]
 verify_jwt = false
 
-[functions.delete-driver-admin]
+[functions.delete-driver-comprehensive]
 verify_jwt = false
 
 [functions.send-driver-credentials]
