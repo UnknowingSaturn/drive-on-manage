@@ -273,9 +273,18 @@ const DriverManagement = () => {
           });
           
         if (profileError) {
-          console.error('Manual profile creation failed:', profileError);
-          throw new Error(`Failed to create user profile: ${profileError.message}`);
+          // If it's a duplicate key error, the profile was created by the auth trigger in the meantime
+          if (profileError.code === '23505') {
+            console.log('Profile was created by auth trigger during our check - continuing...');
+          } else {
+            console.error('Manual profile creation failed:', profileError);
+            throw new Error(`Failed to create user profile: ${profileError.message}`);
+          }
+        } else {
+          console.log('Profile created manually');
         }
+      } else {
+        console.log('Profile already exists (auth trigger worked)');
       }
 
       // Step 3: Create driver profile
