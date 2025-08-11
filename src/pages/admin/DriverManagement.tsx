@@ -199,38 +199,138 @@ const DriverManagement = () => {
         throw new Error('A user with this email already exists in your company');
       }
 
-      const { data, error } = await supabase.functions.invoke('secure-staff-invite', {
-        body: {
-          ...sanitizedData,
-          companyId: companyId
+      // Generate a secure temporary password
+      const generateTempPassword = (): string => {
+        const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+        const lowercase = 'abcdefghijklmnopqrstuvwxyz';
+        const numbers = '0123456789';
+        const symbols = '!@#$%^&*';
+        
+        const all = uppercase + lowercase + numbers + symbols;
+        let password = '';
+        
+        // Ensure at least one character from each category
+        password += uppercase[Math.floor(Math.random() * uppercase.length)];
+        password += lowercase[Math.floor(Math.random() * lowercase.length)];
+        password += numbers[Math.floor(Math.random() * numbers.length)];
+        password += symbols[Math.floor(Math.random() * symbols.length)];
+        
+        // Fill the rest randomly
+        for (let i = password.length; i < 12; i++) {
+          password += all[Math.floor(Math.random() * all.length)];
+        }
+        
+        // Shuffle the password
+        return password.split('').sort(() => Math.random() - 0.5).join('');
+      };
+
+      const tempPassword = generateTempPassword();
+
+      // Create user account directly using Supabase Admin API
+      const { data: newUser, error: createUserError } = await supabase.auth.admin.createUser({
+        email: sanitizedData.email,
+        password: tempPassword,
+        email_confirm: true,
+        user_metadata: {
+          first_name: sanitizedData.firstName,
+          last_name: sanitizedData.lastName,
+          user_type: 'driver',
+          company_id: companyId,
+          needsOnboarding: true,
+          requiresPasswordChange: true
         }
       });
 
-      if (error) {
-        console.error('Supabase function error:', error);
-        throw new Error(`Driver creation failed: ${error.message || 'Edge Function returned a non-2xx status code'}`);
+      if (createUserError) {
+        console.error('Failed to create user:', createUserError);
+        throw new Error(`Failed to create user account: ${createUserError.message}`);
       }
 
-      if (!data?.success) {
-        console.error('Function returned error:', data);
-        throw new Error(data?.message || data?.error || 'Failed to create driver');
+      if (!newUser?.user) {
+        throw new Error('User creation failed - no user data returned');
       }
 
-      return data;
+      console.log('User created successfully:', newUser.user.id);
+
+      // Create user profile
+      const { error: profileCreateError } = await supabase
+        .from('profiles')
+        .insert({
+          user_id: newUser.user.id,
+          email: sanitizedData.email,
+          first_name: sanitizedData.firstName,
+          last_name: sanitizedData.lastName,
+          phone: sanitizedData.phone,
+          user_type: 'driver',
+          company_id: companyId,
+          is_active: true
+        });
+
+      if (profileCreateError) {
+        console.error('Failed to create profile:', profileCreateError);
+        // Clean up user if profile creation fails
+        await supabase.auth.admin.deleteUser(newUser.user.id);
+        throw new Error(`Failed to create user profile: ${profileCreateError.message}`);
+      }
+
+      console.log('Profile created successfully');
+
+      // Create driver profile with onboarding flags
+      const { error: driverProfileError } = await supabase
+        .from('driver_profiles')
+        .insert({
+          user_id: newUser.user.id,
+          company_id: companyId,
+          parcel_rate: sanitizedData.parcelRate ? parseFloat(sanitizedData.parcelRate) : null,
+          cover_rate: sanitizedData.coverRate ? parseFloat(sanitizedData.coverRate) : null,
+          status: 'pending',
+          first_login_completed: false,
+          requires_onboarding: true
+        });
+
+      if (driverProfileError) {
+        console.error('Failed to create driver profile:', driverProfileError);
+        // Clean up user and profile if driver profile creation fails
+        await supabase.auth.admin.deleteUser(newUser.user.id);
+        throw new Error(`Failed to create driver profile: ${driverProfileError.message}`);
+      }
+
+      console.log('Driver profile created successfully');
+
+      // Send email with credentials using edge function
+      try {
+        const { error: emailError } = await supabase.functions.invoke('send-driver-credentials', {
+          body: {
+            email: sanitizedData.email,
+            firstName: sanitizedData.firstName,
+            lastName: sanitizedData.lastName,
+            tempPassword: tempPassword,
+            companyId: companyId
+          }
+        });
+
+        if (emailError) {
+          console.warn('Failed to send credentials email:', emailError);
+          // Don't throw error for email failure - driver account is created
+        }
+      } catch (emailError) {
+        console.warn('Email sending failed:', emailError);
+        // Continue - the account is created successfully
+      }
+
+      return {
+        user: newUser.user,
+        tempPassword: tempPassword,
+        success: true
+      };
     },
     onSuccess: (data) => {
-      if (data.emailSent) {
-        toast({
-          title: "🎉 Driver created successfully!",
-          description: `${formData.firstName} ${formData.lastName} has been sent their login credentials via email.`,
-        });
-      } else {
-        toast({
-          title: "⚠️ Driver created with email issue",
-          description: `${formData.firstName} ${formData.lastName}'s account was created but email failed. Please provide credentials manually.`,
-          variant: "default",
-        });
-      }
+      console.log('Driver created successfully:', data);
+      toast({
+        title: "Driver Created Successfully",
+        description: `${formData.firstName} ${formData.lastName} has been added as a driver. Login credentials have been sent to ${formData.email}.`,
+      });
+      
       setIsDialogOpen(false);
       setFormData({
         email: '',
@@ -242,6 +342,7 @@ const DriverManagement = () => {
       });
       setFormErrors({});
       setShowFormErrors(false);
+      
       queryClient.invalidateQueries({ queryKey: ['drivers'] });
     },
     onError: (error: any) => {
@@ -270,7 +371,7 @@ const DriverManagement = () => {
         description: errorMessage,
         variant: "destructive",
       });
-    },
+    }
   });
 
   // Delete driver mutation

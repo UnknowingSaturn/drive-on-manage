@@ -209,7 +209,7 @@ const Auth = () => {
                 <div className="p-4 bg-muted/50 rounded-lg mb-4">
                   <p className="text-sm text-muted-foreground">
                     <strong>Admin Account Creation:</strong> Only administrators can create accounts here. 
-                    Drivers receive invitation links via email from their company administrators.
+                    Drivers receive login credentials directly from their company administrators.
                   </p>
                 </div>
                 <form onSubmit={handleSignUp} className="space-y-4">

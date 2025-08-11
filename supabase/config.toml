@@ -1,7 +1,7 @@
 project_id = "ttnlrnmdxkecomdylckl"
 
-[functions.secure-staff-invite]
-verify_jwt = true
+[functions.send-driver-credentials]
+verify_jwt = false
 
 [functions.remove-driver]
 verify_jwt = false

@@ -25,8 +25,8 @@ const NotAuthorized = () => {
             <Alert>
               <Shield className="h-4 w-4" />
               <AlertDescription>
-                <strong>Driver Access:</strong> Driver accounts can only be created through company invitations. 
-                Contact your administrator to receive an invitation link.
+                <strong>Driver Access:</strong> Driver accounts are created by administrators through the admin panel. 
+                Contact your administrator if you need access to the driver portal.
               </AlertDescription>
             </Alert>
             
