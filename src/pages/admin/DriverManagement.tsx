@@ -21,8 +21,8 @@ import { Progress } from '@/components/ui/progress';
 import { validateForm, sanitizeInput, emailSchema, nameSchema, phoneSchema, parcelRateSchema } from '@/lib/security';
 import { z } from 'zod';
 
-// Validation schema for driver invitation
-const driverInviteSchema = z.object({
+// Validation schema for driver creation
+const driverCreateSchema = z.object({
   email: emailSchema,
   firstName: nameSchema,
   lastName: nameSchema,
@@ -60,19 +60,19 @@ const DriverManagement = () => {
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [editFormErrors, setEditFormErrors] = useState<Record<string, string>>({});
 
-  // Fetch drivers and invitations for the company
+  // Fetch drivers for the company
   const { data: drivers = [], isLoading, error } = useQuery({
     queryKey: ['drivers', profile?.company_id],
     queryFn: async () => {
       if (!profile?.company_id) return [];
       
-      // Fetch active driver profiles with van assignments and profile data (use left join to include all drivers)
+      // Fetch active driver profiles with van assignments and profile data
       const { data: drivers, error: driversError } = await supabase
         .from('driver_profiles')
         .select(`
           *,
           assigned_van:vans(id, registration, make, model),
-          profiles(first_name, last_name, email, phone, is_active)
+          profiles!inner(first_name, last_name, email, phone, is_active)
         `)
         .eq('company_id', profile.company_id)
         .order('created_at', { ascending: false });
@@ -82,87 +82,16 @@ const DriverManagement = () => {
         throw driversError;
       }
 
-      
-
-      // Fetch ALL invitations (including accepted ones to track status)
-      const { data: allInvitations, error: invitationsError } = await supabase
-        .from('driver_invitations')
-        .select('*')
-        .eq('company_id', profile.company_id)
-        .in('status', ['pending', 'accepted'])
-        .order('created_at', { ascending: false });
-
-      if (invitationsError) {
-        console.error('Error fetching invitations:', invitationsError);
-        throw invitationsError;
-      }
-
-      
-
-      // Convert active drivers with their profiles
-      const activeDrivers = drivers?.map(driver => {
-        // Get profile data from the join or find it from accepted invitations
-        let profileData = driver.profiles;
-        
-        // If no profile data from join, try to get it from accepted invitations
-        if (!profileData) {
-          const matchingInvitation = allInvitations?.find(inv => 
-            inv.driver_profile_id === driver.id && inv.status === 'accepted'
-          );
-          if (matchingInvitation) {
-            profileData = {
-              first_name: matchingInvitation.first_name,
-              last_name: matchingInvitation.last_name,
-              email: matchingInvitation.email,
-              phone: matchingInvitation.phone,
-              is_active: true
-            };
-          }
-        }
-
-        return {
-          ...driver,
-          type: 'active' as const,
-          profiles: profileData,
-          invitation_status: driver.onboarding_completed_at ? 'completed' : 
-            (driver.status === 'active' ? 'completed' : 'in_progress'),
-          // Find the original invitation to get additional context
-          original_invitation: allInvitations?.find(inv => 
-            inv.driver_profile_id === driver.id || 
-            (profileData && inv.email === profileData.email)
-          )
-        };
-      }) || [];
-
-      
-
-      // Only show PENDING invitations as separate entries (not yet onboarded)
-      const pendingInvitations = allInvitations?.filter(invite => 
-        invite.status === 'pending' &&
-        !activeDrivers.some(driver => driver.original_invitation?.id === invite.id)
-      ) || [];
-
-      const pendingDrivers = pendingInvitations.map(invite => ({
-        id: invite.id,
-        type: 'invitation' as const,
-        status: 'pending',
-        invitation_status: 'pending',
-        user_id: null,
-        company_id: invite.company_id,
-        parcel_rate: (invite as any).parcel_rate || (invite as any).hourly_rate,
-        cover_rate: (invite as any).cover_rate,
-        created_at: invite.created_at,
-        expires_at: invite.expires_at,
-        profiles: {
-          first_name: invite.first_name,
-          last_name: invite.last_name,
-          email: invite.email,
-          phone: invite.phone,
-          is_active: false
-        }
+      // Transform driver data for the UI
+      return (drivers || []).map(driver => ({
+        ...driver,
+        type: 'active' as const,
+        name: `${driver.profiles.first_name} ${driver.profiles.last_name}`,
+        email: driver.profiles.email,
+        phone: driver.profiles.phone,
+        isActive: driver.profiles.is_active,
+        status: driver.first_login_completed ? 'active' : 'pending_first_login'
       }));
-
-      return [...activeDrivers, ...pendingDrivers];
     },
     enabled: !!profile?.company_id,
     refetchInterval: 30000 // Refresh every 30 seconds for real-time updates
@@ -217,11 +146,11 @@ const DriverManagement = () => {
     }
   };
 
-  // Invite driver mutation with enhanced security
+  // Create driver mutation
   const createDriverMutation = useMutation({
     mutationFn: async (driverData: typeof formData) => {
       // Validate all form data
-      const validation = validateForm(driverData, driverInviteSchema);
+      const validation = validateForm(driverData, driverCreateSchema);
       if (!validation.success) {
         setFormErrors(validation.errors || {});
         setShowFormErrors(true);
@@ -254,25 +183,16 @@ const DriverManagement = () => {
         throw new Error('No company assigned to your profile. Please contact support.');
       }
 
-      // Check for duplicate driver profile (not just email)
-      const { data: existingDriverProfile } = await supabase
-        .from('driver_profiles')
-        .select('id, user_id')
+      // Check for duplicate email in existing profiles
+      const { data: existingProfile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('email', sanitizedData.email)
         .eq('company_id', companyId)
-        .limit(1);
+        .maybeSingle();
 
-      // Check if any existing driver has this email
-      if (existingDriverProfile && existingDriverProfile.length > 0) {
-        const userIds = existingDriverProfile.map(d => d.user_id);
-        const { data: profilesWithEmail } = await supabase
-          .from('profiles')
-          .select('user_id')
-          .eq('email', sanitizedData.email)
-          .in('user_id', userIds);
-
-        if (profilesWithEmail && profilesWithEmail.length > 0) {
-          throw new Error('A driver with this email already exists in your company');
-        }
+      if (existingProfile) {
+        throw new Error('A user with this email already exists in your company');
       }
 
       const { data, error } = await supabase.functions.invoke('secure-staff-invite', {
@@ -284,12 +204,12 @@ const DriverManagement = () => {
 
       if (error) {
         console.error('Supabase function error:', error);
-        throw new Error(`Invitation failed: ${error.message || 'Edge Function returned a non-2xx status code'}`);
+        throw new Error(`Driver creation failed: ${error.message || 'Edge Function returned a non-2xx status code'}`);
       }
 
       if (!data?.success) {
         console.error('Function returned error:', data);
-        throw new Error(data?.message || data?.error || 'Failed to send invitation');
+        throw new Error(data?.message || data?.error || 'Failed to create driver');
       }
 
       return data;
@@ -321,14 +241,14 @@ const DriverManagement = () => {
       queryClient.invalidateQueries({ queryKey: ['drivers'] });
     },
     onError: (error: any) => {
-      console.error('Invitation error:', error);
+      console.error('Driver creation error:', error);
       
       // Parse error response for better user feedback
-      let errorMessage = error.message || 'Failed to send invitation';
-      let errorTitle = 'Error inviting driver';
+      let errorMessage = error.message || 'Failed to create driver';
+      let errorTitle = 'Error creating driver';
       
       if (error.message?.includes('already exists')) {
-        errorTitle = 'Duplicate invitation';
+        errorTitle = 'Duplicate driver';
         errorMessage = error.message;
       } else if (error.message?.includes('Invalid') || error.message?.includes('validation')) {
         errorTitle = 'Invalid information';
@@ -349,10 +269,9 @@ const DriverManagement = () => {
     },
   });
 
-  // Delete driver mutation with comprehensive cleanup
+  // Delete driver mutation
   const deleteDriverMutation = useMutation({
     mutationFn: async (driverId: string) => {
-      // Simply get the driver profile without complex joins
       const { data: driverProfile, error: fetchError } = await supabase
         .from('driver_profiles')
         .select('user_id, status')
@@ -368,7 +287,7 @@ const DriverManagement = () => {
       const { data, error } = await supabase.functions.invoke('remove-driver', {
         body: {
           driverId: driverId,
-          cleanupUser: driverProfile.status === 'pending' // Clean up user account for pending invites
+          cleanupUser: true // Always clean up user account
         }
       });
 
@@ -385,46 +304,15 @@ const DriverManagement = () => {
       return data;
     },
     onSuccess: (data) => {
-      const message = data.cleanedUp 
-        ? "Driver removed and account cleaned up successfully"
-        : "Driver removed successfully";
-      
       toast({
         title: "Driver removed successfully",
-        description: message,
+        description: "Driver account has been removed and cleaned up.",
       });
       queryClient.invalidateQueries({ queryKey: ['drivers'] });
     },
     onError: (error: any) => {
       toast({
         title: "Error removing driver",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
-
-  // Cancel invitation mutation
-  const cancelInvitationMutation = useMutation({
-    mutationFn: async (invitationId: string) => {
-      const { error } = await supabase
-        .from('driver_invitations')
-        .update({ status: 'cancelled' })
-        .eq('id', invitationId);
-
-      if (error) throw error;
-      return invitationId;
-    },
-    onSuccess: () => {
-      toast({
-        title: "Invitation cancelled",
-        description: "The driver invitation has been cancelled successfully.",
-      });
-      queryClient.invalidateQueries({ queryKey: ['drivers'] });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error cancelling invitation",
         description: error.message,
         variant: "destructive",
       });
@@ -438,7 +326,6 @@ const DriverManagement = () => {
       const { error: driverError } = await supabase
         .from('driver_profiles')
         .update({
-          
           parcel_rate: updates.parcelRate ? parseFloat(updates.parcelRate) : null,
           cover_rate: updates.coverRate ? parseFloat(updates.coverRate) : null,
           status: updates.status,
@@ -509,50 +396,46 @@ const DriverManagement = () => {
   const openEditDialog = (driver: any) => {
     setSelectedDriver(driver);
     setEditFormData({
-      firstName: driver.profiles?.first_name || '',
-      lastName: driver.profiles?.last_name || '',
-      phone: driver.profiles?.phone || '',
-      
+      firstName: driver.profiles.first_name || '',
+      lastName: driver.profiles.last_name || '',
+      phone: driver.profiles.phone || '',
       parcelRate: driver.parcel_rate?.toString() || '',
       coverRate: driver.cover_rate?.toString() || '',
-      status: driver.status || 'pending',
+      status: driver.status || 'active',
       assignedVanId: driver.assigned_van_id || ''
     });
     setIsEditDialogOpen(true);
   };
 
   const toggleDocumentView = (driverId: string) => {
-    setShowDocuments(prev => ({
-      ...prev,
-      [driverId]: !prev[driverId]
-    }));
+    setShowDocuments(prev => ({ ...prev, [driverId]: !prev[driverId] }));
   };
 
-  // Statistics
+  // Calculate statistics
   const stats = useMemo(() => {
-    const total = drivers.length;
-    const active = drivers.filter(d => d.status === 'active').length;
-    const pending = drivers.filter(d => d.status === 'pending').length;
-    const inactive = drivers.filter(d => d.status === 'inactive').length;
-    
-    return { total, active, pending, inactive };
+    const totalDrivers = drivers.length;
+    const activeDrivers = drivers.filter(d => d.status === 'active').length;
+    const pendingDrivers = drivers.filter(d => d.status === 'pending_first_login').length;
+    const withVans = drivers.filter(d => d.assigned_van_id).length;
+
+    return {
+      total: totalDrivers,
+      active: activeDrivers,
+      pending: pendingDrivers,
+      withVans,
+      withoutVans: totalDrivers - withVans
+    };
   }, [drivers]);
 
   if (isLoading) {
     return (
       <SidebarProvider>
-        <div className="min-h-screen flex w-full bg-background">
-          <AppSidebar />
-          <SidebarInset className="flex-1">
-            <div className="flex items-center justify-center h-full">
-              <div className="text-center space-y-4">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-                <p>Loading driver data...</p>
-                <Progress value={66} className="w-48" />
-              </div>
-            </div>
-          </SidebarInset>
-        </div>
+        <AppSidebar />
+        <SidebarInset>
+          <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
+            <div className="min-h-[100vh] flex-1 rounded-xl bg-muted/50 md:min-h-min" />
+          </div>
+        </SidebarInset>
       </SidebarProvider>
     );
   }
@@ -560,333 +443,154 @@ const DriverManagement = () => {
   if (error) {
     return (
       <SidebarProvider>
-        <div className="min-h-screen flex w-full bg-background">
-          <AppSidebar />
-          <SidebarInset className="flex-1 p-6">
-            <Alert className="max-w-md mx-auto mt-20">
+        <AppSidebar />
+        <SidebarInset>
+          <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
+            <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
-                Failed to load driver data. Please refresh the page or contact support.
+                Failed to load drivers: {error.message}
               </AlertDescription>
             </Alert>
-          </SidebarInset>
-        </div>
+          </div>
+        </SidebarInset>
       </SidebarProvider>
     );
   }
 
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex w-full bg-background">
-        <AppSidebar />
-        
-        <SidebarInset className="flex-1">
-          <header className="border-b bg-card sticky top-0 z-10">
-            <div className="flex items-center px-4 py-4">
-              <SidebarTrigger className="mr-4" />
-              <div className="flex-1">
-                <h1 className="text-xl font-semibold text-foreground">Driver Management</h1>
-                <p className="text-sm text-muted-foreground">
-                  Manage your driver workforce • {stats.total} total drivers
+      <AppSidebar />
+      <SidebarInset>
+        <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12">
+          <div className="flex items-center gap-2 px-4">
+            <SidebarTrigger className="-ml-1" />
+          </div>
+        </header>
+        <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
+          <div className="space-y-6">
+            {/* Header */}
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-3xl font-bold tracking-tight">Driver Management</h1>
+                <p className="text-muted-foreground">
+                  Manage your company's drivers and their assignments
                 </p>
               </div>
-              <div className="flex items-center space-x-4 text-sm">
-                <div className="flex items-center space-x-1">
-                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                  <span>{stats.active} Active</span>
-                </div>
-                <div className="flex items-center space-x-1">
-                  <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
-                  <span>{stats.pending} Pending</span>
-                </div>
-              </div>
-            </div>
-          </header>
-
-          <main className="p-6 space-y-6">
-            <div className="flex justify-between items-start">
-              <div className="space-y-1">
-                <h2 className="text-2xl font-bold">Team Overview</h2>
-                <p className="text-muted-foreground">Manage drivers and track their status</p>
-              </div>
-        
               <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogTrigger asChild>
-                  <Button className="shrink-0">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Invite Driver
+                  <Button>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Create Driver
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="sm:max-w-[425px]">
                   <DialogHeader>
-                    <DialogTitle>Invite New Driver</DialogTitle>
+                    <DialogTitle>Create New Driver</DialogTitle>
                     <DialogDescription>
-                      Add a new driver to your team. They will receive login credentials via email.
+                      Enter driver details. They will receive login credentials via email.
                     </DialogDescription>
                   </DialogHeader>
                   <form onSubmit={handleSubmit} className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="firstName">First Name <span className="text-destructive">*</span></Label>
+                      <div className="space-y-2">
+                        <Label htmlFor="firstName">First Name *</Label>
                         <Input
                           id="firstName"
                           value={formData.firstName}
                           onChange={(e) => handleInputChange('firstName', e.target.value)}
-                          className={formErrors.firstName ? 'border-destructive' : ''}
-                          required
-                          aria-describedby={formErrors.firstName ? 'firstName-error' : undefined}
+                          className={formErrors.firstName ? 'border-red-500' : ''}
                         />
                         {formErrors.firstName && (
-                          <p id="firstName-error" className="text-sm text-destructive mt-1">
-                            {formErrors.firstName}
-                          </p>
+                          <span className="text-sm text-red-500">{formErrors.firstName}</span>
                         )}
                       </div>
-                      <div>
-                        <Label htmlFor="lastName">Last Name <span className="text-destructive">*</span></Label>
+                      <div className="space-y-2">
+                        <Label htmlFor="lastName">Last Name *</Label>
                         <Input
                           id="lastName"
                           value={formData.lastName}
                           onChange={(e) => handleInputChange('lastName', e.target.value)}
-                          className={formErrors.lastName ? 'border-destructive' : ''}
-                          required
-                          aria-describedby={formErrors.lastName ? 'lastName-error' : undefined}
+                          className={formErrors.lastName ? 'border-red-500' : ''}
                         />
                         {formErrors.lastName && (
-                          <p id="lastName-error" className="text-sm text-destructive mt-1">
-                            {formErrors.lastName}
-                          </p>
+                          <span className="text-sm text-red-500">{formErrors.lastName}</span>
                         )}
                       </div>
                     </div>
                     
-                    <div>
-                      <Label htmlFor="email">Email Address <span className="text-destructive">*</span></Label>
+                    <div className="space-y-2">
+                      <Label htmlFor="email">Email Address *</Label>
                       <Input
                         id="email"
                         type="email"
                         value={formData.email}
                         onChange={(e) => handleInputChange('email', e.target.value)}
-                        className={formErrors.email ? 'border-destructive' : ''}
-                        required
-                        aria-describedby={formErrors.email ? 'email-error' : undefined}
+                        className={formErrors.email ? 'border-red-500' : ''}
                       />
                       {formErrors.email && (
-                        <p id="email-error" className="text-sm text-destructive mt-1">
-                          {formErrors.email}
-                        </p>
+                        <span className="text-sm text-red-500">{formErrors.email}</span>
                       )}
                     </div>
                     
-                    <div>
-                      <Label htmlFor="phone">Mobile Number</Label>
+                    <div className="space-y-2">
+                      <Label htmlFor="phone">Phone Number *</Label>
                       <Input
                         id="phone"
                         type="tel"
                         value={formData.phone}
                         onChange={(e) => handleInputChange('phone', e.target.value)}
-                        className={formErrors.phone ? 'border-destructive' : ''}
-                        placeholder="+44 123 456 7890"
-                        aria-describedby={formErrors.phone ? 'phone-error' : undefined}
+                        className={formErrors.phone ? 'border-red-500' : ''}
                       />
                       {formErrors.phone && (
-                        <p id="phone-error" className="text-sm text-destructive mt-1">
-                          {formErrors.phone}
-                        </p>
+                        <span className="text-sm text-red-500">{formErrors.phone}</span>
                       )}
                     </div>
                     
-                    <div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
                         <Label htmlFor="parcelRate">Parcel Rate (£)</Label>
                         <Input
                           id="parcelRate"
                           type="number"
                           step="0.01"
                           min="0"
-                          max="5000"
                           value={formData.parcelRate}
                           onChange={(e) => handleInputChange('parcelRate', e.target.value)}
-                          placeholder="Rate per parcel delivered (e.g. 1.50)"
-                          aria-describedby={formErrors.parcelRate ? 'parcelRate-error' : undefined}
+                          placeholder="0.75"
+                          className={formErrors.parcelRate ? 'border-red-500' : ''}
                         />
-                       {formErrors.parcelRate && (
-                         <p id="parcelRate-error" className="text-sm text-destructive mt-1">
-                           {formErrors.parcelRate}
-                         </p>
-                       )}
-                     </div>
-                     <div>
-                        <Label htmlFor="coverRate">Cover Parcel Rate (£)</Label>
+                        {formErrors.parcelRate && (
+                          <span className="text-sm text-red-500">{formErrors.parcelRate}</span>
+                        )}
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="coverRate">Cover Rate (£)</Label>
                         <Input
                           id="coverRate"
                           type="number"
                           step="0.01"
                           min="0"
-                          max="5000"
                           value={formData.coverRate}
                           onChange={(e) => handleInputChange('coverRate', e.target.value)}
-                          placeholder="Rate per parcel when covering (e.g. 2.00)"
-                          aria-describedby={formErrors.coverRate ? 'coverRate-error' : undefined}
+                          placeholder="1.00"
+                          className={formErrors.coverRate ? 'border-red-500' : ''}
                         />
-                       {formErrors.coverRate && (
-                         <p id="coverRate-error" className="text-sm text-destructive mt-1">
-                           {formErrors.coverRate}
-                         </p>
-                       )}
-                    </div>
-                    
-                     <Button 
-                       type="submit" 
-                       className="w-full" 
-                       disabled={createDriverMutation.isPending}
-                     >
-                       {createDriverMutation.isPending ? (
-                         <>
-                           <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2"></div>
-                           Creating Driver...
-                         </>
-                       ) : (
-                         <>
-                           <Plus className="h-4 w-4 mr-2" />
-                           Create Driver
-                         </>
-                       )}
-                     </Button>
-                  </form>
-                </DialogContent>
-              </Dialog>
-              
-              {/* Edit Driver Dialog */}
-              <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-                <DialogContent className="sm:max-w-[500px]">
-                  <DialogHeader>
-                    <DialogTitle>Edit Driver Profile</DialogTitle>
-                    <DialogDescription>
-                      Update driver information and assignments.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <form onSubmit={handleEditSubmit} className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="editFirstName">First Name</Label>
-                        <Input
-                          id="editFirstName"
-                          value={editFormData.firstName}
-                          onChange={(e) => setEditFormData(prev => ({ ...prev, firstName: e.target.value }))}
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="editLastName">Last Name</Label>
-                        <Input
-                          id="editLastName"
-                          value={editFormData.lastName}
-                          onChange={(e) => setEditFormData(prev => ({ ...prev, lastName: e.target.value }))}
-                        />
-                      </div>
-                    </div>
-                    
-                    <div>
-                      <Label htmlFor="editPhone">Mobile Number</Label>
-                      <Input
-                        id="editPhone"
-                        type="tel"
-                        value={editFormData.phone}
-                        onChange={(e) => setEditFormData(prev => ({ ...prev, phone: e.target.value }))}
-                        placeholder="+44 123 456 7890"
-                      />
-                    </div>
-                    
-                     <div className="grid grid-cols-2 gap-4">
-                       <div>
-                          <Label htmlFor="editParcelRate">Parcel Rate (£)</Label>
-                          <Input
-                            id="editParcelRate"
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            max="5000"
-                            value={editFormData.parcelRate}
-                            onChange={(e) => setEditFormData(prev => ({ ...prev, parcelRate: e.target.value }))}
-                            placeholder="Rate per parcel delivered (e.g. 1.50)"
-                          />
-                       </div>
-                       <div>
-                          <Label htmlFor="editCoverRate">Cover Parcel Rate (£)</Label>
-                          <Input
-                            id="editCoverRate"
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            max="5000"
-                            value={editFormData.coverRate}
-                            onChange={(e) => setEditFormData(prev => ({ ...prev, coverRate: e.target.value }))}
-                            placeholder="Rate per parcel when covering (e.g. 2.00)"
-                          />
-                       </div>
-                     </div>
-                    
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="editStatus">Status</Label>
-                        <Select 
-                          value={editFormData.status} 
-                          onValueChange={(value) => setEditFormData(prev => ({ ...prev, status: value }))}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select status" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="active">Active</SelectItem>
-                            <SelectItem value="pending">Pending Setup</SelectItem>
-                            <SelectItem value="inactive">Inactive</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div>
-                        <Label htmlFor="editVan">Assigned Van</Label>
-                        <Select 
-                          value={editFormData.assignedVanId} 
-                          onValueChange={(value) => setEditFormData(prev => ({ ...prev, assignedVanId: value }))}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select van" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="">No assignment</SelectItem>
-                            {vans.map((van) => (
-                              <SelectItem key={van.id} value={van.id}>
-                                {van.registration} - {van.make} {van.model}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                    
-                    <div className="flex space-x-2">
-                      <Button 
-                        type="submit" 
-                        className="flex-1" 
-                        disabled={updateDriverMutation.isPending}
-                      >
-                        {updateDriverMutation.isPending ? (
-                          <>
-                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2"></div>
-                            Updating...
-                          </>
-                        ) : (
-                          <>
-                            <Edit className="h-4 w-4 mr-2" />
-                            Update Driver
-                          </>
+                        {formErrors.coverRate && (
+                          <span className="text-sm text-red-500">{formErrors.coverRate}</span>
                         )}
+                      </div>
+                    </div>
+
+                    <div className="flex justify-end space-x-2">
+                      <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
+                        Cancel
                       </Button>
                       <Button 
-                        type="button" 
-                        variant="outline" 
-                        onClick={() => setIsEditDialogOpen(false)}
+                        type="submit" 
+                        disabled={createDriverMutation.isPending}
                       >
-                        Cancel
+                        {createDriverMutation.isPending ? 'Creating...' : 'Create Driver'}
                       </Button>
                     </div>
                   </form>
@@ -894,312 +598,311 @@ const DriverManagement = () => {
               </Dialog>
             </div>
 
-            {/* Smart Search */}
-            <SmartSearch
-              data={drivers}
-              searchFields={['profiles.first_name', 'profiles.last_name', 'profiles.email', 'profiles.phone']}
-              onFilter={setFilteredDrivers}
-              placeholder="Search drivers by name, email, or phone..."
-              filterOptions={[
-                {
-                  label: 'Status',
-                  field: 'status',
-                  options: [
-                    { value: 'active', label: 'Active' },
-                    { value: 'pending', label: 'Pending Setup' },
-                    { value: 'inactive', label: 'Inactive' }
-                  ]
-                }
-              ]}
-            />
+            {/* Statistics Cards */}
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Total Drivers</CardTitle>
+                  <UserCheck className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{stats.total}</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Active Drivers</CardTitle>
+                  <UserCheck className="h-4 w-4 text-green-600" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-green-600">{stats.active}</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Pending Login</CardTitle>
+                  <Clock className="h-4 w-4 text-yellow-600" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-yellow-600">{stats.pending}</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">With Vans</CardTitle>
+                  <Truck className="h-4 w-4 text-blue-600" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-blue-600">{stats.withVans}</div>
+                </CardContent>
+              </Card>
+            </div>
 
+            {/* Search and Filter */}
+            <Card>
+              <CardContent className="p-6">
+                <SmartSearch
+                  data={drivers}
+                  onFilter={setFilteredDrivers}
+                  searchFields={['name', 'email', 'phone']}
+                  placeholder="Search drivers by name, email, or phone..."
+                />
+              </CardContent>
+            </Card>
+
+            {/* Drivers Table */}
             <Card>
               <CardHeader>
-                <CardTitle>Driver Workforce</CardTitle>
+                <CardTitle>Drivers ({filteredDrivers.length})</CardTitle>
                 <CardDescription>
-                  {filteredDrivers.length} of {drivers.length} drivers shown
+                  Manage your company's drivers and their details
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="overflow-x-auto">
+                <div className="rounded-md border">
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Name</TableHead>
-                        <TableHead>Email</TableHead>
-                        <TableHead className="hidden sm:table-cell">Mobile</TableHead>
-                        <TableHead className="hidden md:table-cell">Rate</TableHead>
-                        <TableHead className="hidden lg:table-cell">Van</TableHead>
+                        <TableHead>Driver</TableHead>
+                        <TableHead>Contact</TableHead>
+                        <TableHead>Rates</TableHead>
+                        <TableHead>Van Assignment</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead>Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredDrivers.map((driver) => (
-                        <React.Fragment key={driver.id}>
-                          <TableRow>
-                            <TableCell className="font-medium">
-                              <div>
+                      {filteredDrivers.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={6} className="text-center py-8">
+                            <div className="flex flex-col items-center space-y-2">
+                              <UserX className="h-8 w-8 text-muted-foreground" />
+                              <p className="text-muted-foreground">No drivers found</p>
+                              <p className="text-sm text-muted-foreground">
+                                Create your first driver to get started
+                              </p>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        filteredDrivers.map((driver) => (
+                          <TableRow key={driver.id}>
+                            <TableCell>
+                              <div className="flex flex-col">
+                                <span className="font-medium">{driver.name}</span>
+                                {driver.driving_license_number && (
+                                  <span className="text-sm text-muted-foreground">
+                                    License: {driver.driving_license_number}
+                                  </span>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex flex-col space-y-1">
                                 <div className="flex items-center space-x-2">
-                                  <span>{driver.profiles?.first_name} {driver.profiles?.last_name}</span>
-                                  {driver.type === 'invitation' && (
-                                    <Badge variant="outline" className="text-xs">
-                                      Pending Invite
-                                    </Badge>
-                                  )}
+                                  <Mail className="h-3 w-3 text-muted-foreground" />
+                                  <span className="text-sm">{driver.email}</span>
                                 </div>
-                                <div className="text-xs text-muted-foreground sm:hidden">
-                                  {driver.profiles?.email}
-                                </div>
-                                {driver.type === 'invitation' && driver.expires_at && (
-                                  <div className="text-xs text-orange-600">
-                                    Expires: {new Date(driver.expires_at).toLocaleDateString()}
+                                {driver.phone && (
+                                  <div className="flex items-center space-x-2">
+                                    <Phone className="h-3 w-3 text-muted-foreground" />
+                                    <span className="text-sm">{driver.phone}</span>
                                   </div>
                                 )}
                               </div>
                             </TableCell>
-                            <TableCell className="hidden sm:table-cell">
-                              {driver.profiles?.email}
+                            <TableCell>
+                              <div className="flex flex-col space-y-1">
+                                {driver.parcel_rate && (
+                                  <span className="text-sm">£{driver.parcel_rate}/parcel</span>
+                                )}
+                                {driver.cover_rate && (
+                                  <span className="text-sm text-muted-foreground">
+                                    Cover: £{driver.cover_rate}
+                                  </span>
+                                )}
+                              </div>
                             </TableCell>
-                            <TableCell className="hidden sm:table-cell">
-                              {driver.profiles?.phone || '-'}
-                            </TableCell>
-                             <TableCell className="hidden md:table-cell">
-                               <div className="text-sm">
-                                 Base: {driver.parcel_rate ? `£${driver.parcel_rate}` : '-'}/parcel
-                                 <br />
-                                 Cover: {driver.cover_rate ? `£${driver.cover_rate}` : '-'}/parcel
-                               </div>
-                             </TableCell>
-                            <TableCell className="hidden lg:table-cell">
+                            <TableCell>
                               {driver.assigned_van ? (
-                                <Badge variant="outline" className="text-xs">
-                                  <Truck className="h-3 w-3 mr-1" />
-                                  {driver.assigned_van.registration}
-                                </Badge>
+                                <div className="flex items-center space-x-2">
+                                  <Truck className="h-4 w-4 text-blue-600" />
+                                  <span className="text-sm">
+                                    {driver.assigned_van.registration}
+                                  </span>
+                                </div>
                               ) : (
-                                <span className="text-muted-foreground text-sm">Unassigned</span>
+                                <span className="text-sm text-muted-foreground">No van assigned</span>
                               )}
                             </TableCell>
                             <TableCell>
-                              <div className="flex items-center space-x-2">
-                                <Badge variant={
-                                  driver.type === 'invitation' ? 'secondary' :
-                                  driver.status === 'active' ? 'default' : 
-                                  driver.status === 'pending' ? 'secondary' : 
-                                  'outline'
-                                }>
-                                  {driver.type === 'invitation' && (
-                                    <>
-                                      <Clock className="h-3 w-3 mr-1" />
-                                      Invited
-                                    </>
-                                  )}
-                                  {driver.type === 'active' && driver.status === 'active' && (
-                                    <>
-                                      <UserCheck className="h-3 w-3 mr-1" />
-                                      Active
-                                    </>
-                                  )}
-                                  {driver.type === 'active' && driver.status === 'pending' && (
-                                    <>
-                                      <Clock className="h-3 w-3 mr-1" />
-                                      Setup Required
-                                    </>
-                                  )}
-                                  {driver.type === 'active' && driver.status === 'inactive' && (
-                                    <>
-                                      <UserX className="h-3 w-3 mr-1" />
-                                      Inactive
-                                    </>
-                                  )}
-                                </Badge>
-                                {driver.type === 'active' && !driver.onboarding_completed_at && (
-                                  <Badge variant="outline" className="text-xs">
-                                    Onboarding
-                                  </Badge>
-                                )}
-                              </div>
+                              <Badge variant={
+                                driver.status === 'active' ? 'default' :
+                                driver.status === 'pending_first_login' ? 'secondary' : 'outline'
+                              }>
+                                {driver.status === 'active' ? 'Active' :
+                                 driver.status === 'pending_first_login' ? 'Pending Login' : 
+                                 driver.status}
+                              </Badge>
                             </TableCell>
                             <TableCell>
-                              <div className="flex space-x-1">
-                                {driver.type === 'active' && (
-                                  <>
-                                    <Button 
-                                      variant="outline" 
-                                      size="sm" 
-                                      title="Edit driver"
-                                      onClick={() => openEditDialog(driver)}
-                                    >
-                                      <Edit className="h-3 w-3" />
-                                    </Button>
-                                    <Button 
-                                      variant="outline" 
-                                      size="sm" 
-                                      title="View documents"
-                                      onClick={() => toggleDocumentView(driver.id)}
-                                    >
-                                      {showDocuments[driver.id] ? (
-                                        <EyeOff className="h-3 w-3" />
-                                      ) : (
-                                        <FileText className="h-3 w-3" />
-                                      )}
-                                    </Button>
-                                    <Button 
-                                      variant="outline" 
-                                      size="sm" 
-                                      title="Call driver"
-                                      onClick={() => driver.profiles?.phone && window.open(`tel:${driver.profiles.phone}`)}
-                                      disabled={!driver.profiles?.phone}
-                                    >
-                                      <Phone className="h-3 w-3" />
-                                    </Button>
-                                  </>
+                              <div className="flex items-center space-x-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => openEditDialog(driver)}
+                                >
+                                  <Edit className="h-3 w-3" />
+                                </Button>
+                                {driver.driving_license_document && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => toggleDocumentView(driver.id)}
+                                  >
+                                    {showDocuments[driver.id] ? (
+                                      <EyeOff className="h-3 w-3" />
+                                    ) : (
+                                      <Eye className="h-3 w-3" />
+                                    )}
+                                  </Button>
                                 )}
                                 <ConfirmDelete
-                                  title={
-                                    driver.type === 'invitation' 
-                                      ? `Cancel invitation for ${driver.profiles?.first_name} ${driver.profiles?.last_name}?`
-                                      : `Remove ${driver.profiles?.first_name} ${driver.profiles?.last_name}?`
-                                  }
-                                  description={
-                                    driver.type === 'invitation'
-                                      ? "This will cancel the pending invitation and remove it from your list."
-                                      : driver.status === 'pending' 
-                                        ? "This will cancel the pending setup and remove the driver profile."
-                                        : "This will permanently remove the driver from your team. This action cannot be undone."
-                                  }
-                                  onConfirm={() => {
-                                    if (driver.type === 'invitation') {
-                                      // Handle invitation cancellation
-                                      cancelInvitationMutation.mutate(driver.id);
-                                    } else {
-                                      // Handle driver removal
-                                      deleteDriverMutation.mutate(driver.id);
-                                    }
-                                  }}
-                                  disabled={deleteDriverMutation.isPending || cancelInvitationMutation.isPending}
-                                />
+                                  title="Remove Driver"
+                                  description={`Are you sure you want to remove ${driver.name}? This will delete their account and all associated data.`}
+                                  onConfirm={() => deleteDriverMutation.mutate(driver.id)}
+                                >
+                                  <Button variant="outline" size="sm">
+                                    <Trash2 className="h-3 w-3" />
+                                  </Button>
+                                </ConfirmDelete>
                               </div>
                             </TableCell>
                           </TableRow>
-                          
-                          {/* Document viewer row */}
-                          {driver.type === 'active' && showDocuments[driver.id] && (
-                            <TableRow>
-                              <TableCell colSpan={7} className="bg-muted/30">
-                                <div className="py-4 space-y-4">
-                                  <h4 className="font-medium">Driver Documents</h4>
-                                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                    <div className="space-y-2">
-                                      <Label className="text-sm font-medium">Driving License</Label>
-                                      {driver.driving_license_document ? (
-                                        <div className="flex items-center space-x-2">
-                                          <Badge variant="outline" className="text-green-600">
-                                            <FileText className="h-3 w-3 mr-1" />
-                                            Uploaded
-                                          </Badge>
-                                          <Button 
-                                            variant="link" 
-                                            size="sm"
-                                            onClick={() => window.open(driver.driving_license_document, '_blank')}
-                                          >
-                                            View
-                                          </Button>
-                                        </div>
-                                      ) : (
-                                        <Badge variant="outline" className="text-muted-foreground">
-                                          Not uploaded
-                                        </Badge>
-                                      )}
-                                    </div>
-                                    
-                                    <div className="space-y-2">
-                                      <Label className="text-sm font-medium">Insurance Document</Label>
-                                      {driver.insurance_document ? (
-                                        <div className="flex items-center space-x-2">
-                                          <Badge variant="outline" className="text-green-600">
-                                            <FileText className="h-3 w-3 mr-1" />
-                                            Uploaded
-                                          </Badge>
-                                          <Button 
-                                            variant="link" 
-                                            size="sm"
-                                            onClick={() => window.open(driver.insurance_document, '_blank')}
-                                          >
-                                            View
-                                          </Button>
-                                        </div>
-                                      ) : (
-                                        <Badge variant="outline" className="text-muted-foreground">
-                                          Not uploaded
-                                        </Badge>
-                                      )}
-                                    </div>
-                                    
-                                    <div className="space-y-2">
-                                      <Label className="text-sm font-medium">Right to Work</Label>
-                                      {driver.right_to_work_document ? (
-                                        <div className="flex items-center space-x-2">
-                                          <Badge variant="outline" className="text-green-600">
-                                            <FileText className="h-3 w-3 mr-1" />
-                                            Uploaded
-                                          </Badge>
-                                          <Button 
-                                            variant="link" 
-                                            size="sm"
-                                            onClick={() => window.open(driver.right_to_work_document, '_blank')}
-                                          >
-                                            View
-                                          </Button>
-                                        </div>
-                                      ) : (
-                                        <Badge variant="outline" className="text-muted-foreground">
-                                          Not uploaded
-                                        </Badge>
-                                      )}
-                                    </div>
-                                  </div>
-                                  
-                                  {driver.driving_license_number && (
-                                    <div className="mt-4 p-3 bg-background rounded-lg">
-                                      <Label className="text-sm font-medium">License Details</Label>
-                                      <div className="text-sm text-muted-foreground mt-1">
-                                        <p>License Number: {driver.driving_license_number}</p>
-                                        {driver.license_expiry && (
-                                          <p>Expires: {new Date(driver.license_expiry).toLocaleDateString()}</p>
-                                        )}
-                                      </div>
-                                    </div>
-                                  )}
-                                </div>
-                              </TableCell>
-                            </TableRow>
-                          )}
-                        </React.Fragment>
-                      ))}
+                        ))
+                      )}
                     </TableBody>
                   </Table>
                 </div>
-                
-                {filteredDrivers.length === 0 && drivers.length > 0 && (
-                  <div className="text-center py-8 text-muted-foreground">
-                    No drivers match your search criteria.
-                  </div>
-                )}
-                
-                {drivers.length === 0 && (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <UserX className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                    <h3 className="text-lg font-medium mb-2">No drivers yet</h3>
-                    <p>Start by inviting your first driver to the team.</p>
-                  </div>
-                )}
               </CardContent>
             </Card>
-          </main>
-        </SidebarInset>
-      </div>
+
+            {/* Edit Driver Dialog */}
+            <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+              <DialogContent className="sm:max-w-[500px]">
+                <DialogHeader>
+                  <DialogTitle>Edit Driver</DialogTitle>
+                  <DialogDescription>
+                    Update driver information and assignments
+                  </DialogDescription>
+                </DialogHeader>
+                <form onSubmit={handleEditSubmit} className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="editFirstName">First Name</Label>
+                      <Input
+                        id="editFirstName"
+                        value={editFormData.firstName}
+                        onChange={(e) => setEditFormData(prev => ({ ...prev, firstName: e.target.value }))}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="editLastName">Last Name</Label>
+                      <Input
+                        id="editLastName"
+                        value={editFormData.lastName}
+                        onChange={(e) => setEditFormData(prev => ({ ...prev, lastName: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="editPhone">Phone Number</Label>
+                    <Input
+                      id="editPhone"
+                      type="tel"
+                      value={editFormData.phone}
+                      onChange={(e) => setEditFormData(prev => ({ ...prev, phone: e.target.value }))}
+                    />
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="editParcelRate">Parcel Rate (£)</Label>
+                      <Input
+                        id="editParcelRate"
+                        type="number"
+                        step="0.01"
+                        value={editFormData.parcelRate}
+                        onChange={(e) => setEditFormData(prev => ({ ...prev, parcelRate: e.target.value }))}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="editCoverRate">Cover Rate (£)</Label>
+                      <Input
+                        id="editCoverRate"
+                        type="number"
+                        step="0.01"
+                        value={editFormData.coverRate}
+                        onChange={(e) => setEditFormData(prev => ({ ...prev, coverRate: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="editStatus">Status</Label>
+                    <Select
+                      value={editFormData.status}
+                      onValueChange={(value) => setEditFormData(prev => ({ ...prev, status: value }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="active">Active</SelectItem>
+                        <SelectItem value="inactive">Inactive</SelectItem>
+                        <SelectItem value="suspended">Suspended</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="editVanAssignment">Van Assignment</Label>
+                    <Select
+                      value={editFormData.assignedVanId}
+                      onValueChange={(value) => setEditFormData(prev => ({ ...prev, assignedVanId: value }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select van" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">No van assigned</SelectItem>
+                        {vans.map((van) => (
+                          <SelectItem key={van.id} value={van.id}>
+                            {van.registration} - {van.make} {van.model}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="flex justify-end space-x-2">
+                    <Button type="button" variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+                      Cancel
+                    </Button>
+                    <Button 
+                      type="submit" 
+                      disabled={updateDriverMutation.isPending}
+                    >
+                      {updateDriverMutation.isPending ? 'Updating...' : 'Update Driver'}
+                    </Button>
+                  </div>
+                </form>
+              </DialogContent>
+            </Dialog>
+          </div>
+        </div>
+      </SidebarInset>
     </SidebarProvider>
   );
 };

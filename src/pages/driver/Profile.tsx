@@ -493,13 +493,10 @@ const DriverProfile = () => {
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="space-y-2">
-                      <Label htmlFor="employeeId">Employee ID</Label>
-                      <Input
-                        id="employeeId"
-                        value={driverProfile?.employee_id || ''}
-                        disabled
-                        className="bg-muted"
-                      />
+                      <Label>Driver ID</Label>
+                      <div className="text-sm bg-muted p-2 rounded border">
+                        {driverProfile?.id || 'Not assigned'}
+                      </div>
                     </div>
                     
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
