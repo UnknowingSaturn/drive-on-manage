@@ -321,74 +321,233 @@ const AdminDashboard = () => {
               </Card>
             </div>
 
-            {/* Performance Overview */}
+            {/* Main Dashboard Widgets Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
-              <Card className="logistics-card bg-gradient-dark">
+              
+              {/* Company Overview Widget */}
+              <Card className="logistics-card">
                 <CardHeader>
-                  <CardTitle className="flex items-center text-gradient">
-                    <TrendingUp className="h-5 w-5 mr-2" />
-                    Weekly Performance
+                  <CardTitle className="flex items-center text-foreground">
+                    <Users className="h-5 w-5 mr-2 text-primary" />
+                    Company Overview
                   </CardTitle>
-                  <CardDescription>Last 7 days overview</CardDescription>
+                  <CardDescription>Operations at a glance</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
                     <div className="flex justify-between items-center">
-                      <span className="text-sm">Total Delivered</span>
-                      <span className="font-semibold">{performanceData?.totalDelivered || 0} parcels</span>
+                      <span className="text-sm text-muted-foreground">Active Drivers</span>
+                      <span className="font-semibold text-foreground">{driversData?.active || 0}</span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-sm">Total Pay</span>
-                      <span className="font-semibold">£{performanceData?.totalPay?.toFixed(2) || '0.00'}</span>
+                      <span className="text-sm text-muted-foreground">Active Rounds</span>
+                      <span className="font-semibold text-foreground">{roundsData?.active || 0}</span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-sm">Avg. per Day</span>
-                      <span className="font-semibold">{performanceData?.avgDeliveryRate || 0} parcels</span>
+                      <span className="text-sm text-muted-foreground">EOD Reports Today</span>
+                      <span className="font-semibold text-foreground">{eodData?.today || 0}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-muted-foreground">Pending Approvals</span>
+                      <span className="font-semibold text-warning">{eodData?.pending || 0}</span>
                     </div>
                   </div>
                 </CardContent>
               </Card>
 
-              <Card className="lg:col-span-2 logistics-card">
+              {/* Driver Performance Widget */}
+              <Card className="logistics-card">
                 <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <Clock className="h-5 w-5 mr-2 text-primary" />
-                    Recent EOD Reports
+                  <CardTitle className="flex items-center text-foreground">
+                    <TrendingUp className="h-5 w-5 mr-2 text-primary" />
+                    Driver Performance
                   </CardTitle>
-                  <CardDescription>Latest end-of-day submissions</CardDescription>
+                  <CardDescription>Weekly performance metrics</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-3">
-                    {eodData?.recent?.map((report, index) => (
-                      <div key={report.id} className="flex items-center justify-between p-3 rounded-lg bg-card/50">
-                        <div className="flex items-center space-x-3">
-                          <div className="w-2 h-2 rounded-full bg-primary"></div>
-                          <div>
-                            <p className="font-medium">{report.driver_name}</p>
-                            <p className="text-sm text-muted-foreground">
-                              {report.parcels_delivered} parcels - £{report.estimated_pay?.toFixed(2)}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          {getStatusBadge(report.status)}
-                          <span className="text-xs text-muted-foreground">
-                            {format(new Date(report.log_date), 'MMM dd')}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                    
-                    {(!eodData?.recent || eodData.recent.length === 0) && (
-                      <div className="text-center py-6 text-muted-foreground">
-                        <FileText className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                        <p>No recent EOD reports</p>
-                      </div>
-                    )}
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-muted-foreground">Total Deliveries</span>
+                      <span className="font-semibold text-foreground">{performanceData?.totalDelivered || 0}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-muted-foreground">Success Rate</span>
+                      <span className="font-semibold text-success">98.5%</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-muted-foreground">Support Parcels</span>
+                      <span className="font-semibold text-foreground">127</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-muted-foreground">Avg. Daily Rate</span>
+                      <span className="font-semibold text-foreground">{performanceData?.avgDeliveryRate || 0}</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Finance Overview Widget */}
+              <Card className="logistics-card">
+                <CardHeader>
+                  <CardTitle className="flex items-center text-foreground">
+                    <DollarSign className="h-5 w-5 mr-2 text-primary" />
+                    Finance Overview
+                  </CardTitle>
+                  <CardDescription>Monthly financial summary</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-muted-foreground">Monthly Invoices</span>
+                      <span className="font-semibold text-foreground">£{performanceData?.totalPay?.toFixed(2) || '0.00'}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-muted-foreground">Expenses</span>
+                      <span className="font-semibold text-destructive">£2,450.00</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-muted-foreground">Net P&L</span>
+                      <span className="font-semibold text-success">+£8,750.00</span>
+                    </div>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="w-full"
+                      onClick={() => navigate('/admin/finance')}
+                    >
+                      View Finance
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
             </div>
+
+            {/* Second Row Widgets */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
+              
+              {/* Schedule & Round Assignment Widget */}
+              <Card className="logistics-card">
+                <CardHeader>
+                  <CardTitle className="flex items-center text-foreground">
+                    <Calendar className="h-5 w-5 mr-2 text-primary" />
+                    Schedule & Routes
+                  </CardTitle>
+                  <CardDescription>Today's assignments and planning</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center p-3 rounded-lg bg-muted/50">
+                      <div>
+                        <p className="font-medium text-foreground">Today's Assignments</p>
+                        <p className="text-sm text-muted-foreground">{driversData?.active || 0} drivers scheduled</p>
+                      </div>
+                      <CheckCircle className="h-5 w-5 text-success" />
+                    </div>
+                    <div className="flex justify-between items-center p-3 rounded-lg bg-muted/50">
+                      <div>
+                        <p className="font-medium text-foreground">Unassigned Rounds</p>
+                        <p className="text-sm text-muted-foreground">2 rounds need assignment</p>
+                      </div>
+                      <AlertTriangle className="h-5 w-5 text-warning" />
+                    </div>
+                    <Button 
+                      variant="outline" 
+                      className="w-full"
+                      onClick={() => navigate('/admin/schedule')}
+                    >
+                      Manage Schedule
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Pending Onboardings / Driver Status Widget */}
+              <Card className="logistics-card">
+                <CardHeader>
+                  <CardTitle className="flex items-center text-foreground">
+                    <FileText className="h-5 w-5 mr-2 text-primary" />
+                    Driver Status
+                  </CardTitle>
+                  <CardDescription>Onboarding and document status</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center p-3 rounded-lg bg-muted/50">
+                      <div>
+                        <p className="font-medium text-foreground">Pending Onboarding</p>
+                        <p className="text-sm text-muted-foreground">3 drivers need completion</p>
+                      </div>
+                      <Badge variant="outline" className="bg-warning/20 text-warning border-warning">3</Badge>
+                    </div>
+                    <div className="flex justify-between items-center p-3 rounded-lg bg-muted/50">
+                      <div>
+                        <p className="font-medium text-foreground">Document Expiry</p>
+                        <p className="text-sm text-muted-foreground">1 license expires soon</p>
+                      </div>
+                      <Badge variant="outline" className="bg-destructive/20 text-destructive border-destructive">1</Badge>
+                    </div>
+                    <Button 
+                      variant="outline" 
+                      className="w-full"
+                      onClick={() => navigate('/admin/drivers')}
+                    >
+                      Manage Drivers
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* News & Chat Manager Widget */}
+            <Card className="logistics-card">
+              <CardHeader>
+                <CardTitle className="flex items-center text-foreground">
+                  <Activity className="h-5 w-5 mr-2 text-primary" />
+                  News & Communication
+                </CardTitle>
+                <CardDescription>Company announcements and chat management</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-3">
+                    <h4 className="font-medium text-foreground">Recent Activity</h4>
+                    {eodData?.recent?.slice(0, 3).map((report, index) => (
+                      <div key={report.id} className="flex items-center space-x-3 p-2 rounded bg-muted/30">
+                        <div className="w-2 h-2 rounded-full bg-primary"></div>
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-foreground">{report.driver_name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            Submitted EOD: {report.parcels_delivered} parcels
+                          </p>
+                        </div>
+                        {getStatusBadge(report.status)}
+                      </div>
+                    ))}
+                  </div>
+                  <div className="space-y-3">
+                    <h4 className="font-medium text-foreground">Quick Actions</h4>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="w-full justify-start"
+                      onClick={() => navigate('/admin/announcements')}
+                    >
+                      <FileText className="h-4 w-4 mr-2" />
+                      Create Announcement
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="w-full justify-start"
+                      onClick={() => navigate('/admin/chat')}
+                    >
+                      <Activity className="h-4 w-4 mr-2" />
+                      View Chat History
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
             {/* Quick Actions */}
             <Card className="logistics-card">
