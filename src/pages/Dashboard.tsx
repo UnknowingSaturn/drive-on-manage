@@ -245,7 +245,7 @@ const Dashboard = () => {
                   <Button 
                     className="logistics-button w-full group-hover:shadow-glow mobile-button"
                     onClick={() => navigate('/driver/end-of-day')}
-                    disabled={!todaySOD || !!todayEOD}
+                    disabled={!!todayEOD}
                   >
                     <CheckCircle2 className="h-4 w-4 mr-2" />
                     {todayEOD ? 'Day Completed' : 'End My Day'}
