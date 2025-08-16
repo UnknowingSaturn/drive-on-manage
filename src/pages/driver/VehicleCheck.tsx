@@ -212,12 +212,12 @@ const VehicleCheck = () => {
             </div>
           </header>
 
-          <main className="p-6 space-y-6">
+          <main className="saas-main">
             {/* Vehicle Info */}
             {assignedVan && (
-              <Card className="logistics-card">
-                <CardHeader>
-                  <CardTitle className="flex items-center">
+              <Card className="saas-card">
+                <CardHeader className="saas-card-header">
+                  <CardTitle className="saas-heading flex items-center">
                     <Truck className="h-5 w-5 text-primary mr-2" />
                     Vehicle Information
                     {isAlreadyCompleted && (
@@ -227,7 +227,7 @@ const VehicleCheck = () => {
                       </Badge>
                     )}
                   </CardTitle>
-                  <CardDescription>
+                  <CardDescription className="saas-subtitle">
                     {new Date().toLocaleDateString('en-GB', { 
                       weekday: 'long', 
                       year: 'numeric', 
@@ -236,7 +236,7 @@ const VehicleCheck = () => {
                     })}
                   </CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="saas-card-content">
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                     <div className="text-center p-4 rounded-lg bg-card/50">
                       <div className="text-lg font-bold">{assignedVan.registration}</div>

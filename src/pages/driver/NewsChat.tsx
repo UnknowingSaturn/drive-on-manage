@@ -166,7 +166,7 @@ const NewsChat = () => {
             </div>
           </header>
 
-          <main className="p-6">
+          <main className="saas-main">
             <Tabs defaultValue="news" className="space-y-6">
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="news" className="flex items-center">
@@ -180,17 +180,17 @@ const NewsChat = () => {
               </TabsList>
 
               <TabsContent value="news" className="space-y-6">
-                <Card className="logistics-card">
-                  <CardHeader>
-                    <CardTitle className="flex items-center">
+                <Card className="saas-card">
+                  <CardHeader className="saas-card-header">
+                    <CardTitle className="saas-heading flex items-center">
                       <Megaphone className="h-5 w-5 text-primary mr-2" />
                       Company Announcements
                     </CardTitle>
-                    <CardDescription>
+                    <CardDescription className="saas-subtitle">
                       Latest news and updates from management
                     </CardDescription>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="saas-card-content">
                     {announcements && announcements.length === 0 ? (
                       <div className="text-center py-8">
                         <Bell className="h-12 w-12 text-muted-foreground mx-auto mb-4" />

@@ -224,11 +224,11 @@ const StartOfDay = () => {
             </div>
           </header>
 
-          <main className="mobile-padding py-4 md:py-6 space-y-4 md:space-y-6 no-overflow">
+          <main className="saas-main">
             {/* Status Card */}
-            <Card className="logistics-card">
-              <CardHeader>
-                <CardTitle className="flex items-center">
+            <Card className="saas-card">
+              <CardHeader className="saas-card-header">
+                <CardTitle className="saas-heading flex items-center">
                   <Clock className="h-5 w-5 text-primary mr-2" />
                   Today's Status
                   {isAlreadyStarted && (
@@ -238,7 +238,7 @@ const StartOfDay = () => {
                     </Badge>
                   )}
                 </CardTitle>
-                <CardDescription>
+                <CardDescription className="saas-subtitle">
                   {new Date().toLocaleDateString('en-GB', { 
                     weekday: 'long', 
                     year: 'numeric', 
@@ -247,7 +247,7 @@ const StartOfDay = () => {
                   })}
                 </CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="saas-card-content">
                 {isAlreadyStarted ? (
                   <div className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
