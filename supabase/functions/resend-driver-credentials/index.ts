@@ -44,19 +44,18 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, serviceKey);
     const resend = new Resend(resendKey);
 
-    // Get driver and company info
-    const { data: driverData, error: driverError } = await supabase
-      .from('driver_profiles')
-      .select(`
-        user_id,
-        company_id,
-        profiles!inner(first_name, last_name, email),
-        companies!inner(name)
-      `)
-      .eq('profiles.email', email)
+    console.log('Looking up driver with email:', email);
+    
+    // First get the driver profile by email
+    const { data: profileData, error: profileError } = await supabase
+      .from('profiles')
+      .select('user_id')
+      .eq('email', email)
+      .eq('user_type', 'driver')
       .single();
 
-    if (driverError || !driverData) {
+    if (profileError || !profileData) {
+      console.error('Driver profile not found:', profileError);
       return new Response(JSON.stringify({
         error: 'Driver not found'
       }), {
@@ -65,9 +64,48 @@ serve(async (req) => {
       });
     }
 
+    // Get driver details with company info
+    const { data: driverData, error: driverError } = await supabase
+      .from('driver_profiles')
+      .select(`
+        user_id,
+        company_id,
+        companies!inner(name)
+      `)
+      .eq('user_id', profileData.user_id)
+      .single();
+
+    if (driverError || !driverData) {
+      console.error('Driver profile details not found:', driverError);
+      return new Response(JSON.stringify({
+        error: 'Driver profile not found'
+      }), {
+        status: 404,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Get profile details
+    const { data: userProfile, error: userProfileError } = await supabase
+      .from('profiles')
+      .select('first_name, last_name, email')
+      .eq('user_id', profileData.user_id)
+      .single();
+
+    if (userProfileError || !userProfile) {
+      console.error('User profile not found:', userProfileError);
+      return new Response(JSON.stringify({
+        error: 'User profile not found'
+      }), {
+        status: 404,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+
     // Generate new password in original format
     const tempPassword = Math.random().toString(36).slice(-8) + 'A1!';
-    console.log('Generated new temp password:', tempPassword);
+    console.log('Generated new temp password for:', email);
 
     // Update password in auth.users
     const { error: updateError } = await supabase.auth.admin.updateUserById(
@@ -104,7 +142,7 @@ serve(async (req) => {
           </div>
           
           <div style="background-color: white; padding: 30px; border-radius: 0 0 12px 12px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
-            <p style="color: #4a5568; font-size: 16px; line-height: 1.6;">Hi <strong>${driverData.profiles.first_name}</strong>,</p>
+            <p style="color: #4a5568; font-size: 16px; line-height: 1.6;">Hi <strong>${userProfile.first_name}</strong>,</p>
             
             <p style="color: #4a5568; font-size: 16px; line-height: 1.6;">
               Your login credentials have been updated. You can now log in using the new password below.
