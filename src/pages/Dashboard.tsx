@@ -65,6 +65,44 @@ const Dashboard = () => {
     enabled: !!user?.id && isDriver,
   });
 
+  // Get weekly assigned rounds for drivers
+  const { data: weeklyRounds } = useQuery({
+    queryKey: ['weekly-rounds', user?.id],
+    queryFn: async () => {
+      if (!user?.id || !isDriver) return null;
+      
+      const { data: driverProfile } = await supabase
+        .from('driver_profiles')
+        .select('id')
+        .eq('user_id', user.id)
+        .single();
+      
+      if (driverProfile) {
+        // Get this week's start and end dates
+        const now = new Date();
+        const weekStart = new Date(now.setDate(now.getDate() - now.getDay() + 1)); // Monday
+        const weekEnd = new Date(weekStart);
+        weekEnd.setDate(weekStart.getDate() + 6); // Sunday
+        
+        const { data } = await supabase
+          .from('schedules')
+          .select(`
+            id,
+            scheduled_date,
+            rounds(round_number, description)
+          `)
+          .eq('driver_id', driverProfile.id)
+          .gte('scheduled_date', weekStart.toISOString().split('T')[0])
+          .lte('scheduled_date', weekEnd.toISOString().split('T')[0])
+          .eq('status', 'scheduled');
+        
+        return data || [];
+      }
+      return [];
+    },
+    enabled: !!user?.id && isDriver,
+  });
+
   // Get today's EOD report for drivers (using new table)
   const { data: todayEOD } = useQuery({
     queryKey: ['today-eod-report', user?.id],
@@ -134,18 +172,18 @@ const Dashboard = () => {
                     <div className="saas-card-content">
                       <div className="mobile-grid">
                         <div className="saas-metric">
-                          <div className="saas-metric-value">{todaySOD?.parcel_count || 0}</div>
-                          <div className="saas-metric-label">Parcels Assigned</div>
+                          <div className="saas-metric-value">{weeklyRounds?.length || 0}</div>
+                          <div className="saas-metric-label">Rounds This Week</div>
                           <div className="flex items-center justify-center mt-2">
-                            {todaySOD ? (
+                            {weeklyRounds && weeklyRounds.length > 0 ? (
                               <span className="saas-status saas-status-success">
                                 <CheckCircle2 className="h-3 w-3 mr-1" />
-                                Day Started
+                                Scheduled
                               </span>
                             ) : (
                               <span className="saas-status saas-status-info">
                                 <Clock className="h-3 w-3 mr-1" />
-                                Not Started
+                                No Rounds
                               </span>
                             )}
                           </div>
