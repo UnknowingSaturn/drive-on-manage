@@ -244,7 +244,7 @@ const Dashboard = () => {
                 <CardContent>
                   <Button 
                     className="logistics-button w-full group-hover:shadow-glow mobile-button"
-                    onClick={() => setEodModalOpen(true)}
+                    onClick={() => navigate('/driver/end-of-day')}
                     disabled={!todaySOD || !!todayEOD}
                   >
                     <CheckCircle2 className="h-4 w-4 mr-2" />
