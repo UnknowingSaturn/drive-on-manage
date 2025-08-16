@@ -13,6 +13,8 @@ import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
 import { Switch } from '@/components/ui/switch';
+import { SidebarProvider, SidebarTrigger, SidebarInset } from '@/components/ui/sidebar';
+import { AppSidebar } from '@/components/AppSidebar';
 
 interface EndOfDayFormData {
   name: string;
@@ -221,32 +223,48 @@ const NewEndOfDay = () => {
 
   if (isSubmitted) {
     return (
-      <div className="container mx-auto py-8">
-        <Card className="max-w-md mx-auto text-center">
-          <CardContent className="pt-6">
-            <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold mb-2">Report Submitted!</h2>
-            <p className="text-muted-foreground mb-4">
-              Your End of Day report has been submitted successfully.
-            </p>
-            <Button onClick={() => setIsSubmitted(false)}>
-              Submit Another Report
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
+      <SidebarProvider>
+        <AppSidebar />
+        <SidebarInset>
+          <div className="flex h-16 items-center gap-2 px-4 border-b">
+            <SidebarTrigger />
+            <h1 className="text-2xl font-semibold">End of Day Report</h1>
+          </div>
+          <div className="container mx-auto py-8">
+            <Card className="max-w-md mx-auto text-center">
+              <CardContent className="pt-6">
+                <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
+                <h2 className="text-2xl font-bold mb-2">Report Submitted!</h2>
+                <p className="text-muted-foreground mb-4">
+                  Your End of Day report has been submitted successfully.
+                </p>
+                <Button onClick={() => setIsSubmitted(false)}>
+                  Submit Another Report
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        </SidebarInset>
+      </SidebarProvider>
     );
   }
 
   return (
-    <div className="container mx-auto py-8">
-      <Card className="max-w-2xl mx-auto">
-        <CardHeader>
-          <CardTitle>End of Day Report</CardTitle>
-          <CardDescription>
-            Submit your daily delivery report with round details and performance metrics.
-          </CardDescription>
-        </CardHeader>
+    <SidebarProvider>
+      <AppSidebar />
+      <SidebarInset>
+        <div className="flex h-16 items-center gap-2 px-4 border-b">
+          <SidebarTrigger />
+          <h1 className="text-2xl font-semibold">End of Day Report</h1>
+        </div>
+        <div className="container mx-auto py-8">
+          <Card className="max-w-2xl mx-auto">
+            <CardHeader>
+              <CardTitle>End of Day Report</CardTitle>
+              <CardDescription>
+                Submit your daily delivery report with round details and performance metrics.
+              </CardDescription>
+            </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Driver Name */}
@@ -487,7 +505,9 @@ const NewEndOfDay = () => {
           </form>
         </CardContent>
       </Card>
-    </div>
+        </div>
+      </SidebarInset>
+    </SidebarProvider>
   );
 };
 
