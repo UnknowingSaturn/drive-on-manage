@@ -7,8 +7,9 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { Plus, Truck, AlertTriangle, CheckCircle, Calendar, Edit, Trash2 } from 'lucide-react';
+import { Plus, Truck, AlertTriangle, CheckCircle, Calendar, Edit, Trash2, UserCheck } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -25,8 +26,11 @@ const VanManagement = () => {
   const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false);
   const [editingVan, setEditingVan] = useState<any>(null);
+  const [assigningVan, setAssigningVan] = useState<any>(null);
   const [vanToDelete, setVanToDelete] = useState<any>(null);
+  const [selectedDriverId, setSelectedDriverId] = useState<string>('');
   const [formData, setFormData] = useState({
     registration: '',
     make: '',
@@ -36,7 +40,31 @@ const VanManagement = () => {
     serviceDue: ''
   });
 
-  // Fetch vans for the company
+  // Fetch drivers for assignment
+  const { data: drivers } = useQuery({
+    queryKey: ['drivers', profile?.company_id],
+    queryFn: async () => {
+      if (!profile?.company_id) return [];
+      
+      const { data, error } = await supabase
+        .from('driver_profiles')
+        .select(`
+          id,
+          assigned_van_id,
+          profiles!inner(first_name, last_name)
+        `)
+        .eq('company_id', profile.company_id);
+
+      if (error) throw error;
+      return data.map(driver => ({
+        ...driver,
+        name: `${driver.profiles.first_name} ${driver.profiles.last_name}`.trim()
+      }));
+    },
+    enabled: !!profile?.company_id
+  });
+
+  // Fetch vans for the company with assigned driver info
   const { data: vans, isLoading, error } = useQuery({
     queryKey: ['vans', profile?.company_id],
     queryFn: async () => {
@@ -44,13 +72,25 @@ const VanManagement = () => {
       
       const { data, error } = await supabase
         .from('vans')
-        .select('*')
+        .select(`
+          *,
+          driver_profiles(
+            id,
+            profiles(first_name, last_name)
+          )
+        `)
         .eq('company_id', profile.company_id)
         .eq('is_active', true)
         .order('registration');
 
       if (error) throw error;
-      return data;
+      return data.map((van: any) => ({
+        ...van,
+        assignedDriver: van.driver_profiles && van.driver_profiles.length > 0 ? {
+          id: van.driver_profiles[0].id,
+          name: `${van.driver_profiles[0].profiles.first_name} ${van.driver_profiles[0].profiles.last_name}`.trim()
+        } : null
+      }));
     },
     enabled: !!profile?.company_id,
     retry: 3,
@@ -169,6 +209,45 @@ const VanManagement = () => {
     },
   });
 
+  // Assign van to driver mutation
+  const assignVanMutation = useMutation({
+    mutationFn: async ({ vanId, driverId }: { vanId: string, driverId: string | null }) => {
+      // First, unassign any other vans from this driver
+      if (driverId) {
+        await supabase
+          .from('driver_profiles')
+          .update({ assigned_van_id: null })
+          .eq('assigned_van_id', vanId);
+      }
+
+      // Then assign the van to the selected driver (or unassign if null)
+      const { error } = await supabase
+        .from('driver_profiles')
+        .update({ assigned_van_id: driverId ? vanId : null })
+        .eq('id', driverId || '');
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({
+        title: "Van assignment updated",
+        description: "Van assignment has been updated successfully.",
+      });
+      setIsAssignDialogOpen(false);
+      setAssigningVan(null);
+      setSelectedDriverId('');
+      queryClient.invalidateQueries({ queryKey: ['vans'] });
+      queryClient.invalidateQueries({ queryKey: ['drivers'] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error updating assignment",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
@@ -188,6 +267,12 @@ const VanManagement = () => {
 
   const handleDeleteVan = (van: any) => {
     setVanToDelete(van);
+  };
+
+  const handleAssignVan = (van: any) => {
+    setAssigningVan(van);
+    setSelectedDriverId(van.assignedDriver?.id || '');
+    setIsAssignDialogOpen(true);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -465,6 +550,7 @@ const VanManagement = () => {
                 <TableHead>Registration</TableHead>
                 <TableHead>Make & Model</TableHead>
                 <TableHead>Year</TableHead>
+                <TableHead>Assigned Driver</TableHead>
                 <TableHead>MOT Expiry</TableHead>
                 <TableHead>Service Due</TableHead>
                 <TableHead>Status</TableHead>
@@ -480,6 +566,17 @@ const VanManagement = () => {
                   </TableCell>
                   <TableCell>{van.year || '-'}</TableCell>
                   <TableCell>
+                    {van.assignedDriver ? (
+                      <div className="flex items-center space-x-2">
+                        <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                          {van.assignedDriver.name}
+                        </Badge>
+                      </div>
+                    ) : (
+                      <span className="text-sm text-muted-foreground">Unassigned</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
                     {van.mot_expiry ? format(parseISO(van.mot_expiry), 'dd/MM/yyyy') : '-'}
                   </TableCell>
                   <TableCell>
@@ -490,6 +587,15 @@ const VanManagement = () => {
                   </TableCell>
                   <TableCell>
                     <div className="flex space-x-1">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => handleAssignVan(van)}
+                        className="text-blue-600 hover:text-blue-700"
+                      >
+                        <UserCheck className="h-3 w-3 mr-1" />
+                        Assign
+                      </Button>
                       <Button 
                         variant="outline" 
                         size="sm"
@@ -638,7 +744,59 @@ const VanManagement = () => {
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
-      </AlertDialog>
+        </AlertDialog>
+
+        {/* Assign Van Dialog */}
+        <Dialog open={isAssignDialogOpen} onOpenChange={setIsAssignDialogOpen}>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Assign Van to Driver</DialogTitle>
+              <DialogDescription>
+                {assigningVan && `Assign ${assigningVan.registration} to a driver`}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="driver-select">Select Driver</Label>
+                <Select
+                  value={selectedDriverId}
+                  onValueChange={setSelectedDriverId}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a driver" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-popover border border-border shadow-md z-50">
+                    <SelectItem value="">Unassigned</SelectItem>
+                    {drivers?.filter(driver => !driver.assigned_van_id || driver.id === assigningVan?.assignedDriver?.id).map((driver) => (
+                      <SelectItem key={driver.id} value={driver.id}>
+                        {driver.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="flex justify-end space-x-2">
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => setIsAssignDialogOpen(false)}
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={() => assigningVan && assignVanMutation.mutate({ 
+                    vanId: assigningVan.id, 
+                    driverId: selectedDriverId || null 
+                  })}
+                  disabled={assignVanMutation.isPending}
+                >
+                  {assignVanMutation.isPending ? 'Assigning...' : 'Assign Van'}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
           </main>
         </SidebarInset>
       </div>

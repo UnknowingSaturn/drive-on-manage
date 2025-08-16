@@ -59,9 +59,7 @@ const DriverManagement = () => {
     lastName: '',
     phone: '',
     parcelRate: '',
-    coverRate: '',
-    status: '',
-    assignedVanId: ''
+    coverRate: ''
   });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [editFormErrors, setEditFormErrors] = useState<Record<string, string>>({});
@@ -348,23 +346,21 @@ const DriverManagement = () => {
     },
   });
 
-  // Update driver mutation
+  // Update driver mutation - only personal details
   const updateDriverMutation = useMutation({
     mutationFn: async ({ driverId, updates }: { driverId: string, updates: any }) => {
-      // Update driver profile
+      // Update driver profile (only rates)
       const { error: driverError } = await supabase
         .from('driver_profiles')
         .update({
           parcel_rate: updates.parcelRate ? parseFloat(updates.parcelRate) : null,
           cover_rate: updates.coverRate ? parseFloat(updates.coverRate) : null,
-          status: updates.status,
-          assigned_van_id: updates.assignedVanId === 'unassigned' ? null : updates.assignedVanId,
         })
         .eq('id', driverId);
 
       if (driverError) throw driverError;
 
-      // Update user profile
+      // Update user profile (only personal details)
       const driver = drivers.find(d => d.id === driverId);
       if (driver?.user_id) {
         const { error: profileError } = await supabase
@@ -449,9 +445,7 @@ const DriverManagement = () => {
       lastName: driver.last_name || '',
       phone: driver.phone || '',
       parcelRate: driver.parcel_rate?.toString() || '',
-      coverRate: driver.cover_rate?.toString() || '',
-      status: driver.status || 'active',
-      assignedVanId: driver.assigned_van_id || 'unassigned'
+      coverRate: driver.cover_rate?.toString() || ''
     });
     setIsEditDialogOpen(true);
   };
@@ -905,9 +899,9 @@ const DriverManagement = () => {
             <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
               <DialogContent className="sm:max-w-[500px]">
                 <DialogHeader>
-                  <DialogTitle>Edit Driver</DialogTitle>
+                  <DialogTitle>Edit Driver Details</DialogTitle>
                   <DialogDescription>
-                    Update driver information and assignments
+                    Update driver personal information and rates
                   </DialogDescription>
                 </DialogHeader>
                 <form onSubmit={handleEditSubmit} className="space-y-4">
@@ -961,43 +955,6 @@ const DriverManagement = () => {
                         onChange={(e) => setEditFormData(prev => ({ ...prev, coverRate: e.target.value }))}
                       />
                     </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="editStatus">Status</Label>
-                    <Select
-                      value={editFormData.status}
-                      onValueChange={(value) => setEditFormData(prev => ({ ...prev, status: value }))}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select status" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="active">Active</SelectItem>
-                        <SelectItem value="inactive">Inactive</SelectItem>
-                        <SelectItem value="suspended">Suspended</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="editVanAssignment">Van Assignment</Label>
-                    <Select
-                      value={editFormData.assignedVanId}
-                      onValueChange={(value) => setEditFormData(prev => ({ ...prev, assignedVanId: value }))}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select van" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="unassigned">No van assigned</SelectItem>
-                        {vans.map((van) => (
-                          <SelectItem key={van.id} value={van.id}>
-                            {van.registration} - {van.make} {van.model}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
                   </div>
 
                   <div className="flex justify-end space-x-2">
