@@ -358,7 +358,7 @@ const DriverManagement = () => {
           parcel_rate: updates.parcelRate ? parseFloat(updates.parcelRate) : null,
           cover_rate: updates.coverRate ? parseFloat(updates.coverRate) : null,
           status: updates.status,
-          assigned_van_id: updates.assignedVanId || null,
+          assigned_van_id: updates.assignedVanId === 'unassigned' ? null : updates.assignedVanId,
         })
         .eq('id', driverId);
 
@@ -451,7 +451,7 @@ const DriverManagement = () => {
       parcelRate: driver.parcel_rate?.toString() || '',
       coverRate: driver.cover_rate?.toString() || '',
       status: driver.status || 'active',
-      assignedVanId: driver.assigned_van_id || ''
+      assignedVanId: driver.assigned_van_id || 'unassigned'
     });
     setIsEditDialogOpen(true);
   };
@@ -990,7 +990,7 @@ const DriverManagement = () => {
                         <SelectValue placeholder="Select van" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">No van assigned</SelectItem>
+                        <SelectItem value="unassigned">No van assigned</SelectItem>
                         {vans.map((van) => (
                           <SelectItem key={van.id} value={van.id}>
                             {van.registration} - {van.make} {van.model}
