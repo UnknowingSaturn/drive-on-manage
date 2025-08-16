@@ -370,21 +370,18 @@ const EndOfDay = () => {
           </header>
 
           <main className="mobile-padding py-4 md:py-6 space-y-4 md:space-y-6 no-overflow overflow-y-auto">
-            <Card className="logistics-card">
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Package className="h-5 w-5 text-primary mr-2" />
+            <Card className="border-0 shadow-sm">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center text-base">
+                  <Package className="h-4 w-4 text-primary mr-2" />
                   End of Day Report
                 </CardTitle>
-                <CardDescription>
-                  Complete your daily delivery report with performance metrics.
-                </CardDescription>
               </CardHeader>
               <CardContent>
-                <form onSubmit={handleSubmit} className="space-y-6">
-                  {/* Auto-filled Information Display */}
-                  <div className="bg-muted p-4 rounded-lg space-y-2">
-                    <h3 className="font-semibold text-sm">Auto-filled Information</h3>
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  {/* Auto-filled Information Display - Compact */}
+                  <div className="bg-muted/50 p-3 rounded-lg space-y-2">
+                    <h3 className="font-medium text-sm">Auto-filled Information</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
                       <div>
                         <span className="text-muted-foreground">Driver:</span>
@@ -401,7 +398,7 @@ const EndOfDay = () => {
                           <span className="text-muted-foreground">Assigned Rounds:</span>
                           <div className="flex flex-wrap gap-1 mt-1">
                             {driverInfo.roundNumbers.map((round, index) => (
-                              <Badge key={index} variant="outline" className="text-xs">
+                              <Badge key={index} variant="outline" className="text-xs px-2 py-0">
                                 {round}
                               </Badge>
                             ))}

@@ -143,45 +143,44 @@ const Dashboard = () => {
         <SidebarInset className="flex-1">
           {/* Header */}
           <header className="border-b bg-card sticky top-0 z-10">
-            <div className="saas-container flex items-center justify-between py-4">
+            <div className="flex items-center justify-between px-4 py-3">
               <div className="flex items-center gap-3">
                 <SidebarTrigger className="mobile-hidden" />
                 <MobileNav className="md:hidden" />
                 <div>
-                  <h1 className="saas-title">Driver Dashboard</h1>
-                  <p className="saas-subtitle">Welcome back, {profile?.first_name || user?.email}</p>
+                  <h1 className="text-lg font-semibold">Driver Dashboard</h1>
+                  <p className="text-xs text-muted-foreground">Welcome back, {profile?.first_name || user?.email}</p>
                 </div>
               </div>
             </div>
           </header>
 
           {/* Main Content */}
-          <main className="saas-main">
-            <div className="saas-container">
+          <main className="p-4 space-y-4">
+            <div className="max-w-7xl mx-auto">
               {isDriver && (
-                <div className="space-y-6 animate-fade-in">
-                  {/* Today's Status */}
-                  <div className="saas-card">
-                    <div className="saas-card-header">
+                <div className="space-y-4 animate-fade-in">
+                  {/* Today's Status - More Compact */}
+                  <Card className="border-0 shadow-sm">
+                    <CardHeader className="pb-3">
                       <div className="flex items-center gap-2">
-                        <Truck className="h-5 w-5 text-primary" />
-                        <h2 className="saas-heading">Today's Status</h2>
+                        <Truck className="h-4 w-4 text-primary" />
+                        <h2 className="text-lg font-semibold">Today's Status</h2>
                       </div>
-                      <p className="saas-subtitle">Overview of your current shift</p>
-                    </div>
-                    <div className="saas-card-content">
-                      <div className="mobile-grid">
-                        <div className="saas-metric">
-                          <div className="saas-metric-value">{weeklyRounds?.length || 0}</div>
-                          <div className="saas-metric-label">Rounds This Week</div>
-                          <div className="flex items-center justify-center mt-2">
+                    </CardHeader>
+                    <CardContent className="pt-0">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <div className="bg-card/50 p-3 rounded-lg">
+                          <div className="text-xl font-bold text-primary">{weeklyRounds?.length || 0}</div>
+                          <div className="text-xs text-muted-foreground">Rounds This Week</div>
+                          <div className="flex items-center justify-center mt-1">
                             {weeklyRounds && weeklyRounds.length > 0 ? (
-                              <span className="saas-status saas-status-success">
+                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-green-100 text-green-800">
                                 <CheckCircle2 className="h-3 w-3 mr-1" />
                                 Scheduled
                               </span>
                             ) : (
-                              <span className="saas-status saas-status-info">
+                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-gray-100 text-gray-600">
                                 <Clock className="h-3 w-3 mr-1" />
                                 No Rounds
                               </span>
@@ -189,19 +188,19 @@ const Dashboard = () => {
                           </div>
                         </div>
                         
-                        <div className="saas-metric">
-                          <div className="saas-metric-value text-success">
+                        <div className="bg-card/50 p-3 rounded-lg">
+                          <div className="text-xl font-bold text-success">
                             {todayEOD?.total_parcels || (todayEOD?.successful_deliveries + todayEOD?.successful_collections + todayEOD?.support_parcels) || 0}
                           </div>
-                          <div className="saas-metric-label">Delivered</div>
-                          <div className="flex items-center justify-center mt-2">
+                          <div className="text-xs text-muted-foreground">Delivered Today</div>
+                          <div className="flex items-center justify-center mt-1">
                             {todayEOD ? (
-                              <span className="saas-status saas-status-success">
+                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-green-100 text-green-800">
                                 <CheckCircle2 className="h-3 w-3 mr-1" />
-                                Day Completed
+                                Completed
                               </span>
                             ) : (
-                              <span className="saas-status saas-status-warning">
+                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-yellow-100 text-yellow-800">
                                 <Clock className="h-3 w-3 mr-1" />
                                 In Progress
                               </span>
@@ -209,104 +208,101 @@ const Dashboard = () => {
                           </div>
                         </div>
                         
-                        <div className="saas-metric">
-                          <div className="saas-metric-value">£0.00</div>
-                          <div className="saas-metric-label">Estimated Pay</div>
-                          <div className="flex items-center justify-center mt-2">
-                            <span className="saas-status saas-status-info">
+                        <div className="bg-card/50 p-3 rounded-lg">
+                          <div className="text-xl font-bold">£0.00</div>
+                          <div className="text-xs text-muted-foreground">Estimated Pay</div>
+                          <div className="flex items-center justify-center mt-1">
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800">
                               {todayEOD ? 'Completed' : 'Pending'}
                             </span>
                           </div>
                         </div>
                       </div>
-                    </div>
-                  </div>
+                    </CardContent>
+                  </Card>
 
-                  {/* Quick Actions */}
-                  <div className="mobile-grid">
-                    <div className="saas-card saas-hover">
-                      <div className="saas-card-header">
-                        <div className="flex items-center gap-2">
+                  {/* Quick Actions - More Compact Grid */}
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                    <Card className="hover:shadow-md transition-shadow">
+                      <CardContent className="p-4">
+                        <div className="flex items-center gap-2 mb-2">
                           <Clock className="h-4 w-4 text-primary" />
-                          <h3 className="saas-subheading">Start of Day</h3>
+                          <h3 className="font-medium text-sm">Start of Day</h3>
                           {todaySOD && <CheckCircle2 className="h-4 w-4 text-success" />}
                         </div>
-                        <p className="saas-caption">Log your parcel count and vehicle check</p>
-                      </div>
-                      <div className="saas-card-content">
+                        <p className="text-xs text-muted-foreground mb-3">Log parcel count & vehicle check</p>
                         <Button 
-                          className="saas-button saas-button-default w-full touch-target"
+                          size="sm"
+                          className="w-full h-8 text-xs"
                           onClick={() => navigate('/driver/start-of-day')}
                           disabled={!!todaySOD}
                         >
-                          <Clock className="h-4 w-4 mr-2" />
-                          {todaySOD ? 'Day Started' : 'Start My Day'}
+                          <Clock className="h-3 w-3 mr-1" />
+                          {todaySOD ? 'Started' : 'Start Day'}
                         </Button>
-                      </div>
-                    </div>
+                      </CardContent>
+                    </Card>
 
-                    <div className="saas-card saas-hover">
-                      <div className="saas-card-header">
-                        <div className="flex items-center gap-2">
+                    <Card className="hover:shadow-md transition-shadow">
+                      <CardContent className="p-4">
+                        <div className="flex items-center gap-2 mb-2">
                           <CheckCircle2 className="h-4 w-4 text-primary" />
-                          <h3 className="saas-subheading">End of Day</h3>
+                          <h3 className="font-medium text-sm">End of Day</h3>
                           {todayEOD && <CheckCircle2 className="h-4 w-4 text-success" />}
                         </div>
-                        <p className="saas-caption">Complete your day and log deliveries</p>
-                      </div>
-                      <div className="saas-card-content">
+                        <p className="text-xs text-muted-foreground mb-3">Complete day & log deliveries</p>
                         <Button 
-                          className="saas-button saas-button-default w-full touch-target"
+                          size="sm"
+                          className="w-full h-8 text-xs"
                           onClick={() => navigate('/driver/end-of-day')}
                           disabled={!!todayEOD}
                         >
-                          <CheckCircle2 className="h-4 w-4 mr-2" />
-                          {todayEOD ? 'Day Completed' : 'End My Day'}
+                          <CheckCircle2 className="h-3 w-3 mr-1" />
+                          {todayEOD ? 'Completed' : 'End Day'}
                         </Button>
-                      </div>
-                    </div>
+                      </CardContent>
+                    </Card>
 
-                    <div className="saas-card saas-hover">
-                      <div className="saas-card-header">
-                        <div className="flex items-center gap-2">
+                    <Card className="hover:shadow-md transition-shadow">
+                      <CardContent className="p-4">
+                        <div className="flex items-center gap-2 mb-2">
                           <Truck className="h-4 w-4 text-primary" />
-                          <h3 className="saas-subheading">Vehicle Check</h3>
+                          <h3 className="font-medium text-sm">Vehicle Check</h3>
                         </div>
-                        <p className="saas-caption">Perform and log your vehicle inspection</p>
-                      </div>
-                      <div className="saas-card-content">
+                        <p className="text-xs text-muted-foreground mb-3">Perform vehicle inspection</p>
                         <Button 
-                          className="saas-button saas-button-default w-full touch-target"
+                          size="sm"
+                          className="w-full h-8 text-xs"
                           onClick={() => navigate('/driver/vehicle-check')}
                         >
-                          <Truck className="h-4 w-4 mr-2" />
-                          Vehicle Check
+                          <Truck className="h-3 w-3 mr-1" />
+                          Check Vehicle
                         </Button>
-                      </div>
-                    </div>
+                      </CardContent>
+                    </Card>
 
-                    <div className="saas-card saas-hover">
-                      <div className="saas-card-header">
-                        <div className="flex items-center gap-2">
+                    <Card className="hover:shadow-md transition-shadow">
+                      <CardContent className="p-4">
+                        <div className="flex items-center gap-2 mb-2">
                           <AlertTriangle className="h-4 w-4 text-warning" />
-                          <h3 className="saas-subheading">Incident Report</h3>
+                          <h3 className="font-medium text-sm">Incident Report</h3>
                         </div>
-                        <p className="saas-caption">Report any incidents or issues</p>
-                      </div>
-                      <div className="saas-card-content">
+                        <p className="text-xs text-muted-foreground mb-3">Report any incidents</p>
                         <Button 
-                          className="saas-button saas-button-outline w-full touch-target border-warning/30 text-warning hover:bg-warning/10"
+                          size="sm"
+                          variant="outline"
+                          className="w-full h-8 text-xs border-warning/30 text-warning hover:bg-warning/10"
                           onClick={() => navigate('/driver/incident-report')}
                         >
-                          <AlertTriangle className="h-4 w-4 mr-2" />
-                          Report Incident
+                          <AlertTriangle className="h-3 w-3 mr-1" />
+                          Report
                         </Button>
-                      </div>
-                    </div>
+                      </CardContent>
+                    </Card>
                   </div>
 
-                  {/* Driver Features */}
-                  <div className="mobile-grid">
+                  {/* Driver Features - Compact Grid */}
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                     <EarningsWidget />
                     <LeaderboardWidget />
                     <FeedbackWidget />
