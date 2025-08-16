@@ -176,10 +176,41 @@ const Dashboard = () => {
                           <div className="saas-metric-label">Rounds This Week</div>
                           <div className="flex items-center justify-center mt-2">
                             {weeklyRounds && weeklyRounds.length > 0 ? (
-                              <span className="saas-status saas-status-success">
-                                <CheckCircle2 className="h-3 w-3 mr-1" />
-                                Scheduled
-                              </span>
+                              <details className="group">
+                                <summary className="cursor-pointer saas-status saas-status-success hover:bg-success/20 transition-colors">
+                                  <CheckCircle2 className="h-3 w-3 mr-1" />
+                                  View Schedule
+                                </summary>
+                                <div className="absolute z-10 mt-2 w-80 bg-card border border-border rounded-lg shadow-lg p-3">
+                                  <h4 className="font-semibold text-sm mb-2">Your Weekly Schedule</h4>
+                                  <div className="space-y-2 max-h-60 overflow-y-auto">
+                                    {weeklyRounds.map((schedule: any, index: number) => (
+                                      <div key={index} className="border border-border rounded p-2 bg-background">
+                                        <div className="flex items-center justify-between">
+                                          <div>
+                                            <div className="font-medium text-sm">
+                                              Round {schedule.rounds?.round_number || 'N/A'}
+                                            </div>
+                                            <div className="text-xs text-muted-foreground">
+                                              {new Date(schedule.scheduled_date).toLocaleDateString('en-GB', {
+                                                weekday: 'long',
+                                                day: 'numeric',
+                                                month: 'short'
+                                              })}
+                                            </div>
+                                          </div>
+                                          <MapPin className="h-4 w-4 text-muted-foreground" />
+                                        </div>
+                                        {schedule.rounds?.description && (
+                                          <div className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                                            {schedule.rounds.description}
+                                          </div>
+                                        )}
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              </details>
                             ) : (
                               <span className="saas-status saas-status-info">
                                 <Clock className="h-3 w-3 mr-1" />

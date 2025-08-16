@@ -342,9 +342,9 @@ const ScheduleView = () => {
 
       <Card>
         <CardHeader>
-          <CardTitle>Round Assignment Schedule</CardTitle>
+          <CardTitle>Weekly Schedule - Excel View</CardTitle>
           <CardDescription>
-            Select drivers for each round across the week. Each slot represents one day assignment.
+            Rounds listed on the left, days across the top. Click to assign drivers.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -360,48 +360,45 @@ const ScheduleView = () => {
               <p>Create rounds first to schedule driver assignments.</p>
             </div>
           ) : (
-            <div className="space-y-4">
-              {/* Rounds List with Assignment Slots */}
-              {rounds?.map((round) => (
-                <Card key={round.id} className="border border-border">
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <CardTitle className="text-lg font-semibold">
-                          Round {round.round_number}
-                        </CardTitle>
-                        <CardDescription className="mt-1">
-                          {round.description || 'No description available'}
-                        </CardDescription>
-                      </div>
-                      {round.base_rate && (
-                        <Badge variant="secondary" className="text-sm">
-                          £{round.base_rate}/day
-                        </Badge>
-                      )}
+            <div className="overflow-x-auto">
+              <div className="min-w-[800px]">
+                {/* Header Row */}
+                <div className="grid grid-cols-8 gap-2 mb-4 p-2 bg-muted rounded-lg">
+                  <div className="font-semibold text-sm text-muted-foreground">Round</div>
+                  {weekDays.map((day, index) => (
+                    <div key={index} className="text-center">
+                      <div className="font-semibold text-sm">{format(day, 'EEE')}</div>
+                      <div className="text-xs text-muted-foreground">{format(day, 'dd/MM')}</div>
                     </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-7 gap-3">
+                  ))}
+                </div>
+
+                {/* Data Rows */}
+                <div className="space-y-2">
+                  {rounds?.map((round) => (
+                    <div key={round.id} className="grid grid-cols-8 gap-2 p-2 border rounded-lg hover:bg-muted/50">
+                      {/* Round Info Column */}
+                      <div className="flex flex-col justify-center">
+                        <div className="font-semibold text-sm">Round {round.round_number}</div>
+                        <div className="text-xs text-muted-foreground truncate" title={round.description}>
+                          {round.description || 'No description'}
+                        </div>
+                        {round.base_rate && (
+                          <Badge variant="outline" className="text-xs w-fit mt-1">
+                            £{round.base_rate}/day
+                          </Badge>
+                        )}
+                      </div>
+
+                      {/* Day Assignment Columns */}
                       {weekDays.map((day, dayIndex) => {
                         const dayKey = format(day, 'EEE');
                         const assignment = schedule[round.id]?.[dayKey];
                         const status = getAssignmentStatus(round.id, dayKey);
-                        const cellBgColor = status === 'covered' 
-                          ? 'bg-green-50 border-green-200' 
-                          : 'bg-red-50 border-red-200';
+                        const cellBgColor = getCellBackgroundColor(round.id, dayKey);
                         
                         return (
-                          <div key={dayIndex} className={`p-3 rounded-lg border-2 ${cellBgColor}`}>
-                            <div className="text-center mb-2">
-                              <div className="text-xs font-medium text-muted-foreground">
-                                {format(day, 'EEE')}
-                              </div>
-                              <div className="text-sm font-semibold">
-                                {format(day, 'dd/MM')}
-                              </div>
-                            </div>
-                            
+                          <div key={dayIndex} className={`p-2 rounded border ${cellBgColor} min-h-[80px]`}>
                             <Select
                               value={assignment?.driver_id || '__unassigned__'}
                               onValueChange={(value) => 
@@ -409,8 +406,8 @@ const ScheduleView = () => {
                               }
                               disabled={saveScheduleMutation.isPending}
                             >
-                              <SelectTrigger className="w-full text-xs">
-                                <SelectValue placeholder="Select driver" />
+                              <SelectTrigger className="w-full text-xs h-auto p-1">
+                                <SelectValue placeholder="Select" />
                               </SelectTrigger>
                               <SelectContent>
                                 <SelectItem value="__unassigned__" className="text-muted-foreground">
@@ -433,21 +430,37 @@ const ScheduleView = () => {
                               </SelectContent>
                             </Select>
                             
-                            <div className="mt-2 text-center">
-                              <Badge 
-                                variant={status === 'covered' ? 'default' : 'destructive'}
-                                className="text-xs"
-                              >
-                                {status === 'covered' ? 'Assigned' : 'Open'}
-                              </Badge>
-                            </div>
+                            {assignment && (
+                              <div className="mt-1 text-center">
+                                <div className="text-xs font-medium truncate" title={getDriverName(assignment)}>
+                                  {getDriverName(assignment)}
+                                </div>
+                                <Badge 
+                                  variant="default"
+                                  className="text-xs"
+                                >
+                                  Assigned
+                                </Badge>
+                              </div>
+                            )}
+                            
+                            {!assignment && (
+                              <div className="mt-1 text-center">
+                                <Badge 
+                                  variant="destructive"
+                                  className="text-xs"
+                                >
+                                  Open
+                                </Badge>
+                              </div>
+                            )}
                           </div>
                         );
                       })}
                     </div>
-                  </CardContent>
-                </Card>
-              ))}
+                  ))}
+                </div>
+              </div>
             </div>
           )}
         </CardContent>
