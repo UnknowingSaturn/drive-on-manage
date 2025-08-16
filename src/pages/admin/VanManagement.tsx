@@ -95,14 +95,19 @@ const VanManagement = () => {
           assigned_van_id,
           profiles(first_name, last_name)
         `)
-        .eq('company_id', profile.company_id)
-        .not('assigned_van_id', 'is', null);
+        .eq('company_id', profile.company_id);
 
       if (driversError) throw driversError;
+
+      console.log('All drivers data for van mapping:', driversData);
 
       // Map vans with their assigned drivers
       return vansData.map((van: any) => {
         const assignedDriver = driversData.find(driver => driver.assigned_van_id === van.id);
+        console.log(`Van ${van.registration} (${van.id}):`, {
+          assignedDriver,
+          allDrivers: driversData.map(d => ({ id: d.id, assigned_van_id: d.assigned_van_id }))
+        });
         return {
           ...van,
           assignedDriver: assignedDriver && assignedDriver.profiles ? {
