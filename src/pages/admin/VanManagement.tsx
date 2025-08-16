@@ -40,9 +40,9 @@ const VanManagement = () => {
     serviceDue: ''
   });
 
-  // Fetch drivers for assignment - only active drivers with no van assigned
+  // Fetch drivers for assignment - all active drivers regardless of van assignment for assignment dialog
   const { data: drivers } = useQuery({
-    queryKey: ['drivers', profile?.company_id],
+    queryKey: ['available-drivers', profile?.company_id],
     queryFn: async () => {
       if (!profile?.company_id) return [];
       
@@ -52,17 +52,19 @@ const VanManagement = () => {
           id,
           assigned_van_id,
           status,
-          profiles!inner(first_name, last_name, is_active)
+          profiles!inner(first_name, last_name, is_active, user_type)
         `)
         .eq('company_id', profile.company_id)
-        .eq('status', 'active')
-        .is('assigned_van_id', null)
+        .eq('profiles.user_type', 'driver')
         .eq('profiles.is_active', true);
 
       if (error) throw error;
+      
+      // Return all drivers - we'll filter in the UI for better UX
       return data.map(driver => ({
         ...driver,
-        name: `${driver.profiles?.first_name || ''} ${driver.profiles?.last_name || ''}`.trim()
+        name: `${driver.profiles?.first_name || ''} ${driver.profiles?.last_name || ''}`.trim(),
+        isAvailable: !driver.assigned_van_id
       }));
     },
     enabled: !!profile?.company_id
@@ -794,12 +796,33 @@ const VanManagement = () => {
                   <SelectContent className="bg-popover border border-border shadow-md z-50">
                     <SelectItem value="UNASSIGNED">Unassigned</SelectItem>
                     {drivers?.map((driver) => (
-                      <SelectItem key={driver.id} value={driver.id}>
-                        {driver.name}
+                      <SelectItem 
+                        key={driver.id} 
+                        value={driver.id}
+                        disabled={!driver.isAvailable}
+                      >
+                        <div className="flex items-center justify-between w-full">
+                          <span>{driver.name}</span>
+                          {!driver.isAvailable && (
+                            <Badge variant="secondary" className="ml-2 text-xs">
+                              Already Assigned
+                            </Badge>
+                          )}
+                          {driver.isAvailable && (
+                            <Badge variant="outline" className="ml-2 text-xs bg-success/10 text-success border-success/30">
+                              Available
+                            </Badge>
+                          )}
+                        </div>
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+                {drivers && drivers.length === 0 && (
+                  <p className="text-sm text-muted-foreground">
+                    No active drivers found. Please ensure drivers are properly registered and active.
+                  </p>
+                )}
               </div>
               
               <div className="flex justify-end space-x-2">

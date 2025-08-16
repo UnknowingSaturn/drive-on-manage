@@ -222,21 +222,21 @@ const AdminDashboard = () => {
             </div>
           </header>
 
-          <main className="mobile-container py-4 md:py-6 mobile-space-y no-overflow">
-            {/* Luxury Welcome Section */}
+          <main className="p-6 space-y-8">
+            {/* Elegant Welcome Section */}
             <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border border-primary/20 backdrop-blur-sm">
               <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-transparent opacity-50"></div>
               <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 rounded-full blur-3xl transform translate-x-16 -translate-y-16"></div>
               <div className="absolute bottom-0 left-0 w-24 h-24 bg-secondary/10 rounded-full blur-2xl transform -translate-x-12 translate-y-12"></div>
               
-              <div className="relative p-6 md:p-8">
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
-                  <div className="animate-fade-in">
+              <div className="relative p-8">
+                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-6 lg:space-y-0">
+                  <div className="animate-fade-in space-y-3">
                     <div className="flex items-center space-x-3 mb-2">
                       <div className="w-2 h-2 rounded-full bg-primary animate-pulse"></div>
                       <span className="text-sm font-medium text-primary uppercase tracking-wider">Admin Dashboard</span>
                     </div>
-                    <h2 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-foreground via-primary to-foreground bg-clip-text text-transparent mb-2">
+                    <h2 className="text-3xl lg:text-4xl font-bold bg-gradient-to-r from-foreground via-primary to-foreground bg-clip-text text-transparent">
                       Welcome back, {profile?.first_name}!
                     </h2>
                     <p className="text-base text-muted-foreground max-w-2xl leading-relaxed">
@@ -247,15 +247,12 @@ const AdminDashboard = () => {
                   <div className="animate-scale-in">
                     <Button 
                       onClick={() => navigate('/admin/reports')}
-                      className="group relative overflow-hidden bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary text-primary-foreground border-0 shadow-lg hover:shadow-xl transition-all duration-300 px-6 py-3 rounded-xl"
+                      className="group relative overflow-hidden bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary text-primary-foreground border-0 shadow-lg hover:shadow-xl transition-all duration-300 px-8 py-4 rounded-xl text-base"
                     >
                       <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                      <div className="relative flex items-center space-x-2">
-                        <FileText className="h-4 w-4 transition-transform group-hover:scale-110" />
-                        <span className="font-medium">
-                          <span className="hidden md:inline">View Full Reports</span>
-                          <span className="md:hidden">Reports</span>
-                        </span>
+                      <div className="relative flex items-center space-x-3">
+                        <FileText className="h-5 w-5 transition-transform group-hover:scale-110" />
+                        <span className="font-medium">View Full Reports</span>
                       </div>
                     </Button>
                   </div>
@@ -263,14 +260,13 @@ const AdminDashboard = () => {
               </div>
             </div>
 
-            {/* Luxury Compact Stats Widgets */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-              <Card className="group relative overflow-hidden bg-gradient-to-br from-card via-card to-card/50 border-0 shadow-lg hover:shadow-2xl transition-all duration-500 hover:-translate-y-1">
-                <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-                <div className="absolute top-0 right-0 w-16 h-16 bg-primary/10 rounded-full blur-xl transform translate-x-8 -translate-y-8"></div>
-                <CardContent className="relative p-6">
+            {/* Refined Compact Stats Widgets */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+              <Card className="group relative overflow-hidden bg-gradient-to-br from-card via-card to-card/50 border border-border/50 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+                <div className="absolute inset-0 bg-gradient-to-br from-primary/3 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                <CardContent className="p-6">
                   <div className="flex items-center space-x-4">
-                    <div className="p-3 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 border border-primary/20 group-hover:scale-110 transition-transform duration-300">
+                    <div className="p-3 rounded-xl bg-gradient-to-br from-primary/15 to-primary/5 border border-primary/10 group-hover:scale-105 transition-transform duration-300">
                       <Users className="h-5 w-5 text-primary" />
                     </div>
                     <div className="flex-1 min-w-0">
@@ -284,12 +280,11 @@ const AdminDashboard = () => {
                 </CardContent>
               </Card>
 
-              <Card className="group relative overflow-hidden bg-gradient-to-br from-card via-card to-card/50 border-0 shadow-lg hover:shadow-2xl transition-all duration-500 hover:-translate-y-1">
-                <div className="absolute inset-0 bg-gradient-to-br from-secondary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-                <div className="absolute top-0 right-0 w-16 h-16 bg-secondary/10 rounded-full blur-xl transform translate-x-8 -translate-y-8"></div>
-                <CardContent className="relative p-6">
+              <Card className="group relative overflow-hidden bg-gradient-to-br from-card via-card to-card/50 border border-border/50 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+                <div className="absolute inset-0 bg-gradient-to-br from-secondary/3 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                <CardContent className="p-6">
                   <div className="flex items-center space-x-4">
-                    <div className="p-3 rounded-xl bg-gradient-to-br from-secondary/20 to-secondary/10 border border-secondary/20 group-hover:scale-110 transition-transform duration-300">
+                    <div className="p-3 rounded-xl bg-gradient-to-br from-secondary/15 to-secondary/5 border border-secondary/10 group-hover:scale-105 transition-transform duration-300">
                       <Truck className="h-5 w-5 text-secondary" />
                     </div>
                     <div className="flex-1 min-w-0">
@@ -303,12 +298,11 @@ const AdminDashboard = () => {
                 </CardContent>
               </Card>
 
-              <Card className="group relative overflow-hidden bg-gradient-to-br from-card via-card to-card/50 border-0 shadow-lg hover:shadow-2xl transition-all duration-500 hover:-translate-y-1">
-                <div className="absolute inset-0 bg-gradient-to-br from-accent/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-                <div className="absolute top-0 right-0 w-16 h-16 bg-accent/10 rounded-full blur-xl transform translate-x-8 -translate-y-8"></div>
-                <CardContent className="relative p-6">
+              <Card className="group relative overflow-hidden bg-gradient-to-br from-card via-card to-card/50 border border-border/50 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+                <div className="absolute inset-0 bg-gradient-to-br from-accent/3 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                <CardContent className="p-6">
                   <div className="flex items-center space-x-4">
-                    <div className="p-3 rounded-xl bg-gradient-to-br from-accent/20 to-accent/10 border border-accent/20 group-hover:scale-110 transition-transform duration-300">
+                    <div className="p-3 rounded-xl bg-gradient-to-br from-accent/15 to-accent/5 border border-accent/10 group-hover:scale-105 transition-transform duration-300">
                       <MapPin className="h-5 w-5 text-accent" />
                     </div>
                     <div className="flex-1 min-w-0">
@@ -322,12 +316,11 @@ const AdminDashboard = () => {
                 </CardContent>
               </Card>
 
-              <Card className="group relative overflow-hidden bg-gradient-to-br from-card via-card to-card/50 border-0 shadow-lg hover:shadow-2xl transition-all duration-500 hover:-translate-y-1">
-                <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-                <div className="absolute top-0 right-0 w-16 h-16 bg-primary/10 rounded-full blur-xl transform translate-x-8 -translate-y-8"></div>
-                <CardContent className="relative p-6">
+              <Card className="group relative overflow-hidden bg-gradient-to-br from-card via-card to-card/50 border border-border/50 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+                <div className="absolute inset-0 bg-gradient-to-br from-primary/3 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                <CardContent className="p-6">
                   <div className="flex items-center space-x-4">
-                    <div className="p-3 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 border border-primary/20 group-hover:scale-110 transition-transform duration-300">
+                    <div className="p-3 rounded-xl bg-gradient-to-br from-primary/15 to-primary/5 border border-primary/10 group-hover:scale-105 transition-transform duration-300">
                       <FileText className="h-5 w-5 text-primary" />
                     </div>
                     <div className="flex-1 min-w-0">
