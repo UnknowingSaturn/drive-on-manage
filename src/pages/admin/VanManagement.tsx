@@ -40,7 +40,7 @@ const VanManagement = () => {
     serviceDue: ''
   });
 
-  // Fetch drivers for assignment
+  // Fetch drivers for assignment - only active drivers with no van assigned
   const { data: drivers } = useQuery({
     queryKey: ['drivers', profile?.company_id],
     queryFn: async () => {
@@ -51,9 +51,13 @@ const VanManagement = () => {
         .select(`
           id,
           assigned_van_id,
-          profiles!inner(first_name, last_name)
+          status,
+          profiles!inner(first_name, last_name, is_active)
         `)
-        .eq('company_id', profile.company_id);
+        .eq('company_id', profile.company_id)
+        .eq('status', 'active')
+        .is('assigned_van_id', null)
+        .eq('profiles.is_active', true);
 
       if (error) throw error;
       return data.map(driver => ({
@@ -616,7 +620,7 @@ const VanManagement = () => {
                         className="text-blue-600 hover:text-blue-700"
                       >
                         <UserCheck className="h-3 w-3 mr-1" />
-                        Assign
+                        Assign Driver
                       </Button>
                       <Button 
                         variant="outline" 
