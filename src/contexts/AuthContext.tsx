@@ -10,7 +10,7 @@ interface Profile {
   first_name?: string;
   last_name?: string;
   phone?: string;
-  user_type: 'admin' | 'driver';
+  user_type: 'admin' | 'supervisor' | 'driver';
   is_active: boolean;
   // Legacy company_id for backward compatibility
   company_id?: string;
@@ -31,7 +31,7 @@ interface AuthContextType {
   session: Session | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
-  signUp: (email: string, password: string, userData: { first_name: string; last_name: string; user_type: 'admin' }) => Promise<{ error: any }>;
+  signUp: (email: string, password: string, userData: { first_name: string; last_name: string; user_type: 'admin' | 'supervisor' }) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
   resetPassword: (email: string) => Promise<{ error: any }>;
@@ -95,7 +95,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         first_name: profileData.first_name,
         last_name: profileData.last_name,
         phone: profileData.phone,
-        user_type: profileData.user_type as 'admin' | 'driver',
+        user_type: profileData.user_type as 'admin' | 'supervisor' | 'driver',
         is_active: profileData.is_active,
         company_id: userCompanies?.length > 0 ? userCompanies[0].company_id : undefined,
         user_companies: userCompanies || []
@@ -199,17 +199,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signUp = async (
     email: string, 
     password: string, 
-    userData: { first_name: string; last_name: string; user_type: 'admin' }
+    userData: { first_name: string; last_name: string; user_type: 'admin' | 'supervisor' }
   ) => {
     try {
       // Only allow admin signup
-      if (userData.user_type !== 'admin') {
+      if (!['admin', 'supervisor'].includes(userData.user_type)) {
         toast({
           title: "Sign Up Failed", 
-          description: "Driver accounts are created by administrators through the admin panel.",
+          description: "Driver accounts are created by administrators. Only admin and supervisor accounts can be created here.",
           variant: "destructive"
         });
-        return { error: 'Driver signup not allowed' };
+        return { error: 'Only admin and supervisor signup allowed' };
       }
       const redirectUrl = `${window.location.origin}/`;
       

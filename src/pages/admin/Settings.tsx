@@ -14,6 +14,7 @@ import { Settings, DollarSign, Bell, FileText, Clock, Shield } from 'lucide-reac
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import TeamManagement from '@/components/TeamManagement';
 
 const AdminSettings = () => {
   const { profile } = useAuth();
@@ -133,7 +134,7 @@ const AdminSettings = () => {
 
           <main className="p-6 space-y-6">
             <Tabs defaultValue="general" className="space-y-6">
-              <TabsList className="grid w-full grid-cols-5">
+              <TabsList className="grid w-full grid-cols-6">
                 <TabsTrigger value="general" className="flex items-center">
                   <Settings className="h-4 w-4 mr-2" />
                   General
@@ -153,6 +154,10 @@ const AdminSettings = () => {
                 <TabsTrigger value="operations" className="flex items-center">
                   <Clock className="h-4 w-4 mr-2" />
                   Operations
+                </TabsTrigger>
+                <TabsTrigger value="team" className="flex items-center">
+                  <Shield className="h-4 w-4 mr-2" />
+                  Team
                 </TabsTrigger>
               </TabsList>
 
@@ -435,6 +440,10 @@ const AdminSettings = () => {
                     )}
                   </CardContent>
                 </Card>
+              </TabsContent>
+
+              <TabsContent value="team" className="space-y-6">
+                <TeamManagement />
               </TabsContent>
             </Tabs>
           </main>

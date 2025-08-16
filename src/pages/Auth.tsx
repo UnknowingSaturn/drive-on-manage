@@ -28,7 +28,7 @@ const Auth = () => {
     confirmPassword: '',
     firstName: '',
     lastName: '',
-    userType: 'admin' as const // Admin only
+    userType: 'admin' as 'admin' | 'supervisor'
   });
 
   // Redirect if already authenticated
@@ -114,7 +114,7 @@ const Auth = () => {
             <Tabs defaultValue="signin" className="w-full">
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="signin">Sign In</TabsTrigger>
-                <TabsTrigger value="signup">Admin Sign Up</TabsTrigger>
+                <TabsTrigger value="signup">Admin/Supervisor Sign Up</TabsTrigger>
               </TabsList>
 
               <TabsContent value="signin" className="space-y-4">
@@ -208,7 +208,7 @@ const Auth = () => {
               <TabsContent value="signup" className="space-y-4">
                 <div className="p-4 bg-muted/50 rounded-lg mb-4">
                   <p className="text-sm text-muted-foreground">
-                    <strong>Admin Account Creation:</strong> Only administrators can create accounts here. 
+                    <strong>Admin/Supervisor Account Creation:</strong> Create administrative accounts here. 
                     Drivers receive login credentials directly from their company administrators.
                   </p>
                 </div>
@@ -250,6 +250,32 @@ const Auth = () => {
                     />
                   </div>
 
+                  <div className="space-y-2">
+                    <Label htmlFor="user-type">Account Type</Label>
+                    <Select 
+                      value={signUpData.userType} 
+                      onValueChange={(value: 'admin' | 'supervisor') => setSignUpData({ ...signUpData, userType: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="admin">
+                          <div className="flex items-center gap-2">
+                            <Shield className="h-4 w-4" />
+                            <span>Admin - Full Access</span>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="supervisor">
+                          <div className="flex items-center gap-2">
+                            <Users className="h-4 w-4" />
+                            <span>Supervisor - Limited Access</span>
+                          </div>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
 
                   <div className="space-y-2">
                     <Label htmlFor="signup-password">Password</Label>
@@ -280,7 +306,7 @@ const Auth = () => {
                     className="w-full mobile-button" 
                     disabled={isSubmitting || signUpData.password !== signUpData.confirmPassword}
                   >
-                    {isSubmitting ? 'Creating Admin Account...' : 'Create Admin Account'}
+                    {isSubmitting ? 'Creating Account...' : `Create ${signUpData.userType === 'admin' ? 'Admin' : 'Supervisor'} Account`}
                   </Button>
                 </form>
               </TabsContent>

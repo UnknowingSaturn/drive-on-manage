@@ -47,6 +47,15 @@ const adminItems = [
   { title: "Finance", url: "/admin/finance", icon: Calculator },
 ];
 
+const supervisorItems = [
+  { title: "Dashboard", url: "/admin/dashboard", icon: LayoutDashboard },
+  { title: "Driver Management", url: "/admin/drivers", icon: Users },
+  { title: "Van Management", url: "/admin/vans", icon: Truck },
+  { title: "Round Management", url: "/admin/rounds", icon: MapPin },
+  { title: "Schedule View", url: "/admin/schedule", icon: Calendar },
+  { title: "EOD Reports", url: "/admin/reports", icon: FileText },
+];
+
 const driverItems = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
   { title: "My Profile", url: "/driver/profile", icon: UserCircle },
@@ -67,12 +76,24 @@ export function AppSidebar() {
   const currentPath = location.pathname;
 
   const isAdmin = profile?.user_type === 'admin';
-  const items = isAdmin ? adminItems : driverItems;
+  const isSupervisor = profile?.user_type === 'supervisor';
+  const isManagement = isAdmin || isSupervisor;
+  
+  // Get appropriate menu items based on role
+  const getMenuItems = () => {
+    if (isAdmin) return adminItems;
+    if (isSupervisor) return supervisorItems;
+    return driverItems;
+  };
+  
+  const items = getMenuItems();
   const collapsed = state === "collapsed";
 
   console.log('AppSidebar render:', { 
     userType: profile?.user_type, 
     isAdmin, 
+    isSupervisor,
+    isManagement,
     itemsCount: items.length,
     profile: profile 
   });
@@ -105,10 +126,10 @@ export function AppSidebar() {
         </div>
         {!collapsed && (
           <Badge 
-            variant={isAdmin ? "default" : "secondary"} 
-            className={`w-fit mt-2 ${isAdmin ? 'bg-gradient-primary border-primary/30' : 'bg-secondary/50 border-secondary/30'}`}
+            variant={isManagement ? "default" : "secondary"} 
+            className={`w-fit mt-2 ${isManagement ? 'bg-gradient-primary border-primary/30' : 'bg-secondary/50 border-secondary/30'}`}
           >
-            {isAdmin ? "Admin" : "Driver"}
+            {isAdmin ? "Admin" : isSupervisor ? "Supervisor" : "Driver"}
           </Badge>
         )}
       </SidebarHeader>
@@ -116,7 +137,7 @@ export function AppSidebar() {
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupLabel className="text-sidebar-foreground/70">
-            {isAdmin ? "Administration" : "Driver Tools"}
+            {isManagement ? "Management" : "Driver Tools"}
           </SidebarGroupLabel>
 
           <SidebarGroupContent>

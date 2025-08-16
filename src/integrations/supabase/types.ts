@@ -1592,6 +1592,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      user_has_management_role: {
+        Args: { company_id_param: string; user_id_param: string }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never
