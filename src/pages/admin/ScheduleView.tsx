@@ -470,52 +470,6 @@ const ScheduleView = () => {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Schedule Legend & Tips</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <h4 className="font-medium mb-3">Cell Colors</h4>
-              <div className="space-y-2">
-                <div className="flex items-center space-x-3">
-                  <div className="w-4 h-4 bg-green-100 border border-green-200 rounded"></div>
-                  <span className="text-sm">Driver assigned</span>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <div className="w-4 h-4 bg-red-100 border border-red-200 rounded"></div>
-                  <span className="text-sm">No driver assigned</span>
-                </div>
-              </div>
-            </div>
-            
-            <div>
-              <h4 className="font-medium mb-3">Status Badges</h4>
-              <div className="flex flex-wrap gap-3">
-                <div className="flex items-center space-x-2">
-                  <Badge variant="default" className="text-xs">Assigned</Badge>
-                  <span className="text-sm text-muted-foreground">Driver allocated</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Badge variant="destructive" className="text-xs">Vacant</Badge>
-                  <span className="text-sm text-muted-foreground">Needs coverage</span>
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          <div className="mt-4 p-3 bg-muted/50 rounded-lg">
-            <h4 className="font-medium mb-2">💡 Tips</h4>
-            <ul className="text-sm text-muted-foreground space-y-1">
-              <li>• Driver rates are automatically applied when assignments are made</li>
-              <li>• Changes are saved immediately when you select a driver</li>
-              <li>• Use the week navigation to plan future schedules</li>
-              <li>• Monitor coverage percentage for optimal planning</li>
-            </ul>
-          </div>
-        </CardContent>
-      </Card>
           </main>
         </SidebarInset>
       </div>
