@@ -70,27 +70,40 @@ const VanManagement = () => {
     queryFn: async () => {
       if (!profile?.company_id) return [];
       
-      const { data, error } = await supabase
+      // First get all vans
+      const { data: vansData, error: vansError } = await supabase
         .from('vans')
-        .select(`
-          *,
-          driver_profiles(
-            id,
-            profiles(first_name, last_name)
-          )
-        `)
+        .select('*')
         .eq('company_id', profile.company_id)
         .eq('is_active', true)
         .order('registration');
 
-      if (error) throw error;
-      return data.map((van: any) => ({
-        ...van,
-        assignedDriver: van.driver_profiles && van.driver_profiles.length > 0 ? {
-          id: van.driver_profiles[0].id,
-          name: `${van.driver_profiles[0].profiles.first_name} ${van.driver_profiles[0].profiles.last_name}`.trim()
-        } : null
-      }));
+      if (vansError) throw vansError;
+
+      // Then get all drivers with their assigned vans
+      const { data: driversData, error: driversError } = await supabase
+        .from('driver_profiles')
+        .select(`
+          id,
+          assigned_van_id,
+          profiles(first_name, last_name)
+        `)
+        .eq('company_id', profile.company_id)
+        .not('assigned_van_id', 'is', null);
+
+      if (driversError) throw driversError;
+
+      // Map vans with their assigned drivers
+      return vansData.map((van: any) => {
+        const assignedDriver = driversData.find(driver => driver.assigned_van_id === van.id);
+        return {
+          ...van,
+          assignedDriver: assignedDriver ? {
+            id: assignedDriver.id,
+            name: `${assignedDriver.profiles.first_name} ${assignedDriver.profiles.last_name}`.trim()
+          } : null
+        };
+      });
     },
     enabled: !!profile?.company_id,
     retry: 3,
