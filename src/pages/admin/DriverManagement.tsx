@@ -81,8 +81,6 @@ const DriverManagement = () => {
       const companyIds = profile.user_companies.map(uc => uc.company_id);
       console.log('Fetching drivers for company_ids:', companyIds);
       
-      console.log('Fetching drivers for company_ids:', companyIds);
-      
       // Use the new database function to get drivers with their profile information
       const { data: driversWithProfiles, error: driversError } = await supabase
         .rpc('get_drivers_with_profiles', { 
@@ -96,24 +94,43 @@ const DriverManagement = () => {
 
       console.log('Drivers with profiles:', driversWithProfiles);
 
-      console.log('Full query result:', { drivers, driversError });
+      // Fetch van information for assigned vans
+      const vanIds = driversWithProfiles
+        ?.filter(driver => driver.assigned_van_id)
+        .map(driver => driver.assigned_van_id) || [];
 
-      if (driversError) {
-        console.error('Error fetching drivers:', driversError);
-        throw driversError;
+      let vansData = [];
+      if (vanIds.length > 0) {
+        const { data: vans, error: vansError } = await supabase
+          .from('vans')
+          .select('id, registration, make, model')
+          .in('id', vanIds);
+
+        if (vansError) {
+          console.error('Error fetching vans:', vansError);
+        } else {
+          vansData = vans || [];
+        }
       }
 
       // Transform the data for the UI
-      return (driversWithProfiles || []).map((driver: any) => ({
-        ...driver,
-        type: 'active' as const,
-        name: `${driver.first_name || ''} ${driver.last_name || ''}`.trim() || 'Unknown',
-        email: driver.email || 'No email',
-        phone: driver.phone || '',
-        isActive: driver.is_active ?? true,
-        status: driver.first_login_completed ? 'active' : 'pending_first_login',
-        onboardingCompletedAt: driver.onboarding_completed_at
-      }));
+      return (driversWithProfiles || []).map((driver: any) => {
+        const assignedVan = driver.assigned_van_id 
+          ? vansData.find(van => van.id === driver.assigned_van_id)
+          : null;
+
+        return {
+          ...driver,
+          type: 'active' as const,
+          name: `${driver.first_name || ''} ${driver.last_name || ''}`.trim() || 'Unknown',
+          email: driver.email || 'No email',
+          phone: driver.phone || '',
+          isActive: driver.is_active ?? true,
+          status: driver.first_login_completed ? 'active' : 'pending_first_login',
+          onboardingCompletedAt: driver.onboarding_completed_at,
+          assigned_van: assignedVan
+        };
+      });
     },
     enabled: !!profile?.user_companies?.length,
     refetchInterval: 30000 // Refresh every 30 seconds for real-time updates
@@ -161,6 +178,41 @@ const DriverManagement = () => {
       setFilteredDrivers(drivers);
     }
   }, [drivers]);
+
+  // Real-time subscriptions for driver and van updates
+  React.useEffect(() => {
+    const driverProfilesChannel = supabase
+      .channel('driver_profiles_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'driver_profiles'
+        },
+        (payload) => {
+          console.log('Driver profile changed:', payload);
+          queryClient.invalidateQueries({ queryKey: ['drivers'] });
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'vans'
+        },
+        (payload) => {
+          console.log('Van data changed:', payload);
+          queryClient.invalidateQueries({ queryKey: ['drivers'] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(driverProfilesChannel);
+    };
+  }, [queryClient]);
 
   // Real-time form validation
   const validateField = (field: string, value: string) => {
