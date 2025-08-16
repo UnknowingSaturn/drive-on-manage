@@ -624,6 +624,83 @@ export type Database = {
         }
         Relationships: []
       }
+      end_of_day_reports: {
+        Row: {
+          app_screenshot: string | null
+          created_at: string
+          did_support: boolean
+          driver_id: string
+          has_company_van: boolean
+          id: string
+          name: string
+          round_1_number: string | null
+          round_2_number: string | null
+          round_3_number: string | null
+          round_4_number: string | null
+          round_end_time: string | null
+          round_start_time: string | null
+          submitted_at: string
+          successful_collections: number
+          successful_deliveries: number
+          support_parcels: number
+          total_parcels: number | null
+          updated_at: string
+          van_registration: string | null
+        }
+        Insert: {
+          app_screenshot?: string | null
+          created_at?: string
+          did_support?: boolean
+          driver_id: string
+          has_company_van?: boolean
+          id?: string
+          name: string
+          round_1_number?: string | null
+          round_2_number?: string | null
+          round_3_number?: string | null
+          round_4_number?: string | null
+          round_end_time?: string | null
+          round_start_time?: string | null
+          submitted_at?: string
+          successful_collections?: number
+          successful_deliveries?: number
+          support_parcels?: number
+          total_parcels?: number | null
+          updated_at?: string
+          van_registration?: string | null
+        }
+        Update: {
+          app_screenshot?: string | null
+          created_at?: string
+          did_support?: boolean
+          driver_id?: string
+          has_company_van?: boolean
+          id?: string
+          name?: string
+          round_1_number?: string | null
+          round_2_number?: string | null
+          round_3_number?: string | null
+          round_4_number?: string | null
+          round_end_time?: string | null
+          round_start_time?: string | null
+          submitted_at?: string
+          successful_collections?: number
+          successful_deliveries?: number
+          support_parcels?: number
+          total_parcels?: number | null
+          updated_at?: string
+          van_registration?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "end_of_day_reports_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "driver_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       eod_reports: {
         Row: {
           actual_pay: number | null
