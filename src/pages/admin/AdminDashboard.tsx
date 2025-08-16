@@ -263,71 +263,79 @@ const AdminDashboard = () => {
               </div>
             </div>
 
-            {/* Compact Active Stats Widgets */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
-              <Card className="logistics-card hover-lift">
-                <CardContent className="p-4">
-                  <div className="flex items-center space-x-3">
-                    <div className="p-2 rounded-lg bg-primary/10">
-                      <Users className="h-4 w-4 text-primary" />
+            {/* Luxury Compact Stats Widgets */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+              <Card className="group relative overflow-hidden bg-gradient-to-br from-card via-card to-card/50 border-0 shadow-lg hover:shadow-2xl transition-all duration-500 hover:-translate-y-1">
+                <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                <div className="absolute top-0 right-0 w-16 h-16 bg-primary/10 rounded-full blur-xl transform translate-x-8 -translate-y-8"></div>
+                <CardContent className="relative p-6">
+                  <div className="flex items-center space-x-4">
+                    <div className="p-3 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 border border-primary/20 group-hover:scale-110 transition-transform duration-300">
+                      <Users className="h-5 w-5 text-primary" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm text-muted-foreground truncate">Active Drivers</p>
-                      <div className="flex items-center space-x-2">
-                        <span className="text-xl font-bold text-foreground">{driversData?.active || 0}</span>
-                        <span className="text-xs text-muted-foreground">/ {driversData?.total || 0}</span>
+                      <p className="text-sm font-medium text-muted-foreground mb-1">Active Drivers</p>
+                      <div className="flex items-baseline space-x-2">
+                        <span className="text-2xl font-bold bg-gradient-to-r from-foreground to-primary bg-clip-text text-transparent">{driversData?.active || 0}</span>
+                        <span className="text-sm text-muted-foreground font-medium">/ {driversData?.total || 0}</span>
                       </div>
                     </div>
                   </div>
                 </CardContent>
               </Card>
 
-              <Card className="logistics-card hover-lift">
-                <CardContent className="p-4">
-                  <div className="flex items-center space-x-3">
-                    <div className="p-2 rounded-lg bg-primary/10">
-                      <Truck className="h-4 w-4 text-primary" />
+              <Card className="group relative overflow-hidden bg-gradient-to-br from-card via-card to-card/50 border-0 shadow-lg hover:shadow-2xl transition-all duration-500 hover:-translate-y-1">
+                <div className="absolute inset-0 bg-gradient-to-br from-secondary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                <div className="absolute top-0 right-0 w-16 h-16 bg-secondary/10 rounded-full blur-xl transform translate-x-8 -translate-y-8"></div>
+                <CardContent className="relative p-6">
+                  <div className="flex items-center space-x-4">
+                    <div className="p-3 rounded-xl bg-gradient-to-br from-secondary/20 to-secondary/10 border border-secondary/20 group-hover:scale-110 transition-transform duration-300">
+                      <Truck className="h-5 w-5 text-secondary" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm text-muted-foreground truncate">Active Vans</p>
-                      <div className="flex items-center space-x-2">
-                        <span className="text-xl font-bold text-foreground">{vansData?.active || 0}</span>
-                        <span className="text-xs text-muted-foreground">/ {vansData?.total || 0}</span>
+                      <p className="text-sm font-medium text-muted-foreground mb-1">Active Vans</p>
+                      <div className="flex items-baseline space-x-2">
+                        <span className="text-2xl font-bold bg-gradient-to-r from-foreground to-secondary bg-clip-text text-transparent">{vansData?.active || 0}</span>
+                        <span className="text-sm text-muted-foreground font-medium">/ {vansData?.total || 0}</span>
                       </div>
                     </div>
                   </div>
                 </CardContent>
               </Card>
 
-              <Card className="logistics-card hover-lift">
-                <CardContent className="p-4">
-                  <div className="flex items-center space-x-3">
-                    <div className="p-2 rounded-lg bg-primary/10">
-                      <MapPin className="h-4 w-4 text-primary" />
+              <Card className="group relative overflow-hidden bg-gradient-to-br from-card via-card to-card/50 border-0 shadow-lg hover:shadow-2xl transition-all duration-500 hover:-translate-y-1">
+                <div className="absolute inset-0 bg-gradient-to-br from-accent/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                <div className="absolute top-0 right-0 w-16 h-16 bg-accent/10 rounded-full blur-xl transform translate-x-8 -translate-y-8"></div>
+                <CardContent className="relative p-6">
+                  <div className="flex items-center space-x-4">
+                    <div className="p-3 rounded-xl bg-gradient-to-br from-accent/20 to-accent/10 border border-accent/20 group-hover:scale-110 transition-transform duration-300">
+                      <MapPin className="h-5 w-5 text-accent" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm text-muted-foreground truncate">Active Rounds</p>
-                      <div className="flex items-center space-x-2">
-                        <span className="text-xl font-bold text-foreground">{roundsData?.active || 0}</span>
-                        <span className="text-xs text-muted-foreground">/ {roundsData?.total || 0}</span>
+                      <p className="text-sm font-medium text-muted-foreground mb-1">Active Rounds</p>
+                      <div className="flex items-baseline space-x-2">
+                        <span className="text-2xl font-bold bg-gradient-to-r from-foreground to-accent bg-clip-text text-transparent">{roundsData?.active || 0}</span>
+                        <span className="text-sm text-muted-foreground font-medium">/ {roundsData?.total || 0}</span>
                       </div>
                     </div>
                   </div>
                 </CardContent>
               </Card>
 
-              <Card className="logistics-card hover-lift">
-                <CardContent className="p-4">
-                  <div className="flex items-center space-x-3">
-                    <div className="p-2 rounded-lg bg-primary/10">
-                      <FileText className="h-4 w-4 text-primary" />
+              <Card className="group relative overflow-hidden bg-gradient-to-br from-card via-card to-card/50 border-0 shadow-lg hover:shadow-2xl transition-all duration-500 hover:-translate-y-1">
+                <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                <div className="absolute top-0 right-0 w-16 h-16 bg-primary/10 rounded-full blur-xl transform translate-x-8 -translate-y-8"></div>
+                <CardContent className="relative p-6">
+                  <div className="flex items-center space-x-4">
+                    <div className="p-3 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 border border-primary/20 group-hover:scale-110 transition-transform duration-300">
+                      <FileText className="h-5 w-5 text-primary" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm text-muted-foreground truncate">EOD Today</p>
-                      <div className="flex items-center space-x-2">
-                        <span className="text-xl font-bold text-foreground">{eodData?.today || 0}</span>
+                      <p className="text-sm font-medium text-muted-foreground mb-1">EOD Today</p>
+                      <div className="flex items-baseline space-x-2">
+                        <span className="text-2xl font-bold bg-gradient-to-r from-foreground to-primary bg-clip-text text-transparent">{eodData?.today || 0}</span>
                         {(eodData?.pending || 0) > 0 && (
-                          <Badge variant="outline" className="text-xs px-1 py-0 h-4 bg-warning/20 text-warning border-warning">
+                          <Badge className="bg-gradient-to-r from-warning/20 to-warning/10 text-warning border-warning/30 text-xs px-2 py-0.5 h-5 shadow-sm">
                             {eodData.pending}
                           </Badge>
                         )}
@@ -338,176 +346,197 @@ const AdminDashboard = () => {
               </Card>
             </div>
 
-            {/* Main Dashboard Widgets Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
+            {/* Luxury Main Dashboard Widgets Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
               
               {/* Company Overview Widget */}
-              <Card className="logistics-card">
-                <CardHeader>
-                  <CardTitle className="flex items-center text-foreground">
-                    <Users className="h-5 w-5 mr-2 text-primary" />
+              <Card className="group relative overflow-hidden bg-gradient-to-br from-card via-card/95 to-card/90 border-0 shadow-xl hover:shadow-2xl transition-all duration-500 hover:-translate-y-2">
+                <div className="absolute inset-0 bg-gradient-to-br from-primary/3 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                <div className="absolute top-0 right-0 w-20 h-20 bg-primary/5 rounded-full blur-2xl transform translate-x-10 -translate-y-10"></div>
+                <CardHeader className="relative">
+                  <CardTitle className="flex items-center text-foreground text-lg font-semibold">
+                    <div className="p-2 rounded-lg bg-gradient-to-br from-primary/20 to-primary/10 mr-3 group-hover:scale-110 transition-transform duration-300">
+                      <Users className="h-5 w-5 text-primary" />
+                    </div>
                     Company Overview
                   </CardTitle>
-                  <CardDescription>Operations at a glance</CardDescription>
+                  <CardDescription className="text-muted-foreground">Operations at a glance</CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-muted-foreground">Active Drivers</span>
-                      <span className="font-semibold text-foreground">{driversData?.active || 0}</span>
+                <CardContent className="relative">
+                  <div className="space-y-5">
+                    <div className="flex justify-between items-center p-3 rounded-xl bg-gradient-to-r from-muted/30 to-muted/20 backdrop-blur-sm">
+                      <span className="text-sm font-medium text-muted-foreground">Active Drivers</span>
+                      <span className="text-lg font-bold bg-gradient-to-r from-foreground to-primary bg-clip-text text-transparent">{driversData?.active || 0}</span>
                     </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-muted-foreground">Active Rounds</span>
-                      <span className="font-semibold text-foreground">{roundsData?.active || 0}</span>
+                    <div className="flex justify-between items-center p-3 rounded-xl bg-gradient-to-r from-muted/30 to-muted/20 backdrop-blur-sm">
+                      <span className="text-sm font-medium text-muted-foreground">Active Rounds</span>
+                      <span className="text-lg font-bold bg-gradient-to-r from-foreground to-accent bg-clip-text text-transparent">{roundsData?.active || 0}</span>
                     </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-muted-foreground">EOD Reports Today</span>
-                      <span className="font-semibold text-foreground">{eodData?.today || 0}</span>
+                    <div className="flex justify-between items-center p-3 rounded-xl bg-gradient-to-r from-muted/30 to-muted/20 backdrop-blur-sm">
+                      <span className="text-sm font-medium text-muted-foreground">EOD Reports Today</span>
+                      <span className="text-lg font-bold bg-gradient-to-r from-foreground to-secondary bg-clip-text text-transparent">{eodData?.today || 0}</span>
                     </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-muted-foreground">Pending Approvals</span>
-                      <span className="font-semibold text-warning">{eodData?.pending || 0}</span>
+                    <div className="flex justify-between items-center p-3 rounded-xl bg-gradient-to-r from-warning/10 to-warning/5 backdrop-blur-sm border border-warning/20">
+                      <span className="text-sm font-medium text-muted-foreground">Pending Approvals</span>
+                      <span className="text-lg font-bold text-warning">{eodData?.pending || 0}</span>
                     </div>
                   </div>
                 </CardContent>
               </Card>
 
               {/* Driver Performance Widget */}
-              <Card className="logistics-card">
-                <CardHeader>
-                  <CardTitle className="flex items-center text-foreground">
-                    <TrendingUp className="h-5 w-5 mr-2 text-primary" />
+              <Card className="group relative overflow-hidden bg-gradient-to-br from-card via-card/95 to-card/90 border-0 shadow-xl hover:shadow-2xl transition-all duration-500 hover:-translate-y-2">
+                <div className="absolute inset-0 bg-gradient-to-br from-secondary/3 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                <div className="absolute top-0 right-0 w-20 h-20 bg-secondary/5 rounded-full blur-2xl transform translate-x-10 -translate-y-10"></div>
+                <CardHeader className="relative">
+                  <CardTitle className="flex items-center text-foreground text-lg font-semibold">
+                    <div className="p-2 rounded-lg bg-gradient-to-br from-secondary/20 to-secondary/10 mr-3 group-hover:scale-110 transition-transform duration-300">
+                      <TrendingUp className="h-5 w-5 text-secondary" />
+                    </div>
                     Driver Performance
                   </CardTitle>
-                  <CardDescription>Weekly performance metrics</CardDescription>
+                  <CardDescription className="text-muted-foreground">Weekly performance metrics</CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-muted-foreground">Total Deliveries</span>
-                      <span className="font-semibold text-foreground">{performanceData?.totalDelivered || 0}</span>
+                <CardContent className="relative">
+                  <div className="space-y-5">
+                    <div className="flex justify-between items-center p-3 rounded-xl bg-gradient-to-r from-muted/30 to-muted/20 backdrop-blur-sm">
+                      <span className="text-sm font-medium text-muted-foreground">Total Deliveries</span>
+                      <span className="text-lg font-bold bg-gradient-to-r from-foreground to-primary bg-clip-text text-transparent">{performanceData?.totalDelivered || 0}</span>
                     </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-muted-foreground">Success Rate</span>
-                      <span className="font-semibold text-success">98.5%</span>
+                    <div className="flex justify-between items-center p-3 rounded-xl bg-gradient-to-r from-success/10 to-success/5 backdrop-blur-sm border border-success/20">
+                      <span className="text-sm font-medium text-muted-foreground">Success Rate</span>
+                      <span className="text-lg font-bold text-success">98.5%</span>
                     </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-muted-foreground">Support Parcels</span>
-                      <span className="font-semibold text-foreground">127</span>
+                    <div className="flex justify-between items-center p-3 rounded-xl bg-gradient-to-r from-muted/30 to-muted/20 backdrop-blur-sm">
+                      <span className="text-sm font-medium text-muted-foreground">Support Parcels</span>
+                      <span className="text-lg font-bold bg-gradient-to-r from-foreground to-accent bg-clip-text text-transparent">127</span>
                     </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-muted-foreground">Avg. Daily Rate</span>
-                      <span className="font-semibold text-foreground">{performanceData?.avgDeliveryRate || 0}</span>
+                    <div className="flex justify-between items-center p-3 rounded-xl bg-gradient-to-r from-muted/30 to-muted/20 backdrop-blur-sm">
+                      <span className="text-sm font-medium text-muted-foreground">Avg. Daily Rate</span>
+                      <span className="text-lg font-bold bg-gradient-to-r from-foreground to-secondary bg-clip-text text-transparent">{performanceData?.avgDeliveryRate || 0}</span>
                     </div>
                   </div>
                 </CardContent>
               </Card>
 
               {/* Finance Overview Widget */}
-              <Card className="logistics-card">
-                <CardHeader>
-                  <CardTitle className="flex items-center text-foreground">
-                    <DollarSign className="h-5 w-5 mr-2 text-primary" />
+              <Card className="group relative overflow-hidden bg-gradient-to-br from-card via-card/95 to-card/90 border-0 shadow-xl hover:shadow-2xl transition-all duration-500 hover:-translate-y-2">
+                <div className="absolute inset-0 bg-gradient-to-br from-accent/3 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                <div className="absolute top-0 right-0 w-20 h-20 bg-accent/5 rounded-full blur-2xl transform translate-x-10 -translate-y-10"></div>
+                <CardHeader className="relative">
+                  <CardTitle className="flex items-center text-foreground text-lg font-semibold">
+                    <div className="p-2 rounded-lg bg-gradient-to-br from-accent/20 to-accent/10 mr-3 group-hover:scale-110 transition-transform duration-300">
+                      <DollarSign className="h-5 w-5 text-accent" />
+                    </div>
                     Finance Overview
                   </CardTitle>
-                  <CardDescription>Monthly financial summary</CardDescription>
+                  <CardDescription className="text-muted-foreground">Monthly financial summary</CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-muted-foreground">Monthly Invoices</span>
-                      <span className="font-semibold text-foreground">£{performanceData?.totalPay?.toFixed(2) || '0.00'}</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-muted-foreground">Expenses</span>
-                      <span className="font-semibold text-destructive">£2,450.00</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-muted-foreground">Net P&L</span>
-                      <span className="font-semibold text-success">+£8,750.00</span>
-                    </div>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      className="w-full"
-                      onClick={() => navigate('/admin/finance')}
-                    >
-                      View Finance
-                    </Button>
+                <CardContent className="relative space-y-5">
+                  <div className="flex justify-between items-center p-3 rounded-xl bg-gradient-to-r from-muted/30 to-muted/20 backdrop-blur-sm">
+                    <span className="text-sm font-medium text-muted-foreground">Monthly Invoices</span>
+                    <span className="text-lg font-bold bg-gradient-to-r from-foreground to-primary bg-clip-text text-transparent">£{performanceData?.totalPay?.toFixed(2) || '0.00'}</span>
                   </div>
+                  <div className="flex justify-between items-center p-3 rounded-xl bg-gradient-to-r from-destructive/10 to-destructive/5 backdrop-blur-sm border border-destructive/20">
+                    <span className="text-sm font-medium text-muted-foreground">Expenses</span>
+                    <span className="text-lg font-bold text-destructive">£2,450.00</span>
+                  </div>
+                  <div className="flex justify-between items-center p-3 rounded-xl bg-gradient-to-r from-success/10 to-success/5 backdrop-blur-sm border border-success/20">
+                    <span className="text-sm font-medium text-muted-foreground">Net P&L</span>
+                    <span className="text-lg font-bold text-success">+£8,750.00</span>
+                  </div>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="w-full mt-4 bg-gradient-to-r from-accent/10 to-accent/5 border-accent/30 hover:from-accent/20 hover:to-accent/10 transition-all duration-300"
+                    onClick={() => navigate('/admin/finance')}
+                  >
+                    <DollarSign className="h-4 w-4 mr-2" />
+                    View Finance
+                  </Button>
                 </CardContent>
               </Card>
             </div>
 
-            {/* Second Row Widgets */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
+            {/* Luxury Second Row Widgets */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8">
               
               {/* Schedule & Round Assignment Widget */}
-              <Card className="logistics-card">
-                <CardHeader>
-                  <CardTitle className="flex items-center text-foreground">
-                    <Calendar className="h-5 w-5 mr-2 text-primary" />
+              <Card className="group relative overflow-hidden bg-gradient-to-br from-card via-card/95 to-card/90 border-0 shadow-xl hover:shadow-2xl transition-all duration-500 hover:-translate-y-2">
+                <div className="absolute inset-0 bg-gradient-to-br from-primary/3 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                <div className="absolute top-0 right-0 w-24 h-24 bg-primary/5 rounded-full blur-2xl transform translate-x-12 -translate-y-12"></div>
+                <CardHeader className="relative">
+                  <CardTitle className="flex items-center text-foreground text-lg font-semibold">
+                    <div className="p-2 rounded-lg bg-gradient-to-br from-primary/20 to-primary/10 mr-3 group-hover:scale-110 transition-transform duration-300">
+                      <Calendar className="h-5 w-5 text-primary" />
+                    </div>
                     Schedule & Routes
                   </CardTitle>
-                  <CardDescription>Today's assignments and planning</CardDescription>
+                  <CardDescription className="text-muted-foreground">Today's assignments and planning</CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    <div className="flex justify-between items-center p-3 rounded-lg bg-muted/50">
+                <CardContent className="relative">
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center p-4 rounded-xl bg-gradient-to-r from-success/10 to-success/5 backdrop-blur-sm border border-success/20">
                       <div>
-                        <p className="font-medium text-foreground">Today's Assignments</p>
+                        <p className="font-semibold text-foreground">Today's Assignments</p>
                         <p className="text-sm text-muted-foreground">{driversData?.active || 0} drivers scheduled</p>
                       </div>
-                      <CheckCircle className="h-5 w-5 text-success" />
+                      <CheckCircle className="h-6 w-6 text-success" />
                     </div>
-                    <div className="flex justify-between items-center p-3 rounded-lg bg-muted/50">
+                    <div className="flex justify-between items-center p-4 rounded-xl bg-gradient-to-r from-warning/10 to-warning/5 backdrop-blur-sm border border-warning/20">
                       <div>
-                        <p className="font-medium text-foreground">Unassigned Rounds</p>
+                        <p className="font-semibold text-foreground">Unassigned Rounds</p>
                         <p className="text-sm text-muted-foreground">2 rounds need assignment</p>
                       </div>
-                      <AlertTriangle className="h-5 w-5 text-warning" />
+                      <AlertTriangle className="h-6 w-6 text-warning" />
                     </div>
                     <Button 
                       variant="outline" 
-                      className="w-full"
+                      className="w-full mt-4 bg-gradient-to-r from-primary/10 to-primary/5 border-primary/30 hover:from-primary/20 hover:to-primary/10 transition-all duration-300"
                       onClick={() => navigate('/admin/schedule')}
                     >
+                      <Calendar className="h-4 w-4 mr-2" />
                       Manage Schedule
                     </Button>
                   </div>
                 </CardContent>
               </Card>
 
-              {/* Pending Onboardings / Driver Status Widget */}
-              <Card className="logistics-card">
-                <CardHeader>
-                  <CardTitle className="flex items-center text-foreground">
-                    <FileText className="h-5 w-5 mr-2 text-primary" />
+              {/* Driver Status Widget */}
+              <Card className="group relative overflow-hidden bg-gradient-to-br from-card via-card/95 to-card/90 border-0 shadow-xl hover:shadow-2xl transition-all duration-500 hover:-translate-y-2">
+                <div className="absolute inset-0 bg-gradient-to-br from-secondary/3 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                <div className="absolute top-0 right-0 w-24 h-24 bg-secondary/5 rounded-full blur-2xl transform translate-x-12 -translate-y-12"></div>
+                <CardHeader className="relative">
+                  <CardTitle className="flex items-center text-foreground text-lg font-semibold">
+                    <div className="p-2 rounded-lg bg-gradient-to-br from-secondary/20 to-secondary/10 mr-3 group-hover:scale-110 transition-transform duration-300">
+                      <FileText className="h-5 w-5 text-secondary" />
+                    </div>
                     Driver Status
                   </CardTitle>
-                  <CardDescription>Onboarding and document status</CardDescription>
+                  <CardDescription className="text-muted-foreground">Onboarding and document status</CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    <div className="flex justify-between items-center p-3 rounded-lg bg-muted/50">
+                <CardContent className="relative">
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center p-4 rounded-xl bg-gradient-to-r from-warning/10 to-warning/5 backdrop-blur-sm border border-warning/20">
                       <div>
-                        <p className="font-medium text-foreground">Pending Onboarding</p>
+                        <p className="font-semibold text-foreground">Pending Onboarding</p>
                         <p className="text-sm text-muted-foreground">3 drivers need completion</p>
                       </div>
-                      <Badge variant="outline" className="bg-warning/20 text-warning border-warning">3</Badge>
+                      <Badge className="bg-gradient-to-r from-warning/30 to-warning/20 text-warning border-warning/40 px-3 py-1 text-sm font-medium shadow-sm">3</Badge>
                     </div>
-                    <div className="flex justify-between items-center p-3 rounded-lg bg-muted/50">
+                    <div className="flex justify-between items-center p-4 rounded-xl bg-gradient-to-r from-destructive/10 to-destructive/5 backdrop-blur-sm border border-destructive/20">
                       <div>
-                        <p className="font-medium text-foreground">Document Expiry</p>
+                        <p className="font-semibold text-foreground">Document Expiry</p>
                         <p className="text-sm text-muted-foreground">1 license expires soon</p>
                       </div>
-                      <Badge variant="outline" className="bg-destructive/20 text-destructive border-destructive">1</Badge>
+                      <Badge className="bg-gradient-to-r from-destructive/30 to-destructive/20 text-destructive border-destructive/40 px-3 py-1 text-sm font-medium shadow-sm">1</Badge>
                     </div>
                     <Button 
                       variant="outline" 
-                      className="w-full"
+                      className="w-full mt-4 bg-gradient-to-r from-secondary/10 to-secondary/5 border-secondary/30 hover:from-secondary/20 hover:to-secondary/10 transition-all duration-300"
                       onClick={() => navigate('/admin/drivers')}
                     >
+                      <Users className="h-4 w-4 mr-2" />
                       Manage Drivers
                     </Button>
                   </div>
@@ -515,52 +544,62 @@ const AdminDashboard = () => {
               </Card>
             </div>
 
-            {/* News & Chat Manager Widget */}
-            <Card className="logistics-card">
-              <CardHeader>
-                <CardTitle className="flex items-center text-foreground">
-                  <Activity className="h-5 w-5 mr-2 text-primary" />
+            {/* Luxury News & Communication Widget */}
+            <Card className="group relative overflow-hidden bg-gradient-to-br from-card via-card/95 to-card/90 border-0 shadow-xl hover:shadow-2xl transition-all duration-500 hover:-translate-y-2">
+              <div className="absolute inset-0 bg-gradient-to-br from-accent/3 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+              <div className="absolute top-0 right-0 w-32 h-32 bg-accent/5 rounded-full blur-3xl transform translate-x-16 -translate-y-16"></div>
+              <div className="absolute bottom-0 left-0 w-24 h-24 bg-primary/5 rounded-full blur-2xl transform -translate-x-12 translate-y-12"></div>
+              
+              <CardHeader className="relative">
+                <CardTitle className="flex items-center text-foreground text-lg font-semibold">
+                  <div className="p-2 rounded-lg bg-gradient-to-br from-accent/20 to-accent/10 mr-3 group-hover:scale-110 transition-transform duration-300">
+                    <Activity className="h-5 w-5 text-accent" />
+                  </div>
                   News & Communication
                 </CardTitle>
-                <CardDescription>Company announcements and chat management</CardDescription>
+                <CardDescription className="text-muted-foreground">Company announcements and chat management</CardDescription>
               </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-3">
-                    <h4 className="font-medium text-foreground">Recent Activity</h4>
-                    {eodData?.recent?.slice(0, 3).map((report, index) => (
-                      <div key={report.id} className="flex items-center space-x-3 p-2 rounded bg-muted/30">
-                        <div className="w-2 h-2 rounded-full bg-primary"></div>
-                        <div className="flex-1">
-                          <p className="text-sm font-medium text-foreground">{report.driver_name}</p>
-                          <p className="text-xs text-muted-foreground">
-                            Submitted EOD: {report.parcels_delivered} parcels
-                          </p>
+              <CardContent className="relative">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-4">
+                    <h4 className="font-semibold text-foreground text-base">Recent Activity</h4>
+                    <div className="space-y-3">
+                      {eodData?.recent?.slice(0, 3).map((report, index) => (
+                        <div key={report.id} className="flex items-center space-x-3 p-3 rounded-xl bg-gradient-to-r from-muted/30 to-muted/20 backdrop-blur-sm border border-muted/30">
+                          <div className="w-3 h-3 rounded-full bg-gradient-to-r from-primary to-primary/70 animate-pulse"></div>
+                          <div className="flex-1">
+                            <p className="text-sm font-semibold text-foreground">{report.driver_name}</p>
+                            <p className="text-xs text-muted-foreground">
+                              Submitted EOD: {report.parcels_delivered} parcels
+                            </p>
+                          </div>
+                          {getStatusBadge(report.status)}
                         </div>
-                        {getStatusBadge(report.status)}
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
-                  <div className="space-y-3">
-                    <h4 className="font-medium text-foreground">Quick Actions</h4>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      className="w-full justify-start"
-                      onClick={() => navigate('/admin/announcements')}
-                    >
-                      <FileText className="h-4 w-4 mr-2" />
-                      Create Announcement
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      className="w-full justify-start"
-                      onClick={() => navigate('/admin/chat')}
-                    >
-                      <Activity className="h-4 w-4 mr-2" />
-                      View Chat History
-                    </Button>
+                  <div className="space-y-4">
+                    <h4 className="font-semibold text-foreground text-base">Quick Actions</h4>
+                    <div className="space-y-3">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="w-full justify-start bg-gradient-to-r from-primary/10 to-primary/5 border-primary/30 hover:from-primary/20 hover:to-primary/10 transition-all duration-300"
+                        onClick={() => navigate('/admin/announcements')}
+                      >
+                        <FileText className="h-4 w-4 mr-2" />
+                        Create Announcement
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="w-full justify-start bg-gradient-to-r from-accent/10 to-accent/5 border-accent/30 hover:from-accent/20 hover:to-accent/10 transition-all duration-300"
+                        onClick={() => navigate('/admin/chat')}
+                      >
+                        <Activity className="h-4 w-4 mr-2" />
+                        View Chat History
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </CardContent>
