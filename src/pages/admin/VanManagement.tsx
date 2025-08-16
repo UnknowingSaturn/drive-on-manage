@@ -87,17 +87,21 @@ const VanManagement = () => {
 
       if (vansError) throw vansError;
 
-      // Then get all drivers with their assigned vans
+      // Then get all drivers with their assigned vans using a proper JOIN
       const { data: driversData, error: driversError } = await supabase
         .from('driver_profiles')
         .select(`
           id,
           assigned_van_id,
-          profiles(first_name, last_name)
+          user_id,
+          profiles!inner(first_name, last_name)
         `)
         .eq('company_id', profile.company_id);
 
-      if (driversError) throw driversError;
+      if (driversError) {
+        console.error('Error fetching drivers:', driversError);
+        throw driversError;
+      }
 
       console.log('All drivers data for van mapping:', JSON.stringify(driversData, null, 2));
 
