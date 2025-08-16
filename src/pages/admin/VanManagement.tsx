@@ -30,7 +30,7 @@ const VanManagement = () => {
   const [editingVan, setEditingVan] = useState<any>(null);
   const [assigningVan, setAssigningVan] = useState<any>(null);
   const [vanToDelete, setVanToDelete] = useState<any>(null);
-  const [selectedDriverId, setSelectedDriverId] = useState<string>('');
+  const [selectedDriverId, setSelectedDriverId] = useState<string>('UNASSIGNED');
   const [formData, setFormData] = useState({
     registration: '',
     make: '',
@@ -58,7 +58,7 @@ const VanManagement = () => {
       if (error) throw error;
       return data.map(driver => ({
         ...driver,
-        name: `${driver.profiles.first_name} ${driver.profiles.last_name}`.trim()
+        name: `${driver.profiles?.first_name || ''} ${driver.profiles?.last_name || ''}`.trim()
       }));
     },
     enabled: !!profile?.company_id
@@ -224,22 +224,31 @@ const VanManagement = () => {
 
   // Assign van to driver mutation
   const assignVanMutation = useMutation({
-    mutationFn: async ({ vanId, driverId }: { vanId: string, driverId: string | null }) => {
-      // First, unassign any other vans from this driver
-      if (driverId) {
+    mutationFn: async ({ vanId, driverId }: { vanId: string, driverId: string }) => {
+      // First, unassign any other vans from this driver if assigning
+      if (driverId !== 'UNASSIGNED') {
+        await supabase
+          .from('driver_profiles')
+          .update({ assigned_van_id: null })
+          .eq('id', driverId);
+      }
+
+      // Then assign the van to the selected driver (or unassign if UNASSIGNED)
+      if (driverId === 'UNASSIGNED') {
+        // Unassign the van from any driver
         await supabase
           .from('driver_profiles')
           .update({ assigned_van_id: null })
           .eq('assigned_van_id', vanId);
+      } else {
+        // Assign the van to the selected driver
+        const { error } = await supabase
+          .from('driver_profiles')
+          .update({ assigned_van_id: vanId })
+          .eq('id', driverId);
+
+        if (error) throw error;
       }
-
-      // Then assign the van to the selected driver (or unassign if null)
-      const { error } = await supabase
-        .from('driver_profiles')
-        .update({ assigned_van_id: driverId ? vanId : null })
-        .eq('id', driverId || '');
-
-      if (error) throw error;
     },
     onSuccess: () => {
       toast({
@@ -248,7 +257,7 @@ const VanManagement = () => {
       });
       setIsAssignDialogOpen(false);
       setAssigningVan(null);
-      setSelectedDriverId('');
+      setSelectedDriverId('UNASSIGNED');
       queryClient.invalidateQueries({ queryKey: ['vans'] });
       queryClient.invalidateQueries({ queryKey: ['drivers'] });
     },
@@ -284,7 +293,7 @@ const VanManagement = () => {
 
   const handleAssignVan = (van: any) => {
     setAssigningVan(van);
-    setSelectedDriverId(van.assignedDriver?.id || '');
+    setSelectedDriverId(van.assignedDriver?.id || 'UNASSIGNED');
     setIsAssignDialogOpen(true);
   };
 
@@ -779,7 +788,7 @@ const VanManagement = () => {
                     <SelectValue placeholder="Select a driver" />
                   </SelectTrigger>
                   <SelectContent className="bg-popover border border-border shadow-md z-50">
-                    <SelectItem value="">Unassigned</SelectItem>
+                    <SelectItem value="UNASSIGNED">Unassigned</SelectItem>
                     {drivers?.filter(driver => !driver.assigned_van_id || driver.id === assigningVan?.assignedDriver?.id).map((driver) => (
                       <SelectItem key={driver.id} value={driver.id}>
                         {driver.name}
@@ -800,7 +809,7 @@ const VanManagement = () => {
                 <Button 
                   onClick={() => assigningVan && assignVanMutation.mutate({ 
                     vanId: assigningVan.id, 
-                    driverId: selectedDriverId || null 
+                    driverId: selectedDriverId
                   })}
                   disabled={assignVanMutation.isPending}
                 >
