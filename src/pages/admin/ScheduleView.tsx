@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Calendar, ChevronLeft, ChevronRight, User, MapPin, Save, AlertCircle } from 'lucide-react';
+import { Calendar, ChevronLeft, ChevronRight, User, MapPin, Save, AlertCircle, Edit, Trash2 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { format, startOfWeek, addDays, addWeeks, subWeeks } from 'date-fns';
@@ -240,6 +240,32 @@ const ScheduleView = () => {
   const navigateWeek = (direction: 'prev' | 'next') => {
     setCurrentWeek(prev => direction === 'prev' ? subWeeks(prev, 1) : addWeeks(prev, 1));
   };
+
+  // Delete round mutation
+  const deleteRoundMutation = useMutation({
+    mutationFn: async (roundId: string) => {
+      const { error } = await supabase
+        .from('rounds')
+        .update({ is_active: false })
+        .eq('id', roundId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({
+        title: "Round deleted",
+        description: "Round has been deactivated successfully."
+      });
+      queryClient.invalidateQueries({ queryKey: ['rounds'] });
+      queryClient.invalidateQueries({ queryKey: ['schedules'] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error deleting round",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+  });
   return <SidebarProvider>
       <div className="min-h-screen flex w-full bg-background">
         <AppSidebar />
@@ -364,13 +390,42 @@ const ScheduleView = () => {
                   {rounds?.map(round => <div key={round.id} className="grid grid-cols-8 gap-2 p-2 border rounded-lg hover:bg-muted/50">
                       {/* Round Info Column */}
                       <div className="flex flex-col justify-center">
-                        <div className="font-semibold text-sm">Round {round.round_number}</div>
-                        <div className="text-xs text-muted-foreground truncate" title={round.description}>
-                          {round.description || 'No description'}
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="font-semibold text-sm">Round {round.round_number}</div>
+                            <div className="text-xs text-muted-foreground truncate" title={round.description}>
+                              {round.description || 'No description'}
+                            </div>
+                            {round.base_rate && <Badge variant="outline" className="text-xs w-fit mt-1">
+                                £{round.base_rate}/day
+                              </Badge>}
+                          </div>
+                          <div className="flex gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 w-6 p-0"
+                              onClick={() => {
+                                // Navigate to round edit - you can implement this
+                                toast({
+                                  title: "Edit functionality",
+                                  description: "Round editing can be implemented here"
+                                });
+                              }}
+                            >
+                              <Edit className="h-3 w-3" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 w-6 p-0 text-destructive hover:text-destructive"
+                              onClick={() => deleteRoundMutation.mutate(round.id)}
+                              disabled={deleteRoundMutation.isPending}
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </div>
                         </div>
-                        {round.base_rate && <Badge variant="outline" className="text-xs w-fit mt-1">
-                            £{round.base_rate}/day
-                          </Badge>}
                       </div>
 
                       {/* Day Assignment Columns */}
@@ -379,7 +434,7 @@ const ScheduleView = () => {
                         const assignment = schedule[round.id]?.[dayKey];
                         const status = getAssignmentStatus(round.id, dayKey);
                         const cellBgColor = getCellBackgroundColor(round.id, dayKey);
-                        return <div key={dayIndex} className={`p-2 rounded border ${cellBgColor} min-h-[80px]`}>
+                        return <div key={dayIndex} className={`p-2 rounded border ${cellBgColor} min-h-[60px]`}>
                             <Select value={assignment?.driver_id || '__unassigned__'} onValueChange={value => handleAssignment(round.id, dayKey, value === '__unassigned__' ? null : value)} disabled={saveScheduleMutation.isPending}>
                               <SelectTrigger className="w-full text-xs h-auto p-1">
                                 <SelectValue placeholder="Select" />
@@ -405,15 +460,6 @@ const ScheduleView = () => {
                                 <div className="text-xs font-medium truncate" title={getDriverName(assignment)}>
                                   {getDriverName(assignment)}
                                 </div>
-                                <Badge variant="default" className="text-xs">
-                                  Assigned
-                                </Badge>
-                              </div>}
-                            
-                            {!assignment && <div className="mt-1 text-center">
-                                <Badge variant="destructive" className="text-xs">
-                                  Open
-                                </Badge>
                               </div>}
                           </div>;
                       })}
