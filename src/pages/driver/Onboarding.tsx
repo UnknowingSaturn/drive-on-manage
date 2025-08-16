@@ -167,6 +167,8 @@ const DriverOnboarding = () => {
   // Complete onboarding mutation
   const completeOnboardingMutation = useMutation({
     mutationFn: async (data: OnboardingFormData) => {
+      if (!user?.id) throw new Error('User not authenticated');
+
       // Update profile first
       const { error: profileError } = await supabase
         .from('profiles')
@@ -175,28 +177,62 @@ const DriverOnboarding = () => {
           last_name: data.lastName,
           phone: data.phone
         })
-        .eq('user_id', user?.id);
+        .eq('user_id', user.id);
 
       if (profileError) throw profileError;
 
-      // Update driver profile
-      const { error: driverError } = await supabase
-        .from('driver_profiles')
-        .update({
-          driving_license_number: data.licenseNumber,
-          license_expiry: data.licenseExpiry,
-          emergency_contact_name: data.emergencyContactName || null,
-          emergency_contact_phone: data.emergencyContactPhone || null,
-          emergency_contact_relation: data.emergencyContactRelation || null,
-          vehicle_notes: data.vehicleNotes || null,
-          first_login_completed: true,
-          onboarding_completed_at: new Date().toISOString(),
-          requires_onboarding: false,
-          status: 'active'
-        })
-        .eq('user_id', user!.id);
+      // Check if driver profile exists, if not create it
+      let driverProfileExists = !!driverProfile;
+      
+      if (!driverProfileExists) {
+        // Get the user's company association
+        const { data: userCompany, error: userCompanyError } = await supabase
+          .from('user_companies')
+          .select('company_id')
+          .eq('user_id', user.id)
+          .single();
 
-      if (driverError) throw driverError;
+        if (userCompanyError) throw new Error('No company association found. Please contact your administrator.');
+
+        // Create the driver profile
+        const { error: createError } = await supabase
+          .from('driver_profiles')
+          .insert({
+            user_id: user.id,
+            company_id: userCompany.company_id,
+            driving_license_number: data.licenseNumber,
+            license_expiry: data.licenseExpiry,
+            emergency_contact_name: data.emergencyContactName || null,
+            emergency_contact_phone: data.emergencyContactPhone || null,
+            emergency_contact_relation: data.emergencyContactRelation || null,
+            vehicle_notes: data.vehicleNotes || null,
+            first_login_completed: true,
+            onboarding_completed_at: new Date().toISOString(),
+            requires_onboarding: false,
+            status: 'active'
+          });
+
+        if (createError) throw createError;
+      } else {
+        // Update existing driver profile
+        const { error: driverError } = await supabase
+          .from('driver_profiles')
+          .update({
+            driving_license_number: data.licenseNumber,
+            license_expiry: data.licenseExpiry,
+            emergency_contact_name: data.emergencyContactName || null,
+            emergency_contact_phone: data.emergencyContactPhone || null,
+            emergency_contact_relation: data.emergencyContactRelation || null,
+            vehicle_notes: data.vehicleNotes || null,
+            first_login_completed: true,
+            onboarding_completed_at: new Date().toISOString(),
+            requires_onboarding: false,
+            status: 'active'
+          })
+          .eq('user_id', user.id);
+
+        if (driverError) throw driverError;
+      }
     },
     onSuccess: () => {
       toast({
