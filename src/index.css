@@ -4,173 +4,106 @@
 
 @layer base {
   :root {
-    /* LogiFlow Dark Theme */
-    --background: 210 11% 3%;
-    --foreground: 210 40% 98%;
+    /* Modern SaaS Light Theme */
+    --background: 0 0% 100%;
+    --foreground: 240 10% 3.9%;
 
-    --card: 210 11% 6%;
-    --card-foreground: 210 40% 98%;
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 3.9%;
 
-    --popover: 210 11% 6%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 3.9%;
 
-    --primary: 25 95% 53%;
-    --primary-foreground: 210 11% 3%;
-    --primary-glow: 25 100% 60%;
+    --primary: 262.1 83.3% 57.8%;
+    --primary-foreground: 210 20% 98%;
+    --primary-light: 262.1 83.3% 67.8%;
 
-    --secondary: 210 40% 10%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 220 14.3% 95.9%;
+    --secondary-foreground: 220.9 39.3% 11%;
 
-    --muted: 210 40% 8%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --muted: 220 14.3% 95.9%;
+    --muted-foreground: 220 8.9% 46.1%;
 
-    --accent: 210 40% 12%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 220 14.3% 95.9%;
+    --accent-foreground: 220.9 39.3% 11%;
 
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 72.2% 50.6%;
+    --destructive-foreground: 210 20% 98%;
 
-    --border: 210 40% 15%;
-    --input: 210 40% 15%;
-    --ring: 25 95% 53%;
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 262.1 83.3% 57.8%;
 
-    --success: 142 71% 45%;
-    --warning: 38 92% 50%;
-    --info: 217 91% 60%;
+    --success: 142.1 76.2% 36.3%;
+    --warning: 47.9 95.8% 53.1%;
+    --info: 199.89 89.47% 48.04%;
 
-    --radius: 0.75rem;
+    --radius: 0.5rem;
 
-    /* LogiFlow Brand Gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-glow)));
-    --gradient-logistics: linear-gradient(135deg, hsl(25 95% 53%), hsl(45 95% 55%), hsl(25 95% 53%));
-    --gradient-dark: linear-gradient(135deg, hsl(210 11% 6%), hsl(210 40% 10%));
-    --gradient-subtle: linear-gradient(180deg, hsl(210 11% 3%), hsl(210 11% 6%));
+    /* Professional Shadows */
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    --shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
 
-    /* Logistics Shadows */
-    --shadow-logistics: 0 10px 40px -10px hsl(var(--primary) / 0.3);
-    --shadow-card: 0 4px 20px -4px hsl(210 11% 0% / 0.5);
-    --shadow-glow: 0 0 30px hsl(var(--primary-glow) / 0.2);
-
-    /* Animation Variables */
-    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    --transition-logistics: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    /* Smooth Transitions */
+    --transition-all: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-colors: color, background-color, border-color, text-decoration-color, fill, stroke 0.15s ease-in-out;
 
     /* Sidebar Variables */
-    --sidebar-background: 210 11% 4%;
-    --sidebar-foreground: 210 40% 98%;
-    --sidebar-primary: 25 95% 53%;
-    --sidebar-primary-foreground: 210 11% 3%;
-    --sidebar-accent: 210 40% 12%;
-    --sidebar-accent-foreground: 210 40% 98%;
-    --sidebar-border: 210 40% 15%;
-    --sidebar-ring: 25 95% 53%;
-  }
-}
-
-@layer components {
-  /* LogiFlow Brand Components */
-  .logistics-card {
-    @apply bg-gradient-to-br from-card to-accent border border-border/50 shadow-lg hover:shadow-xl transition-all duration-300 hover:border-primary/30;
+    --sidebar-background: 250 50% 98%;
+    --sidebar-foreground: 240 10% 3.9%;
+    --sidebar-primary: 262.1 83.3% 57.8%;
+    --sidebar-primary-foreground: 210 20% 98%;
+    --sidebar-accent: 220 14.3% 95.9%;
+    --sidebar-accent-foreground: 220.9 39.3% 11%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 262.1 83.3% 57.8%;
   }
 
-  .logistics-button {
-    @apply bg-gradient-to-r from-primary to-primary-glow text-primary-foreground font-semibold shadow-md hover:shadow-lg transition-all duration-300 hover:scale-105;
-  }
+  .dark {
+    --background: 240 10% 3.9%;
+    --foreground: 0 0% 98%;
 
-  .route-indicator {
-    @apply relative overflow-hidden;
-  }
+    --card: 240 10% 3.9%;
+    --card-foreground: 0 0% 98%;
 
-  .route-indicator::before {
-    content: '';
-    @apply absolute inset-0 bg-gradient-to-r from-transparent via-primary/20 to-transparent transform -skew-x-12 -translate-x-full animate-[shimmer_2s_infinite];
-  }
+    --popover: 240 10% 3.9%;
+    --popover-foreground: 0 0% 98%;
 
-  .logistics-glow {
-    @apply relative;
-  }
+    --primary: 262.1 83.3% 57.8%;
+    --primary-foreground: 210 20% 98%;
+    --primary-light: 262.1 83.3% 67.8%;
 
-  .logistics-glow::after {
-    content: '';
-    @apply absolute inset-0 bg-gradient-to-r from-primary/0 via-primary/10 to-primary/0 blur-sm opacity-0 transition-opacity duration-300;
-  }
+    --secondary: 240 3.7% 15.9%;
+    --secondary-foreground: 0 0% 98%;
 
-  .logistics-glow:hover::after {
-    @apply opacity-100;
-  }
+    --muted: 240 3.7% 15.9%;
+    --muted-foreground: 240 5% 64.9%;
 
-  .truck-animation {
-    @apply transform transition-transform duration-500 hover:translate-x-2;
-  }
+    --accent: 240 3.7% 15.9%;
+    --accent-foreground: 0 0% 98%;
 
-  .delivery-status {
-    @apply relative inline-flex items-center px-3 py-1 rounded-full text-xs font-medium;
-  }
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
 
-  .status-delivered {
-    @apply bg-success/20 text-success border border-success/30;
-  }
+    --border: 240 3.7% 15.9%;
+    --input: 240 3.7% 15.9%;
+    --ring: 262.1 83.3% 57.8%;
 
-  .status-in-progress {
-    @apply bg-warning/20 text-warning border border-warning/30 animate-pulse;
-  }
+    --success: 142.1 70.6% 45.3%;
+    --warning: 47.9 95.8% 53.1%;
+    --info: 199.89 89.47% 48.04%;
 
-  .status-pending {
-    @apply bg-muted text-muted-foreground border border-border;
-  }
-
-  /* Interactive Effects */
-  .hover-lift {
-    @apply transition-transform duration-200 hover:-translate-y-1 hover:shadow-lg;
-  }
-
-  .click-shrink {
-    @apply transition-transform duration-100 active:scale-95;
-  }
-
-  .focus-glow {
-    @apply focus:ring-2 focus:ring-primary/50 focus:ring-offset-2 focus:ring-offset-background;
-  }
-}
-
-@layer utilities {
-  .text-gradient {
-    @apply bg-gradient-to-r from-primary to-primary-glow bg-clip-text text-transparent;
-  }
-
-  .logistics-border {
-    @apply border border-border/50 hover:border-primary/30 transition-colors duration-300;
-  }
-}
-
-/* Custom Keyframes */
-@keyframes shimmer {
-  0% {
-    transform: translateX(-100%) skewX(-12deg);
-  }
-  100% {
-    transform: translateX(200%) skewX(-12deg);
-  }
-}
-
-@keyframes float {
-  0%, 100% {
-    transform: translateY(0px);
-  }
-  50% {
-    transform: translateY(-10px);
-  }
-}
-
-@keyframes truck-drive {
-  0% {
-    transform: translateX(-10px);
-  }
-  50% {
-    transform: translateX(10px);
-  }
-  100% {
-    transform: translateX(-10px);
+    /* Dark Sidebar */
+    --sidebar-background: 240 5.9% 10%;
+    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-primary: 262.1 83.3% 57.8%;
+    --sidebar-primary-foreground: 210 20% 98%;
+    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 262.1 83.3% 57.8%;
   }
 }
 
@@ -178,164 +111,301 @@
   * {
     @apply border-border;
   }
-
+  
   body {
     @apply bg-background text-foreground;
-  }
-
-  /* Mobile-first responsive typography */
-  html {
-    font-size: 16px;
-  }
-
-  @media (max-width: 767px) {
-    html {
-      font-size: 15px;
-    }
-    
-    /* Mobile scroll behavior */
-    body {
-      overflow-x: hidden;
-      -webkit-overflow-scrolling: touch;
-    }
+    font-feature-settings: "rlig" 1, "calt" 1;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 }
 
-/* Mobile-specific utilities */
+/* Modern SaaS Component System */
+@layer components {
+  /* Container & Layout */
+  .saas-container {
+    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+  
+  .saas-page {
+    @apply min-h-screen bg-background;
+  }
+  
+  .saas-main {
+    @apply py-6 px-4 sm:px-6 lg:px-8;
+  }
+  
+  /* Typography */
+  .saas-title {
+    @apply text-2xl font-semibold text-foreground tracking-tight;
+  }
+  
+  .saas-subtitle {
+    @apply text-sm text-muted-foreground;
+  }
+  
+  .saas-heading {
+    @apply text-lg font-semibold text-foreground;
+  }
+  
+  .saas-subheading {
+    @apply text-base font-medium text-foreground;
+  }
+  
+  .saas-body {
+    @apply text-sm text-foreground;
+  }
+  
+  .saas-caption {
+    @apply text-xs text-muted-foreground;
+  }
+  
+  /* Cards */
+  .saas-card {
+    @apply bg-card rounded-lg border shadow-card transition-shadow hover:shadow-md;
+  }
+  
+  .saas-card-header {
+    @apply p-6 pb-4;
+  }
+  
+  .saas-card-content {
+    @apply p-6 pt-0;
+  }
+  
+  .saas-card-compact {
+    @apply bg-card rounded-lg border shadow-card p-4;
+  }
+  
+  /* Forms */
+  .saas-form {
+    @apply space-y-6;
+  }
+  
+  .saas-form-group {
+    @apply space-y-2;
+  }
+  
+  .saas-form-grid {
+    @apply grid grid-cols-1 gap-4 sm:grid-cols-2;
+  }
+  
+  .saas-form-row {
+    @apply flex flex-col sm:flex-row gap-4;
+  }
+  
+  .saas-label {
+    @apply text-sm font-medium text-foreground;
+  }
+  
+  .saas-input {
+    @apply flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  
+  .saas-textarea {
+    @apply flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  
+  /* Buttons */
+  .saas-button {
+    @apply inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50;
+  }
+  
+  .saas-button-default {
+    @apply bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2;
+  }
+  
+  .saas-button-outline {
+    @apply border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2;
+  }
+  
+  .saas-button-ghost {
+    @apply hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2;
+  }
+  
+  .saas-button-sm {
+    @apply h-9 rounded-md px-3;
+  }
+  
+  .saas-button-lg {
+    @apply h-11 rounded-md px-8;
+  }
+  
+  /* Status & Metrics */
+  .saas-metric {
+    @apply text-center p-4 rounded-lg bg-muted/50;
+  }
+  
+  .saas-metric-value {
+    @apply text-2xl font-bold text-foreground;
+  }
+  
+  .saas-metric-label {
+    @apply text-sm text-muted-foreground;
+  }
+  
+  .saas-status {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+  
+  .saas-status-success {
+    @apply bg-success/10 text-success border border-success/20;
+  }
+  
+  .saas-status-warning {
+    @apply bg-warning/10 text-warning border border-warning/20;
+  }
+  
+  .saas-status-error {
+    @apply bg-destructive/10 text-destructive border border-destructive/20;
+  }
+  
+  .saas-status-info {
+    @apply bg-info/10 text-info border border-info/20;
+  }
+  
+  /* Tables */
+  .saas-table {
+    @apply w-full caption-bottom text-sm;
+  }
+  
+  .saas-table-header {
+    @apply border-b bg-muted/50;
+  }
+  
+  .saas-table-row {
+    @apply border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted;
+  }
+  
+  .saas-table-head {
+    @apply h-12 px-4 text-left align-middle font-medium text-muted-foreground;
+  }
+  
+  .saas-table-cell {
+    @apply p-4 align-middle;
+  }
+  
+  /* Navigation */
+  .saas-nav-item {
+    @apply flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground;
+  }
+  
+  .saas-nav-item-active {
+    @apply bg-accent text-accent-foreground;
+  }
+  
+  /* Utilities */
+  .saas-divider {
+    @apply border-t border-border;
+  }
+  
+  .saas-separator {
+    @apply h-px bg-border;
+  }
+  
+  .saas-spacer {
+    @apply h-6;
+  }
+  
+  /* Interactive */
+  .saas-hover {
+    @apply transition-all duration-200 hover:shadow-md;
+  }
+  
+  .saas-press {
+    @apply transition-transform duration-100 active:scale-95;
+  }
+  
+  /* Loading */
+  .saas-skeleton {
+    @apply animate-pulse rounded-md bg-muted;
+  }
+  
+  .saas-spinner {
+    @apply animate-spin rounded-full border-2 border-primary border-t-transparent;
+  }
+}
+
+/* Mobile Responsive Utilities */
 @layer utilities {
-  /* Touch-friendly minimum sizes */
+  /* Responsive Typography */
+  .text-xs-sm { @apply text-xs sm:text-sm; }
+  .text-sm-base { @apply text-sm sm:text-base; }
+  .text-base-lg { @apply text-base sm:text-lg; }
+  .text-lg-xl { @apply text-lg sm:text-xl; }
+  .text-xl-2xl { @apply text-xl sm:text-2xl; }
+  
+  /* Responsive Spacing */
+  .p-4-6 { @apply p-4 sm:p-6; }
+  .px-4-6 { @apply px-4 sm:px-6; }
+  .py-4-6 { @apply py-4 sm:py-6; }
+  .gap-4-6 { @apply gap-4 sm:gap-6; }
+  .space-y-4-6 > * + * { @apply mt-4 sm:mt-6; }
+  
+  /* Mobile Stack */
+  .mobile-stack {
+    @apply flex flex-col space-y-4 sm:flex-row sm:space-y-0 sm:space-x-4;
+  }
+  
+  /* Mobile Grid */
+  .mobile-grid {
+    @apply grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3;
+  }
+  
+  /* Touch Targets */
   .touch-target {
     @apply min-h-[44px] min-w-[44px];
   }
   
-  /* Mobile spacing */
-  .mobile-padding {
-    @apply px-3 sm:px-4 md:px-6;
+  /* Hide/Show on Mobile */
+  .mobile-hidden { @apply hidden sm:block; }
+  .mobile-only { @apply block sm:hidden; }
+  
+  /* Mobile Safe Areas */
+  .mobile-safe {
+    @apply pb-safe-area-inset-bottom;
   }
   
-  .mobile-margin {
-    @apply mx-3 sm:mx-4 md:mx-6;
+  /* Scroll Utilities */
+  .scroll-smooth {
+    scroll-behavior: smooth;
   }
   
-  /* Mobile containers */
-  .mobile-container {
-    @apply px-3 sm:px-4 md:px-6 lg:px-8 max-w-full;
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
   }
   
-  /* Mobile typography */
-  .mobile-heading {
-    @apply text-base sm:text-lg md:text-xl lg:text-2xl font-semibold;
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
   }
-  
-  .mobile-subheading {
-    @apply text-sm sm:text-base md:text-lg;
-  }
-  
-  .mobile-text {
-    @apply text-xs sm:text-sm md:text-base;
-  }
-  
-  /* Responsive text sizes */
-  .text-responsive-xs { @apply text-[10px] sm:text-xs; }
-  .text-responsive-sm { @apply text-xs sm:text-sm; }
-  .text-responsive-base { @apply text-sm sm:text-base; }
-  .text-responsive-lg { @apply text-base sm:text-lg; }
-  .text-responsive-xl { @apply text-lg sm:text-xl; }
-  .text-responsive-2xl { @apply text-xl sm:text-2xl; }
-  .text-responsive-3xl { @apply text-2xl sm:text-3xl; }
-  
-  /* Mobile cards */
-  .mobile-card {
-    @apply rounded-lg sm:rounded-xl p-3 sm:p-4 md:p-6;
-  }
-  
-  .mobile-card-compact {
-    @apply rounded-lg p-2 sm:p-3 md:p-4;
-  }
-  
-  /* Mobile grid responsive */
-  .mobile-grid {
-    @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 md:gap-6;
-  }
-  
-  .mobile-grid-auto {
-    @apply grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6;
-  }
-  
-  /* Mobile buttons */
-  .mobile-button {
-    @apply min-h-[44px] px-3 sm:px-4 md:px-6 py-2 sm:py-3 text-sm sm:text-base touch-target;
-  }
-  
-  .mobile-button-sm {
-    @apply min-h-[36px] px-2 sm:px-3 py-1 sm:py-2 text-xs sm:text-sm;
-  }
-  
-  /* Mobile forms */
-  .mobile-form {
-    @apply space-y-3 sm:space-y-4 md:space-y-6;
-  }
-  
-  .mobile-input {
-    @apply min-h-[44px] px-3 sm:px-4 text-sm sm:text-base touch-target;
-  }
-  
-  .mobile-label {
-    @apply text-sm sm:text-base font-medium;
-  }
-  
-  /* Mobile tables */
-  .mobile-table {
-    @apply text-xs sm:text-sm;
-  }
-  
-  .mobile-table th {
-    @apply px-2 sm:px-4 py-2 sm:py-3;
-  }
-  
-  .mobile-table td {
-    @apply px-2 sm:px-4 py-2 sm:py-3;
-  }
-  
-  /* Mobile layout utilities */
-  .mobile-stack {
-    @apply flex flex-col space-y-3 sm:space-y-4;
-  }
-  
-  .mobile-flex {
-    @apply flex flex-col sm:flex-row gap-3 sm:gap-4;
-  }
-  
-  .mobile-flex-responsive {
-    @apply flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4;
-  }
-  
-  /* Prevent horizontal overflow */
-  .no-overflow {
-    @apply overflow-x-hidden w-full max-w-full;
-  }
-  
-  /* Mobile specific spacing */
-  .mobile-space-y {
-    @apply space-y-3 sm:space-y-4 md:space-y-6;
-  }
-  
-  .mobile-gap {
-    @apply gap-3 sm:gap-4 md:gap-6;
-  }
-  
-  /* Hide on mobile */
-  .mobile-hidden {
-    @apply hidden sm:block;
-  }
-  
-  /* Show only on mobile */
-  .mobile-only {
-    @apply block sm:hidden;
-  }
-  
-  /* Mobile sidebar adjustments */
-  .mobile-sidebar-padding {
-    @apply pl-0 sm:pl-16 md:pl-64;
-  }
+}
+
+/* Animation Keyframes */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* Custom Animations */
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+.animate-slide-up {
+  animation: slideUp 0.4s ease-out;
+}
+
+.animate-scale-in {
+  animation: scaleIn 0.2s ease-out;
 }
