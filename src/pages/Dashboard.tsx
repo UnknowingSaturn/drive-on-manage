@@ -3,6 +3,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Truck, Users, MapPin, Calendar, Bell, Clock, CheckCircle2, AlertTriangle, DollarSign, Star, Trophy, Receipt } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import EarningsWidget from '@/components/driver/EarningsWidget';
 import LeaderboardWidget from '@/components/driver/LeaderboardWidget';
 import FeedbackWidget from '@/components/driver/FeedbackWidget';
@@ -176,41 +177,46 @@ const Dashboard = () => {
                           <div className="saas-metric-label">Rounds This Week</div>
                           <div className="flex items-center justify-center mt-2">
                             {weeklyRounds && weeklyRounds.length > 0 ? (
-                              <details className="group">
-                                <summary className="cursor-pointer saas-status saas-status-success hover:bg-success/20 transition-colors">
-                                  <CheckCircle2 className="h-3 w-3 mr-1" />
-                                  View Schedule
-                                </summary>
-                                <div className="absolute z-10 mt-2 w-80 bg-card border border-border rounded-lg shadow-lg p-3">
-                                  <h4 className="font-semibold text-sm mb-2">Your Weekly Schedule</h4>
-                                  <div className="space-y-2 max-h-60 overflow-y-auto">
-                                    {weeklyRounds.map((schedule: any, index: number) => (
-                                      <div key={index} className="border border-border rounded p-2 bg-background">
-                                        <div className="flex items-center justify-between">
-                                          <div>
-                                            <div className="font-medium text-sm">
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                  <Button variant="outline" size="sm" className="h-6 px-3 text-xs bg-success/10 border-success/30 text-success hover:bg-success/20">
+                                    <CheckCircle2 className="h-3 w-3 mr-1" />
+                                    View Schedule
+                                  </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-80" align="center">
+                                  <div className="space-y-3">
+                                    <h4 className="font-semibold text-sm">Your Weekly Schedule</h4>
+                                    <div className="space-y-2 max-h-60 overflow-y-auto">
+                                      {weeklyRounds.map((schedule: any, index: number) => (
+                                        <div key={index} className="border border-border rounded-lg p-3 bg-background hover:bg-muted/50 transition-colors">
+                                          <div className="flex items-center justify-between mb-2">
+                                            <div className="font-semibold text-sm text-primary">
                                               Round {schedule.rounds?.round_number || 'N/A'}
                                             </div>
-                                            <div className="text-xs text-muted-foreground">
+                                            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                              <Calendar className="h-3 w-3" />
                                               {new Date(schedule.scheduled_date).toLocaleDateString('en-GB', {
-                                                weekday: 'long',
+                                                weekday: 'short',
                                                 day: 'numeric',
                                                 month: 'short'
                                               })}
                                             </div>
                                           </div>
-                                          <MapPin className="h-4 w-4 text-muted-foreground" />
+                                          {schedule.rounds?.description && (
+                                            <div className="flex items-start gap-2">
+                                              <MapPin className="h-3 w-3 text-muted-foreground mt-0.5 flex-shrink-0" />
+                                              <div className="text-xs text-muted-foreground leading-relaxed">
+                                                {schedule.rounds.description}
+                                              </div>
+                                            </div>
+                                          )}
                                         </div>
-                                        {schedule.rounds?.description && (
-                                          <div className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                                            {schedule.rounds.description}
-                                          </div>
-                                        )}
-                                      </div>
-                                    ))}
+                                      ))}
+                                    </div>
                                   </div>
-                                </div>
-                              </details>
+                                </PopoverContent>
+                              </Popover>
                             ) : (
                               <span className="saas-status saas-status-info">
                                 <Clock className="h-3 w-3 mr-1" />
