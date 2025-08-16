@@ -241,82 +241,77 @@ const AdminDashboard = () => {
               </Button>
             </div>
 
-            {/* Summary Stats Cards */}
-            <div className="mobile-grid-auto gap-3 sm:gap-4 md:gap-6">
+            {/* Compact Active Stats Widgets */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
               <Card className="logistics-card hover-lift">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-responsive-sm font-medium">Active Drivers</CardTitle>
-                  <Users className="h-4 w-4 text-primary" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-xl sm:text-2xl font-bold text-gradient">
-                    {driversData?.active || 0}
+                <CardContent className="p-4">
+                  <div className="flex items-center space-x-3">
+                    <div className="p-2 rounded-lg bg-primary/10">
+                      <Users className="h-4 w-4 text-primary" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-muted-foreground truncate">Active Drivers</p>
+                      <div className="flex items-center space-x-2">
+                        <span className="text-xl font-bold text-foreground">{driversData?.active || 0}</span>
+                        <span className="text-xs text-muted-foreground">/ {driversData?.total || 0}</span>
+                      </div>
+                    </div>
                   </div>
-                  <p className="text-responsive-xs text-muted-foreground">
-                    of {driversData?.total || 0} total drivers
-                  </p>
-                  <Progress 
-                    value={driversData?.total ? (driversData.active / driversData.total) * 100 : 0} 
-                    className="mt-2 h-1"
-                  />
                 </CardContent>
               </Card>
 
               <Card className="logistics-card hover-lift">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Active Vans</CardTitle>
-                  <Truck className="h-4 w-4 text-primary" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-gradient">
-                    {vansData?.active || 0}
+                <CardContent className="p-4">
+                  <div className="flex items-center space-x-3">
+                    <div className="p-2 rounded-lg bg-primary/10">
+                      <Truck className="h-4 w-4 text-primary" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-muted-foreground truncate">Active Vans</p>
+                      <div className="flex items-center space-x-2">
+                        <span className="text-xl font-bold text-foreground">{vansData?.active || 0}</span>
+                        <span className="text-xs text-muted-foreground">/ {vansData?.total || 0}</span>
+                      </div>
+                    </div>
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    of {vansData?.total || 0} total vans
-                  </p>
-                  <Progress 
-                    value={vansData?.total ? (vansData.active / vansData.total) * 100 : 0} 
-                    className="mt-2 h-1"
-                  />
                 </CardContent>
               </Card>
 
               <Card className="logistics-card hover-lift">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Active Rounds</CardTitle>
-                  <MapPin className="h-4 w-4 text-primary" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-gradient">
-                    {roundsData?.active || 0}
+                <CardContent className="p-4">
+                  <div className="flex items-center space-x-3">
+                    <div className="p-2 rounded-lg bg-primary/10">
+                      <MapPin className="h-4 w-4 text-primary" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-muted-foreground truncate">Active Rounds</p>
+                      <div className="flex items-center space-x-2">
+                        <span className="text-xl font-bold text-foreground">{roundsData?.active || 0}</span>
+                        <span className="text-xs text-muted-foreground">/ {roundsData?.total || 0}</span>
+                      </div>
+                    </div>
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    of {roundsData?.total || 0} total rounds
-                  </p>
-                  <Progress 
-                    value={roundsData?.total ? (roundsData.active / roundsData.total) * 100 : 0} 
-                    className="mt-2 h-1"
-                  />
                 </CardContent>
               </Card>
 
               <Card className="logistics-card hover-lift">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">EOD Reports</CardTitle>
-                  <FileText className="h-4 w-4 text-primary" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-gradient">
-                    {eodData?.today || 0}
+                <CardContent className="p-4">
+                  <div className="flex items-center space-x-3">
+                    <div className="p-2 rounded-lg bg-primary/10">
+                      <FileText className="h-4 w-4 text-primary" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-muted-foreground truncate">EOD Today</p>
+                      <div className="flex items-center space-x-2">
+                        <span className="text-xl font-bold text-foreground">{eodData?.today || 0}</span>
+                        {(eodData?.pending || 0) > 0 && (
+                          <Badge variant="outline" className="text-xs px-1 py-0 h-4 bg-warning/20 text-warning border-warning">
+                            {eodData.pending}
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    submitted today
-                  </p>
-                  {(eodData?.pending || 0) > 0 && (
-                    <Badge className="bg-warning text-warning-foreground mt-2" variant="outline">
-                      {eodData.pending} pending approval
-                    </Badge>
-                  )}
                 </CardContent>
               </Card>
             </div>
