@@ -370,46 +370,47 @@ const EndOfDay = () => {
           </header>
 
           <main className="mobile-padding py-4 md:py-6 space-y-4 md:space-y-6 no-overflow overflow-y-auto">
-            <Card className="logistics-card">
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Package className="h-5 w-5 text-primary mr-2" />
-                  End of Day Report
-                </CardTitle>
-                <CardDescription>
-                  Complete your daily delivery report with performance metrics.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleSubmit} className="space-y-6">
-                  {/* Auto-filled Information Display */}
-                  <div className="bg-muted p-4 rounded-lg space-y-2">
-                    <h3 className="font-semibold text-sm">Auto-filled Information</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
-                      <div>
-                        <span className="text-muted-foreground">Driver:</span>
-                        <span className="ml-2 font-medium">{driverInfo?.driverName}</span>
-                      </div>
-                      {driverInfo?.hasCompanyVan && driverInfo?.assignedVan && (
+            <div className="max-w-3xl mx-auto">
+              <Card className="logistics-card">
+                <CardHeader className="pb-4">
+                  <CardTitle className="flex items-center text-lg">
+                    <Package className="h-5 w-5 text-primary mr-2" />
+                    End of Day Report
+                  </CardTitle>
+                  <CardDescription className="text-sm">
+                    Complete your daily delivery report with performance metrics.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="pt-0">
+                  <form onSubmit={handleSubmit} className="space-y-6">
+                    {/* Auto-filled Information Display */}
+                    <div className="bg-muted p-3 rounded-lg space-y-2">
+                      <h3 className="font-semibold text-sm">Auto-filled Information</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
                         <div>
-                          <span className="text-muted-foreground">Van:</span>
-                          <span className="ml-2 font-medium">{driverInfo.assignedVan.registration}</span>
+                          <span className="text-muted-foreground">Driver:</span>
+                          <span className="ml-2 font-medium">{driverInfo?.driverName}</span>
                         </div>
-                      )}
-                      {driverInfo?.roundNumbers && driverInfo.roundNumbers.length > 0 && (
-                        <div className="md:col-span-2">
-                          <span className="text-muted-foreground">Assigned Rounds:</span>
-                          <div className="flex flex-wrap gap-1 mt-1">
-                            {driverInfo.roundNumbers.map((round, index) => (
-                              <Badge key={index} variant="outline" className="text-xs">
-                                {round}
-                              </Badge>
-                            ))}
+                        {driverInfo?.hasCompanyVan && driverInfo?.assignedVan && (
+                          <div>
+                            <span className="text-muted-foreground">Van:</span>
+                            <span className="ml-2 font-medium">{driverInfo.assignedVan.registration}</span>
                           </div>
-                        </div>
-                      )}
+                        )}
+                        {driverInfo?.roundNumbers && driverInfo.roundNumbers.length > 0 && (
+                          <div className="md:col-span-2">
+                            <span className="text-muted-foreground">Assigned Rounds:</span>
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {driverInfo.roundNumbers.map((round, index) => (
+                                <Badge key={index} variant="outline" className="text-xs">
+                                  {round}
+                                </Badge>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
 
                   {/* Support Work */}
                   <div className="space-y-4">
@@ -585,6 +586,7 @@ const EndOfDay = () => {
                 </form>
               </CardContent>
             </Card>
+            </div>
           </main>
         </SidebarInset>
       </div>

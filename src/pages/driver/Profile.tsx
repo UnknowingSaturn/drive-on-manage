@@ -296,161 +296,167 @@ const DriverProfile = () => {
           </header>
 
           <main className="mobile-padding py-4 md:py-6 space-y-4 md:space-y-6 no-overflow">
-            {/* Onboarding Progress */}
-            <Card className="logistics-card">
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <CheckCircle2 className="h-5 w-5 text-primary mr-2" />
-                  Onboarding Progress
-                </CardTitle>
-                <CardDescription>
-                  Complete all sections to finish your onboarding
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">Overall Progress</span>
-                    <Badge variant={status.percentage === 100 ? "default" : "secondary"}>
-                      {status.completed}/{status.total} Complete
-                    </Badge>
+            <div className="max-w-4xl mx-auto space-y-4 md:space-y-6">
+              {/* Onboarding Progress */}
+              <Card className="logistics-card">
+                <CardHeader className="pb-4">
+                  <CardTitle className="flex items-center text-lg">
+                    <CheckCircle2 className="h-5 w-5 text-primary mr-2" />
+                    Onboarding Progress
+                  </CardTitle>
+                  <CardDescription className="text-sm">
+                    Complete all sections to finish your onboarding
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="pt-0">
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">Overall Progress</span>
+                      <Badge variant={status.percentage === 100 ? "default" : "secondary"} className="text-xs">
+                        {status.completed}/{status.total} Complete
+                      </Badge>
+                    </div>
+                    <div className="w-full bg-muted rounded-full h-2">
+                      <div 
+                        className="bg-gradient-primary h-2 rounded-full transition-all duration-500 route-indicator"
+                        style={{ width: `${status.percentage}%` }}
+                      ></div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                      {status.checks.map((check, index) => (
+                        <div key={index} className="flex items-center space-x-2">
+                          {check.completed ? (
+                            <CheckCircle2 className="h-4 w-4 text-success" />
+                          ) : (
+                            <AlertCircle className="h-4 w-4 text-muted-foreground" />
+                          )}
+                          <span className={`text-sm ${check.completed ? 'text-success' : 'text-muted-foreground'}`}>
+                            {check.label}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                  <div className="w-full bg-muted rounded-full h-3">
-                    <div 
-                      className="bg-gradient-primary h-3 rounded-full transition-all duration-500 route-indicator"
-                      style={{ width: `${status.percentage}%` }}
-                    ></div>
+                </CardContent>
+              </Card>
+
+              {/* Driver Features Quick Access */}
+              <Card className="logistics-card bg-gradient-subtle">
+                <CardHeader className="pb-4">
+                  <CardTitle className="flex items-center text-gradient text-lg">
+                    <Trophy className="h-5 w-5 text-primary mr-2" />
+                    Driver Features
+                  </CardTitle>
+                  <CardDescription className="text-sm">
+                    Quick access to earnings, leaderboard, feedback, and expense tracking
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="pt-0">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <Button 
+                      variant="outline" 
+                      className="h-14 flex-col space-y-1 hover-lift text-xs"
+                      onClick={() => navigate('/driver/earnings')}
+                    >
+                      <DollarSign className="h-4 w-4 text-green-600" />
+                      <span>Live Earnings</span>
+                    </Button>
+                    
+                    <Button 
+                      variant="outline" 
+                      className="h-14 flex-col space-y-1 hover-lift text-xs"
+                      onClick={() => navigate('/driver/leaderboard')}
+                    >
+                      <Trophy className="h-4 w-4 text-yellow-600" />
+                      <span>Leaderboard</span>
+                    </Button>
+                    
+                    <Button 
+                      variant="outline" 
+                      className="h-14 flex-col space-y-1 hover-lift text-xs"
+                      onClick={() => navigate('/driver/feedback')}
+                    >
+                      <Star className="h-4 w-4 text-blue-600" />
+                      <span>Route Feedback</span>
+                    </Button>
+                    
+                    <Button 
+                      variant="outline" 
+                      className="h-14 flex-col space-y-1 hover-lift text-xs"
+                      onClick={() => navigate('/driver/expenses')}
+                    >
+                      <Receipt className="h-4 w-4 text-purple-600" />
+                      <span>Expenses</span>
+                    </Button>
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                    {status.checks.map((check, index) => (
-                      <div key={index} className="flex items-center space-x-2">
-                        {check.completed ? (
-                          <CheckCircle2 className="h-4 w-4 text-success" />
-                        ) : (
-                          <AlertCircle className="h-4 w-4 text-muted-foreground" />
-                        )}
-                        <span className={`text-sm ${check.completed ? 'text-success' : 'text-muted-foreground'}`}>
-                          {check.label}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </div>
 
-            {/* Driver Features Quick Access */}
-            <Card className="logistics-card bg-gradient-subtle">
-              <CardHeader>
-                <CardTitle className="flex items-center text-gradient">
-                  <Trophy className="h-5 w-5 text-primary mr-2" />
-                  Driver Features
-                </CardTitle>
-                <CardDescription>
-                  Quick access to earnings, leaderboard, feedback, and expense tracking
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  <Button 
-                    variant="outline" 
-                    className="h-16 flex-col space-y-1 hover-lift"
-                    onClick={() => navigate('/driver/earnings')}
-                  >
-                    <DollarSign className="h-5 w-5 text-green-600" />
-                    <span className="text-xs">Live Earnings</span>
-                  </Button>
-                  
-                  <Button 
-                    variant="outline" 
-                    className="h-16 flex-col space-y-1 hover-lift"
-                    onClick={() => navigate('/driver/leaderboard')}
-                  >
-                    <Trophy className="h-5 w-5 text-yellow-600" />
-                    <span className="text-xs">Leaderboard</span>
-                  </Button>
-                  
-                  <Button 
-                    variant="outline" 
-                    className="h-16 flex-col space-y-1 hover-lift"
-                    onClick={() => navigate('/driver/feedback')}
-                  >
-                    <Star className="h-5 w-5 text-blue-600" />
-                    <span className="text-xs">Route Feedback</span>
-                  </Button>
-                  
-                  <Button 
-                    variant="outline" 
-                    className="h-16 flex-col space-y-1 hover-lift"
-                    onClick={() => navigate('/driver/expenses')}
-                  >
-                    <Receipt className="h-5 w-5 text-purple-600" />
-                    <span className="text-xs">Expenses</span>
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+            <div className="max-w-4xl mx-auto">
+              <Tabs defaultValue="personal" className="space-y-4 md:space-y-6">
+                <TabsList className="grid w-full grid-cols-3 h-auto p-1">
+                  <TabsTrigger value="personal" className="text-xs sm:text-sm mobile-button py-2">Personal Details</TabsTrigger>
+                  <TabsTrigger value="documents" className="text-xs sm:text-sm mobile-button py-2">Documents</TabsTrigger>
+                  <TabsTrigger value="employment" className="text-xs sm:text-sm mobile-button py-2">Employment</TabsTrigger>
+                </TabsList>
 
-            <Tabs defaultValue="personal" className="space-y-4 md:space-y-6">
-              <TabsList className="grid w-full grid-cols-3 h-auto p-1">
-                <TabsTrigger value="personal" className="text-xs sm:text-sm mobile-button">Personal Details</TabsTrigger>
-                <TabsTrigger value="documents" className="text-xs sm:text-sm mobile-button">Documents</TabsTrigger>
-                <TabsTrigger value="employment" className="text-xs sm:text-sm mobile-button">Employment</TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="personal" className="space-y-6">
-                <Card className="logistics-card">
-                  <CardHeader>
-                    <CardTitle className="flex items-center">
-                      <User className="h-5 w-5 text-primary mr-2" />
-                      Personal Information
-                    </CardTitle>
-                    <CardDescription>
-                      Update your personal details
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <form onSubmit={handleSubmit} className="space-y-4">
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <TabsContent value="personal" className="space-y-6">
+                  <Card className="logistics-card">
+                    <CardHeader className="pb-4">
+                      <CardTitle className="flex items-center text-lg">
+                        <User className="h-5 w-5 text-primary mr-2" />
+                        Personal Information
+                      </CardTitle>
+                      <CardDescription className="text-sm">
+                        Update your personal details
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="pt-0">
+                      <form onSubmit={handleSubmit} className="space-y-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="firstName" className="text-sm font-medium">First Name</Label>
+                            <Input
+                              id="firstName"
+                              value={formData.firstName}
+                              onChange={(e) => setFormData(prev => ({ ...prev, firstName: e.target.value }))}
+                              placeholder="Enter your first name"
+                              className="h-9"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="lastName" className="text-sm font-medium">Last Name</Label>
+                            <Input
+                              id="lastName"
+                              value={formData.lastName}
+                              onChange={(e) => setFormData(prev => ({ ...prev, lastName: e.target.value }))}
+                              placeholder="Enter your last name"
+                              className="h-9"
+                            />
+                          </div>
+                        </div>
+                        
                         <div className="space-y-2">
-                          <Label htmlFor="firstName">First Name</Label>
+                          <Label htmlFor="phone" className="text-sm font-medium">Phone Number</Label>
                           <Input
-                            id="firstName"
-                            value={formData.firstName}
-                            onChange={(e) => setFormData(prev => ({ ...prev, firstName: e.target.value }))}
-                            placeholder="Enter your first name"
+                            id="phone"
+                            value={formData.phone}
+                            onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
+                            placeholder="Enter your phone number"
+                            className="h-9"
                           />
                         </div>
+
                         <div className="space-y-2">
-                          <Label htmlFor="lastName">Last Name</Label>
+                          <Label htmlFor="email" className="text-sm font-medium">Email</Label>
                           <Input
-                            id="lastName"
-                            value={formData.lastName}
-                            onChange={(e) => setFormData(prev => ({ ...prev, lastName: e.target.value }))}
-                            placeholder="Enter your last name"
+                            id="email"
+                            value={profile?.email || ''}
+                            disabled
+                            className="bg-muted h-9"
                           />
                         </div>
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <Label htmlFor="phone">Phone Number</Label>
-                        <Input
-                          id="phone"
-                          value={formData.phone}
-                          onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
-                          placeholder="Enter your phone number"
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="email">Email</Label>
-                        <Input
-                          id="email"
-                          value={profile?.email || ''}
-                          disabled
-                          className="bg-muted"
-                        />
-                      </div>
 
                       {/* Change Password Section */}
                       <div className="space-y-4 pt-4 border-t">
@@ -709,12 +715,13 @@ const DriverProfile = () => {
                   </CardContent>
                 </Card>
               </TabsContent>
-            </Tabs>
-          </main>
-        </SidebarInset>
-      </div>
-    </SidebarProvider>
-  );
+                </Tabs>
+              </div>
+            </main>
+          </SidebarInset>
+        </div>
+      </SidebarProvider>
+    );
 };
 
 export default DriverProfile;

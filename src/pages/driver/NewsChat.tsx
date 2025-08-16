@@ -166,14 +166,14 @@ const NewsChat = () => {
             </div>
           </header>
 
-          <main className="p-6">
+          <main className="p-6 max-w-5xl mx-auto">
             <Tabs defaultValue="news" className="space-y-6">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="news" className="flex items-center">
+              <TabsList className="grid w-full grid-cols-2 h-auto p-1">
+                <TabsTrigger value="news" className="flex items-center py-3 text-sm">
                   <Bell className="h-4 w-4 mr-2" />
                   Company News
                 </TabsTrigger>
-                <TabsTrigger value="chat" className="flex items-center">
+                <TabsTrigger value="chat" className="flex items-center py-3 text-sm">
                   <MessageCircle className="h-4 w-4 mr-2" />
                   Team Chat
                 </TabsTrigger>
@@ -181,12 +181,12 @@ const NewsChat = () => {
 
               <TabsContent value="news" className="space-y-6">
                 <Card className="logistics-card">
-                  <CardHeader>
-                    <CardTitle className="flex items-center">
+                  <CardHeader className="pb-4">
+                    <CardTitle className="flex items-center text-lg">
                       <Megaphone className="h-5 w-5 text-primary mr-2" />
                       Company Announcements
                     </CardTitle>
-                    <CardDescription>
+                    <CardDescription className="text-sm">
                       Latest news and updates from management
                     </CardDescription>
                   </CardHeader>
@@ -245,12 +245,12 @@ const NewsChat = () => {
 
               <TabsContent value="chat" className="space-y-6">
                 <Card className="logistics-card">
-                  <CardHeader>
-                    <CardTitle className="flex items-center">
+                  <CardHeader className="pb-4">
+                    <CardTitle className="flex items-center text-lg">
                       <Users className="h-5 w-5 text-primary mr-2" />
                       Team Chat
                     </CardTitle>
-                    <CardDescription>
+                    <CardDescription className="text-sm">
                       Real-time communication with your team
                     </CardDescription>
                   </CardHeader>
@@ -313,10 +313,11 @@ const NewsChat = () => {
                           onChange={(e) => setChatMessage(e.target.value)}
                           placeholder="Type a message..."
                           onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                          className="h-9"
                         />
                         <Button
                           onClick={handleSendMessage}
-                          className="logistics-button"
+                          className="logistics-button h-9 px-3"
                           disabled={!chatMessage.trim() || sendMessageMutation.isPending}
                         >
                           {sendMessageMutation.isPending ? (
@@ -332,8 +333,8 @@ const NewsChat = () => {
                 
                 {/* Chat Guidelines */}
                 <Card className="logistics-card">
-                  <CardHeader>
-                    <CardTitle className="flex items-center text-muted-foreground">
+                  <CardHeader className="pb-4">
+                    <CardTitle className="flex items-center text-muted-foreground text-lg">
                       <MessageCircle className="h-5 w-5 mr-2" />
                       Chat Guidelines
                     </CardTitle>
