@@ -52,18 +52,45 @@ const RoundManagement = () => {
   // Add round mutation
   const addRoundMutation = useMutation({
     mutationFn: async (roundData: typeof formData) => {
-      const { error } = await supabase
+      // First check if an inactive round with the same number exists
+      const { data: existingRound } = await supabase
         .from('rounds')
-        .insert({
-          round_number: roundData.roundNumber,
-          description: roundData.locations,
-          parcel_rate: roundData.parcelRate ? parseFloat(roundData.parcelRate) : null,
-          rate: roundData.routeRate ? parseFloat(roundData.routeRate) : null,
-          road_lists: roundData.roadLists.filter(road => road.trim() !== ''),
-          company_id: profile?.company_id
-        });
+        .select('id')
+        .eq('company_id', profile?.company_id)
+        .eq('round_number', roundData.roundNumber)
+        .eq('is_active', false)
+        .single();
 
-      if (error) throw error;
+      if (existingRound) {
+        // Reactivate the existing round with updated data
+        const { error } = await supabase
+          .from('rounds')
+          .update({
+            round_number: roundData.roundNumber,
+            description: roundData.locations,
+            parcel_rate: roundData.parcelRate ? parseFloat(roundData.parcelRate) : null,
+            rate: roundData.routeRate ? parseFloat(roundData.routeRate) : null,
+            road_lists: roundData.roadLists.filter(road => road.trim() !== ''),
+            is_active: true
+          })
+          .eq('id', existingRound.id);
+
+        if (error) throw error;
+      } else {
+        // Create new round
+        const { error } = await supabase
+          .from('rounds')
+          .insert({
+            round_number: roundData.roundNumber,
+            description: roundData.locations,
+            parcel_rate: roundData.parcelRate ? parseFloat(roundData.parcelRate) : null,
+            rate: roundData.routeRate ? parseFloat(roundData.routeRate) : null,
+            road_lists: roundData.roadLists.filter(road => road.trim() !== ''),
+            company_id: profile?.company_id
+          });
+
+        if (error) throw error;
+      }
     },
     onSuccess: () => {
       toast({
