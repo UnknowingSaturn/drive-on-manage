@@ -248,19 +248,32 @@ const handler = async (req: Request): Promise<Response> => {
     const { data: otherUserCompanies } = await supabaseAdmin
       .from('user_companies')
       .select('company_id, role')
-      .eq('user_id', userId)
-      .neq('company_id', driverProfile.company_id); // Exclude current company
-
-    const { data: otherProfiles } = await supabaseAdmin
-      .from('profiles')
-      .select('user_type')
       .eq('user_id', userId);
 
-    // Check if user is an admin or has roles in other companies
-    const hasAdminRole = otherProfiles && otherProfiles.some(p => p.user_type === 'admin');
-    const hasOtherCompanyRoles = otherUserCompanies && otherUserCompanies.length > 0;
+    const { data: userProfile } = await supabaseAdmin
+      .from('profiles')
+      .select('user_type')
+      .eq('user_id', userId)
+      .single();
 
-    console.log('User has other roles:', { hasOtherCompanyRoles, hasAdminRole });
+    const { data: otherDriverProfiles } = await supabaseAdmin
+      .from('driver_profiles')
+      .select('id, company_id')
+      .eq('user_id', userId)
+      .neq('id', driverId); // Exclude the driver being deleted
+
+    // Check if user is an admin or has other active driver profiles
+    const isAdminUser = userProfile?.user_type === 'admin';
+    const hasOtherDriverProfiles = otherDriverProfiles && otherDriverProfiles.length > 0;
+    const hasAdminRoleInOtherCompanies = otherUserCompanies && otherUserCompanies.some(uc => uc.role === 'admin');
+
+    console.log('User role analysis:', { 
+      isAdminUser, 
+      hasOtherDriverProfiles, 
+      hasAdminRoleInOtherCompanies,
+      otherDriverProfilesCount: otherDriverProfiles?.length || 0,
+      userType: userProfile?.user_type 
+    });
 
     // 14. Delete the driver profile itself
     const { error: driverProfileError } = await supabaseAdmin
@@ -276,7 +289,7 @@ const handler = async (req: Request): Promise<Response> => {
     let authUserDeleted = false;
 
     // Only delete user completely if they have no other roles
-    if (!hasOtherCompanyRoles && !hasAdminRole) {
+    if (!isAdminUser && !hasOtherDriverProfiles && !hasAdminRoleInOtherCompanies) {
       // Delete user-company associations
       const { error: userCompaniesError, count: userCompaniesCount } = await supabaseAdmin
         .from('user_companies')
