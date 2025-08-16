@@ -2,8 +2,9 @@ import React, { useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Truck, Users, MapPin, Calendar, Bell, Clock, CheckCircle2, AlertTriangle, DollarSign, Star, Trophy, Receipt } from 'lucide-react';
+import { Truck, Users, MapPin, Calendar, Bell, Clock, CheckCircle2, AlertTriangle, DollarSign, Star, Trophy, Receipt, Route, Banknote } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Badge } from '@/components/ui/badge';
 import EarningsWidget from '@/components/driver/EarningsWidget';
 import LeaderboardWidget from '@/components/driver/LeaderboardWidget';
 import FeedbackWidget from '@/components/driver/FeedbackWidget';
@@ -90,7 +91,15 @@ const Dashboard = () => {
           .select(`
             id,
             scheduled_date,
-            rounds(round_number, description)
+            driver_rate,
+            rounds(
+              round_number, 
+              description, 
+              rate, 
+              parcel_rate, 
+              base_rate, 
+              road_lists
+            )
           `)
           .eq('driver_id', driverProfile.id)
           .gte('scheduled_date', weekStart.toISOString().split('T')[0])
@@ -387,18 +396,70 @@ const Dashboard = () => {
                                           })}
                                         </div>
                                       </div>
+                                      
+                                      {/* Location/Description */}
                                       {schedule.rounds?.description && (
                                         <div className="flex items-start gap-2 mb-3">
                                           <MapPin className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
                                           <div className="text-sm text-muted-foreground leading-relaxed">
-                                            {schedule.rounds.description}
+                                            <strong>Location:</strong> {schedule.rounds.description}
                                           </div>
                                         </div>
                                       )}
-                                      <div className="flex items-center justify-between text-xs">
-                                        <span className="text-muted-foreground">
-                                          {new Date(schedule.scheduled_date).toLocaleDateString('en-GB')}
-                                        </span>
+
+                                      {/* Route Rate */}
+                                      <div className="flex items-center gap-2 mb-3">
+                                        <Banknote className="h-4 w-4 text-muted-foreground" />
+                                        <div className="text-sm">
+                                          <strong>Rate:</strong> 
+                                          {schedule.rounds?.rate ? (
+                                            <Badge variant="secondary" className="ml-2">
+                                              £{schedule.rounds.rate}/parcel
+                                            </Badge>
+                                          ) : schedule.rounds?.parcel_rate ? (
+                                            <Badge variant="outline" className="ml-2">
+                                              £{schedule.rounds.parcel_rate}/parcel
+                                            </Badge>
+                                          ) : schedule.rounds?.base_rate ? (
+                                            <Badge variant="outline" className="ml-2">
+                                              £{schedule.rounds.base_rate}/day
+                                            </Badge>
+                                          ) : (
+                                            <span className="text-muted-foreground ml-2">No rate set</span>
+                                          )}
+                                        </div>
+                                      </div>
+
+                                      {/* Road Lists */}
+                                      {schedule.rounds?.road_lists && schedule.rounds.road_lists.length > 0 && (
+                                        <div className="mb-3">
+                                          <div className="flex items-center gap-2 mb-2">
+                                            <Route className="h-4 w-4 text-muted-foreground" />
+                                            <strong className="text-sm">Roads:</strong>
+                                          </div>
+                                          <div className="grid grid-cols-1 gap-1 ml-6">
+                                            {schedule.rounds.road_lists.slice(0, 3).map((road: string, roadIndex: number) => (
+                                              <div key={roadIndex} className="text-xs bg-muted/50 px-2 py-1 rounded flex items-center gap-1">
+                                                <span className="w-4 h-4 bg-primary/10 text-primary rounded-full flex items-center justify-center text-[10px] font-medium">
+                                                  {roadIndex + 1}
+                                                </span>
+                                                {road}
+                                              </div>
+                                            ))}
+                                            {schedule.rounds.road_lists.length > 3 && (
+                                              <div className="text-xs text-muted-foreground italic">
+                                                +{schedule.rounds.road_lists.length - 3} more roads
+                                              </div>
+                                            )}
+                                          </div>
+                                        </div>
+                                      )}
+
+                                      {/* Assignment Details */}
+                                      <div className="flex items-center justify-between text-xs pt-2 border-t">
+                                        <div className="text-muted-foreground">
+                                          Your Rate: £{schedule.driver_rate || '0.00'}/parcel
+                                        </div>
                                         <span className="bg-success/10 text-success px-2 py-1 rounded">
                                           Scheduled
                                         </span>
