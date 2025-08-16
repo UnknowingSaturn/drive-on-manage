@@ -339,10 +339,17 @@ const VanManagement = () => {
   };
 
   const handleAssignVan = (van: any) => {
-    setAssigningVan(van);
+    // Find the most up-to-date van data from the current query results
+    const currentVan = vans?.find(v => v.id === van.id) || van;
+    setAssigningVan(currentVan);
     // Set the current driver ID, ensuring it matches the driver ID from the drivers list
-    const currentDriverId = van.assignedDriver?.id || 'UNASSIGNED';
-    console.log('Setting driver ID for van assignment:', { van, currentDriverId, assignedDriver: van.assignedDriver });
+    const currentDriverId = currentVan.assignedDriver?.id || 'UNASSIGNED';
+    console.log('Setting driver ID for van assignment:', { 
+      originalVan: van, 
+      currentVan, 
+      currentDriverId, 
+      assignedDriver: currentVan.assignedDriver 
+    });
     setSelectedDriverId(currentDriverId);
     setIsAssignDialogOpen(true);
   };
