@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Plus, MapPin, DollarSign, Settings, X, Route, Edit, Trash2 } from 'lucide-react';
+import { ConfirmDelete } from '@/components/ConfirmDelete';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -179,10 +180,8 @@ const RoundManagement = () => {
     setIsDialogOpen(true);
   };
 
-  const handleDeleteRound = (round: any) => {
-    if (confirm(`Are you sure you want to delete round ${round.round_number}? This action cannot be undone.`)) {
-      deleteRoundMutation.mutate(round.id);
-    }
+  const handleDeleteRound = (roundId: string) => {
+    deleteRoundMutation.mutate(roundId);
   };
 
   const resetForm = () => {
@@ -473,16 +472,22 @@ const RoundManagement = () => {
                       >
                         <Edit className="h-3 w-3" />
                       </Button>
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => handleDeleteRound(round)}
-                        title="Delete round"
+                      <ConfirmDelete
+                        title="Delete Round"
+                        description={`Are you sure you want to delete round "${round.round_number}"? This action cannot be undone and will deactivate the round.`}
+                        onConfirm={() => handleDeleteRound(round.id)}
                         disabled={deleteRoundMutation.isPending}
-                        className="text-destructive hover:text-destructive"
                       >
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          title="Delete round"
+                          disabled={deleteRoundMutation.isPending}
+                          className="text-destructive hover:text-destructive"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </ConfirmDelete>
                     </div>
                   </TableCell>
                 </TableRow>
