@@ -42,31 +42,36 @@ const ScheduleView = () => {
     enabled: !!profile?.company_id
   });
 
-  // Fetch drivers for the company
-  const { data: drivers } = useQuery({
-    queryKey: ['drivers', profile?.company_id],
+  // Fetch drivers for the company - use the same working pattern as driver management
+  const { data: drivers, isLoading: driversLoading, error: driversError } = useQuery({
+    queryKey: ['schedule-drivers', profile?.company_id],
     queryFn: async () => {
       if (!profile?.company_id) return [];
       
-      const { data: drivers, error: driversError } = await supabase
-        .from('driver_profiles')
-        .select('*')
-        .eq('company_id', profile.company_id)
-        .eq('status', 'active');
+      console.log('Fetching drivers for schedule, company_id:', profile.company_id);
+      
+      // Use the same query pattern as the working driver management page
+      const { data, error } = await supabase
+        .rpc('get_drivers_with_profiles', {
+          company_ids: [profile.company_id]
+        });
 
-      if (driversError) throw driversError;
-
-      const { data: profiles, error: profilesError } = await supabase
-        .from('profiles')
-        .select('user_id, first_name, last_name')
-        .in('user_id', drivers?.map(d => d.user_id) || []);
-
-      if (profilesError) throw profilesError;
-
-      return drivers?.map(driver => ({
-        ...driver,
-        profiles: profiles?.find(p => p.user_id === driver.user_id)
-      })) || [];
+      if (error) {
+        console.error('Error fetching drivers for schedule:', error);
+        throw error;
+      }
+      
+      console.log('Schedule drivers query result:', data);
+      
+      // Filter for active drivers and format for schedule use
+      return data?.filter((driver: any) => driver.is_active && driver.status === 'active')
+        .map((driver: any) => ({
+          ...driver,
+          profiles: {
+            first_name: driver.first_name,
+            last_name: driver.last_name
+          }
+        })) || [];
     },
     enabled: !!profile?.company_id
   });
