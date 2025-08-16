@@ -87,16 +87,11 @@ const VanManagement = () => {
 
       if (vansError) throw vansError;
 
-      // Then get all drivers with their assigned vans using a proper JOIN
+      // Use the get_drivers_with_profiles function instead of direct query to avoid RLS issues
       const { data: driversData, error: driversError } = await supabase
-        .from('driver_profiles')
-        .select(`
-          id,
-          assigned_van_id,
-          user_id,
-          profiles!inner(first_name, last_name)
-        `)
-        .eq('company_id', profile.company_id);
+        .rpc('get_drivers_with_profiles', {
+          company_ids: [profile.company_id]
+        });
 
       if (driversError) {
         console.error('Error fetching drivers:', driversError);
@@ -107,25 +102,25 @@ const VanManagement = () => {
 
       // Map vans with their assigned drivers
       return vansData.map((van: any) => {
-        const assignedDriver = driversData.find(driver => driver.assigned_van_id === van.id);
+        const assignedDriver = driversData.find((driver: any) => driver.assigned_van_id === van.id);
         console.log(`Van ${van.registration} (${van.id}): assigned_van_id matches:`, {
           vanId: van.id,
           assignedDriver: assignedDriver ? {
             driverId: assignedDriver.id,
             assigned_van_id: assignedDriver.assigned_van_id,
-            name: assignedDriver.profiles
+            name: `${assignedDriver.first_name} ${assignedDriver.last_name}`
           } : null,
-          allDriverAssignments: driversData.map(d => ({ 
+          allDriverAssignments: driversData.map((d: any) => ({ 
             driverId: d.id, 
             assigned_van_id: d.assigned_van_id,
-            profiles: d.profiles
+            name: `${d.first_name} ${d.last_name}`
           }))
         });
         return {
           ...van,
-          assignedDriver: assignedDriver && assignedDriver.profiles ? {
+          assignedDriver: assignedDriver ? {
             id: assignedDriver.id,
-            name: `${assignedDriver.profiles.first_name || ''} ${assignedDriver.profiles.last_name || ''}`.trim()
+            name: `${assignedDriver.first_name || ''} ${assignedDriver.last_name || ''}`.trim()
           } : null
         };
       });
