@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, MapPin, DollarSign, Settings, X, Route } from 'lucide-react';
+import { Plus, MapPin, DollarSign, Settings, X, Route, Edit, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -88,13 +88,83 @@ const RoundManagement = () => {
     },
   });
 
+  // Update round mutation
+  const updateRoundMutation = useMutation({
+    mutationFn: async (roundData: typeof formData & { id: string }) => {
+      const { error } = await supabase
+        .from('rounds')
+        .update({
+          round_number: roundData.roundNumber,
+          description: roundData.locations,
+          parcel_rate: roundData.parcelRate ? parseFloat(roundData.parcelRate) : null,
+          rate: roundData.routeRate ? parseFloat(roundData.routeRate) : null,
+          road_lists: roundData.roadLists.filter(road => road.trim() !== ''),
+        })
+        .eq('id', roundData.id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({
+        title: "Round updated successfully",
+        description: "The delivery round has been updated.",
+      });
+      setIsDialogOpen(false);
+      setEditingRound(null);
+      setFormData({
+        roundNumber: '',
+        locations: '',
+        parcelRate: '',
+        routeRate: '',
+        roadLists: ['']
+      });
+      queryClient.invalidateQueries({ queryKey: ['rounds'] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error updating round",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Delete round mutation
+  const deleteRoundMutation = useMutation({
+    mutationFn: async (roundId: string) => {
+      const { error } = await supabase
+        .from('rounds')
+        .update({ is_active: false })
+        .eq('id', roundId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({
+        title: "Round deleted successfully",
+        description: "The delivery round has been deactivated.",
+      });
+      queryClient.invalidateQueries({ queryKey: ['rounds'] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error deleting round",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    addRoundMutation.mutate(formData);
+    if (editingRound) {
+      updateRoundMutation.mutate({ ...formData, id: editingRound.id });
+    } else {
+      addRoundMutation.mutate(formData);
+    }
   };
 
   const handleEditRound = (round: any) => {
@@ -107,10 +177,22 @@ const RoundManagement = () => {
       roadLists: round.road_lists?.length ? round.road_lists : ['']
     });
     setIsDialogOpen(true);
-    
-    toast({
-      title: "Edit functionality coming soon",
-      description: "Round editing will be available in the next update.",
+  };
+
+  const handleDeleteRound = (round: any) => {
+    if (confirm(`Are you sure you want to delete round ${round.round_number}? This action cannot be undone.`)) {
+      deleteRoundMutation.mutate(round.id);
+    }
+  };
+
+  const resetForm = () => {
+    setEditingRound(null);
+    setFormData({
+      roundNumber: '',
+      locations: '',
+      parcelRate: '',
+      routeRate: '',
+      roadLists: ['']
     });
   };
 
@@ -165,7 +247,10 @@ const RoundManagement = () => {
                 <p className="text-muted-foreground">Setup and manage delivery routes</p>
               </div>
         
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <Dialog open={isDialogOpen} onOpenChange={(open) => {
+          setIsDialogOpen(open);
+          if (!open) resetForm();
+        }}>
           <DialogTrigger asChild>
             <Button>
               <Plus className="h-4 w-4 mr-2" />
@@ -174,9 +259,9 @@ const RoundManagement = () => {
           </DialogTrigger>
           <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
-              <DialogTitle>Create New Round</DialogTitle>
+              <DialogTitle>{editingRound ? 'Edit Round' : 'Create New Round'}</DialogTitle>
               <DialogDescription>
-                Set up a new delivery round with rates and details.
+                {editingRound ? 'Update the delivery round details.' : 'Set up a new delivery round with rates and details.'}
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -261,9 +346,12 @@ const RoundManagement = () => {
                 </div>
               </div>
               
-              <Button type="submit" className="w-full" disabled={addRoundMutation.isPending}>
+              <Button type="submit" className="w-full" disabled={addRoundMutation.isPending || updateRoundMutation.isPending}>
                 <MapPin className="h-4 w-4 mr-2" />
-                {addRoundMutation.isPending ? 'Creating...' : 'Create Round'}
+                {addRoundMutation.isPending || updateRoundMutation.isPending ? 
+                  (editingRound ? 'Updating...' : 'Creating...') : 
+                  (editingRound ? 'Update Round' : 'Create Round')
+                }
               </Button>
             </form>
           </DialogContent>
@@ -380,17 +468,20 @@ const RoundManagement = () => {
                         variant="outline" 
                         size="sm"
                         onClick={() => handleEditRound(round)}
-                        title="Edit round settings"
+                        title="Edit round"
+                        disabled={updateRoundMutation.isPending}
                       >
-                        <Settings className="h-3 w-3" />
+                        <Edit className="h-3 w-3" />
                       </Button>
                       <Button 
                         variant="outline" 
                         size="sm"
-                        onClick={() => handleEditRound(round)}
-                        title="Edit round details"
+                        onClick={() => handleDeleteRound(round)}
+                        title="Delete round"
+                        disabled={deleteRoundMutation.isPending}
+                        className="text-destructive hover:text-destructive"
                       >
-                        Edit
+                        <Trash2 className="h-3 w-3" />
                       </Button>
                     </div>
                   </TableCell>
