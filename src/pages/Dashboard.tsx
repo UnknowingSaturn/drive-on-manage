@@ -344,6 +344,80 @@ const Dashboard = () => {
 
                   {/* Driver Features */}
                   <div className="mobile-grid">
+                    <div className="saas-card saas-hover">
+                      <div className="saas-card-header">
+                        <div className="flex items-center gap-2">
+                          <MapPin className="h-4 w-4 text-primary" />
+                          <h3 className="saas-subheading">Rounds Assigned</h3>
+                        </div>
+                        <p className="saas-caption">View your weekly round assignments</p>
+                      </div>
+                      <div className="saas-card-content">
+                        <div className="saas-metric mb-3">
+                          <div className="saas-metric-value">{weeklyRounds?.length || 0}</div>
+                          <div className="saas-metric-label">This Week</div>
+                        </div>
+                        {weeklyRounds && weeklyRounds.length > 0 ? (
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button className="saas-button saas-button-default w-full touch-target">
+                                <MapPin className="h-4 w-4 mr-2" />
+                                View Details
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-96" align="center">
+                              <div className="space-y-4">
+                                <div className="flex items-center gap-2">
+                                  <MapPin className="h-5 w-5 text-primary" />
+                                  <h4 className="font-semibold">Your Weekly Schedule</h4>
+                                </div>
+                                <div className="space-y-3 max-h-80 overflow-y-auto">
+                                  {weeklyRounds.map((schedule: any, index: number) => (
+                                    <div key={index} className="border border-border rounded-lg p-4 bg-background hover:bg-muted/50 transition-colors">
+                                      <div className="flex items-center justify-between mb-3">
+                                        <div className="font-semibold text-primary">
+                                          Round {schedule.rounds?.round_number || 'N/A'}
+                                        </div>
+                                        <div className="flex items-center gap-1 text-sm text-muted-foreground bg-muted px-2 py-1 rounded">
+                                          <Calendar className="h-3 w-3" />
+                                          {new Date(schedule.scheduled_date).toLocaleDateString('en-GB', {
+                                            weekday: 'long',
+                                            day: 'numeric',
+                                            month: 'short'
+                                          })}
+                                        </div>
+                                      </div>
+                                      {schedule.rounds?.description && (
+                                        <div className="flex items-start gap-2 mb-3">
+                                          <MapPin className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                                          <div className="text-sm text-muted-foreground leading-relaxed">
+                                            {schedule.rounds.description}
+                                          </div>
+                                        </div>
+                                      )}
+                                      <div className="flex items-center justify-between text-xs">
+                                        <span className="text-muted-foreground">
+                                          {new Date(schedule.scheduled_date).toLocaleDateString('en-GB')}
+                                        </span>
+                                        <span className="bg-success/10 text-success px-2 py-1 rounded">
+                                          Scheduled
+                                        </span>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            </PopoverContent>
+                          </Popover>
+                        ) : (
+                          <Button className="saas-button saas-button-outline w-full touch-target" disabled>
+                            <Clock className="h-4 w-4 mr-2" />
+                            No Rounds Assigned
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                    
                     <EarningsWidget />
                     <LeaderboardWidget />
                     <FeedbackWidget />
