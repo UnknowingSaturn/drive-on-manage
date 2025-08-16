@@ -38,6 +38,7 @@ import RouteFeedback from "./pages/driver/RouteFeedback";
 import Leaderboard from "./pages/driver/Leaderboard";
 import ExpenseTracker from "./pages/driver/ExpenseTracker";
 import DriverOnboarding from "./pages/driver/Onboarding";
+import EndOfDay from "./pages/driver/EndOfDay";
 
 const queryClient = new QueryClient();
 
@@ -153,6 +154,13 @@ const App = () => (
               <ProtectedRoute>
                 <DriverOnboardingGate>
                   <StartOfDay />
+                </DriverOnboardingGate>
+              </ProtectedRoute>
+            } />
+            <Route path="/driver/end-of-day" element={
+              <ProtectedRoute>
+                <DriverOnboardingGate>
+                  <EndOfDay />
                 </DriverOnboardingGate>
               </ProtectedRoute>
             } />
