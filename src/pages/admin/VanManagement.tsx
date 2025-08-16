@@ -40,32 +40,33 @@ const VanManagement = () => {
     serviceDue: ''
   });
 
-  // Fetch drivers for assignment - all active drivers regardless of van assignment for assignment dialog
-  const { data: drivers } = useQuery({
+  // Fetch drivers for assignment - use the same pattern as driver management
+  const { data: drivers, isLoading: driversLoading, error: driversError } = useQuery({
     queryKey: ['available-drivers', profile?.company_id],
     queryFn: async () => {
       if (!profile?.company_id) return [];
       
-      const { data, error } = await supabase
-        .from('driver_profiles')
-        .select(`
-          id,
-          assigned_van_id,
-          status,
-          profiles!inner(first_name, last_name, is_active, user_type)
-        `)
-        .eq('company_id', profile.company_id)
-        .eq('profiles.user_type', 'driver')
-        .eq('profiles.is_active', true);
-
-      if (error) throw error;
+      console.log('Fetching drivers for van assignment, company_id:', profile.company_id);
       
-      // Return all drivers - we'll filter in the UI for better UX
-      return data.map(driver => ({
+      // Use the same query pattern as the working driver management page
+      const { data, error } = await supabase
+        .rpc('get_drivers_with_profiles', {
+          company_ids: [profile.company_id]
+        });
+
+      if (error) {
+        console.error('Error fetching drivers for van assignment:', error);
+        throw error;
+      }
+      
+      console.log('Van assignment drivers query result:', data);
+      
+      // Return all drivers with availability info
+      return data?.map((driver: any) => ({
         ...driver,
-        name: `${driver.profiles?.first_name || ''} ${driver.profiles?.last_name || ''}`.trim(),
+        name: `${driver.first_name || ''} ${driver.last_name || ''}`.trim(),
         isAvailable: !driver.assigned_van_id
-      }));
+      })) || [];
     },
     enabled: !!profile?.company_id
   });
