@@ -283,38 +283,41 @@ const DriverProfile = () => {
         
         <SidebarInset className="flex-1 no-overflow">
           <header className="border-b bg-card sticky top-0 z-10">
-            <div className="flex items-center justify-between px-4 py-3">
+            <div className="flex items-center justify-between mobile-padding py-3 md:py-4">
               <div className="flex items-center space-x-3">
                 <SidebarTrigger className="mr-2 hidden md:flex" />
                 <MobileNav className="md:hidden" />
                 <div>
-                  <h1 className="text-lg font-semibold text-foreground">My Profile</h1>
-                  <p className="text-xs text-muted-foreground">Manage your information</p>
+                  <h1 className="mobile-heading font-semibold text-foreground">My Profile</h1>
+                  <p className="text-xs md:text-sm text-muted-foreground">Manage your personal information and onboarding</p>
                 </div>
               </div>
             </div>
           </header>
 
-          <main className="p-4 space-y-4">
-            {/* Onboarding Progress - Compact */}
-            <Card className="border-0 shadow-sm">
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center text-base">
-                  <CheckCircle2 className="h-4 w-4 text-primary mr-2" />
+          <main className="mobile-padding py-4 md:py-6 space-y-4 md:space-y-6 no-overflow">
+            {/* Onboarding Progress */}
+            <Card className="logistics-card">
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <CheckCircle2 className="h-5 w-5 text-primary mr-2" />
                   Onboarding Progress
                 </CardTitle>
+                <CardDescription>
+                  Complete all sections to finish your onboarding
+                </CardDescription>
               </CardHeader>
-              <CardContent className="pt-0">
-                <div className="space-y-3">
+              <CardContent>
+                <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium">Overall Progress</span>
-                    <Badge variant={status.percentage === 100 ? "default" : "secondary"} className="text-xs">
+                    <Badge variant={status.percentage === 100 ? "default" : "secondary"}>
                       {status.completed}/{status.total} Complete
                     </Badge>
                   </div>
-                  <div className="w-full bg-muted rounded-full h-2">
+                  <div className="w-full bg-muted rounded-full h-3">
                     <div 
-                      className="bg-primary h-2 rounded-full transition-all duration-500"
+                      className="bg-gradient-primary h-3 rounded-full transition-all duration-500 route-indicator"
                       style={{ width: `${status.percentage}%` }}
                     ></div>
                   </div>
@@ -322,11 +325,11 @@ const DriverProfile = () => {
                     {status.checks.map((check, index) => (
                       <div key={index} className="flex items-center space-x-2">
                         {check.completed ? (
-                          <CheckCircle2 className="h-3 w-3 text-success" />
+                          <CheckCircle2 className="h-4 w-4 text-success" />
                         ) : (
-                          <AlertCircle className="h-3 w-3 text-muted-foreground" />
+                          <AlertCircle className="h-4 w-4 text-muted-foreground" />
                         )}
-                        <span className={`text-xs ${check.completed ? 'text-success' : 'text-muted-foreground'}`}>
+                        <span className={`text-sm ${check.completed ? 'text-success' : 'text-muted-foreground'}`}>
                           {check.label}
                         </span>
                       </div>
@@ -336,73 +339,75 @@ const DriverProfile = () => {
               </CardContent>
             </Card>
 
-            {/* Driver Features Quick Access - Compact */}
-            <Card className="bg-gradient-to-br from-primary/5 to-primary/10 border-0 shadow-sm">
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center text-base">
-                  <Trophy className="h-4 w-4 text-primary mr-2" />
+            {/* Driver Features Quick Access */}
+            <Card className="logistics-card bg-gradient-subtle">
+              <CardHeader>
+                <CardTitle className="flex items-center text-gradient">
+                  <Trophy className="h-5 w-5 text-primary mr-2" />
                   Driver Features
                 </CardTitle>
+                <CardDescription>
+                  Quick access to earnings, leaderboard, feedback, and expense tracking
+                </CardDescription>
               </CardHeader>
-              <CardContent className="pt-0">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   <Button 
                     variant="outline" 
-                    size="sm"
-                    className="h-12 flex-col space-y-1 text-xs"
+                    className="h-16 flex-col space-y-1 hover-lift"
                     onClick={() => navigate('/driver/earnings')}
                   >
-                    <DollarSign className="h-4 w-4 text-green-600" />
-                    <span>Earnings</span>
+                    <DollarSign className="h-5 w-5 text-green-600" />
+                    <span className="text-xs">Live Earnings</span>
                   </Button>
                   
                   <Button 
                     variant="outline" 
-                    size="sm"
-                    className="h-12 flex-col space-y-1 text-xs"
+                    className="h-16 flex-col space-y-1 hover-lift"
                     onClick={() => navigate('/driver/leaderboard')}
                   >
-                    <Trophy className="h-4 w-4 text-yellow-600" />
-                    <span>Leaderboard</span>
+                    <Trophy className="h-5 w-5 text-yellow-600" />
+                    <span className="text-xs">Leaderboard</span>
                   </Button>
                   
                   <Button 
                     variant="outline" 
-                    size="sm"
-                    className="h-12 flex-col space-y-1 text-xs"
+                    className="h-16 flex-col space-y-1 hover-lift"
                     onClick={() => navigate('/driver/feedback')}
                   >
-                    <Star className="h-4 w-4 text-blue-600" />
-                    <span>Feedback</span>
+                    <Star className="h-5 w-5 text-blue-600" />
+                    <span className="text-xs">Route Feedback</span>
                   </Button>
                   
                   <Button 
                     variant="outline" 
-                    size="sm"
-                    className="h-12 flex-col space-y-1 text-xs"
+                    className="h-16 flex-col space-y-1 hover-lift"
                     onClick={() => navigate('/driver/expenses')}
                   >
-                    <Receipt className="h-4 w-4 text-purple-600" />
-                    <span>Expenses</span>
+                    <Receipt className="h-5 w-5 text-purple-600" />
+                    <span className="text-xs">Expenses</span>
                   </Button>
                 </div>
               </CardContent>
             </Card>
 
-            <Tabs defaultValue="personal" className="space-y-4">
-              <TabsList className="grid w-full grid-cols-3 h-9">
-                <TabsTrigger value="personal" className="text-xs">Personal</TabsTrigger>
-                <TabsTrigger value="documents" className="text-xs">Documents</TabsTrigger>
-                <TabsTrigger value="employment" className="text-xs">Employment</TabsTrigger>
+            <Tabs defaultValue="personal" className="space-y-4 md:space-y-6">
+              <TabsList className="grid w-full grid-cols-3 h-auto p-1">
+                <TabsTrigger value="personal" className="text-xs sm:text-sm mobile-button">Personal Details</TabsTrigger>
+                <TabsTrigger value="documents" className="text-xs sm:text-sm mobile-button">Documents</TabsTrigger>
+                <TabsTrigger value="employment" className="text-xs sm:text-sm mobile-button">Employment</TabsTrigger>
               </TabsList>
 
-              <TabsContent value="personal" className="space-y-4">
-                <Card className="border-0 shadow-sm">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="flex items-center text-base">
-                      <User className="h-4 w-4 text-primary mr-2" />
+              <TabsContent value="personal" className="space-y-6">
+                <Card className="logistics-card">
+                  <CardHeader>
+                    <CardTitle className="flex items-center">
+                      <User className="h-5 w-5 text-primary mr-2" />
                       Personal Information
                     </CardTitle>
+                    <CardDescription>
+                      Update your personal details
+                    </CardDescription>
                   </CardHeader>
                   <CardContent>
                     <form onSubmit={handleSubmit} className="space-y-4">
@@ -540,10 +545,9 @@ const DriverProfile = () => {
                         )}
                       </div>
 
-                      <Button 
+                      <Button
                         type="submit" 
-                        size="sm"
-                        className="w-full sm:w-auto"
+                        className="logistics-button mobile-button w-full sm:w-auto"
                         disabled={updateProfileMutation.isPending}
                       >
                         {updateProfileMutation.isPending ? 'Updating...' : 'Update Profile'}
