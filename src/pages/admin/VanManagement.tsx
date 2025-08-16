@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -116,6 +116,46 @@ const VanManagement = () => {
     retry: 3,
     retryDelay: 1000
   });
+
+  // Set up real-time subscriptions
+  useEffect(() => {
+    if (!profile?.company_id) return;
+
+    const channel = supabase
+      .channel('van-management-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'vans',
+          filter: `company_id=eq.${profile.company_id}`
+        },
+        () => {
+          console.log('Van data changed, invalidating queries');
+          queryClient.invalidateQueries({ queryKey: ['vans'] });
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'driver_profiles',
+          filter: `company_id=eq.${profile.company_id}`
+        },
+        () => {
+          console.log('Driver profile changed, invalidating queries');
+          queryClient.invalidateQueries({ queryKey: ['vans'] });
+          queryClient.invalidateQueries({ queryKey: ['available-drivers'] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [profile?.company_id, queryClient]);
 
   // Add van mutation
   const addVanMutation = useMutation({
