@@ -340,7 +340,10 @@ const VanManagement = () => {
 
   const handleAssignVan = (van: any) => {
     setAssigningVan(van);
-    setSelectedDriverId(van.assignedDriver?.id || 'UNASSIGNED');
+    // Set the current driver ID, ensuring it matches the driver ID from the drivers list
+    const currentDriverId = van.assignedDriver?.id || 'UNASSIGNED';
+    console.log('Setting driver ID for van assignment:', { van, currentDriverId, assignedDriver: van.assignedDriver });
+    setSelectedDriverId(currentDriverId);
     setIsAssignDialogOpen(true);
   };
 
@@ -836,27 +839,39 @@ const VanManagement = () => {
                   </SelectTrigger>
                   <SelectContent className="bg-popover border border-border shadow-md z-50">
                     <SelectItem value="UNASSIGNED">Unassigned</SelectItem>
-                    {drivers?.map((driver) => (
-                      <SelectItem 
-                        key={driver.id} 
-                        value={driver.id}
-                        disabled={!driver.isAvailable}
-                      >
-                        <div className="flex items-center justify-between w-full">
-                          <span>{driver.name}</span>
-                          {!driver.isAvailable && (
-                            <Badge variant="secondary" className="ml-2 text-xs">
-                              Already Assigned
-                            </Badge>
-                          )}
-                          {driver.isAvailable && (
-                            <Badge variant="outline" className="ml-2 text-xs bg-success/10 text-success border-success/30">
-                              Available
-                            </Badge>
-                          )}
-                        </div>
-                      </SelectItem>
-                    ))}
+                    {drivers?.map((driver) => {
+                      // Check if this driver is currently assigned to the van being edited
+                      const isCurrentlyAssigned = assigningVan?.assignedDriver?.id === driver.id;
+                      // Allow selection if driver is available OR if they're currently assigned to this van
+                      const canSelect = driver.isAvailable || isCurrentlyAssigned;
+                      
+                      return (
+                        <SelectItem 
+                          key={driver.id} 
+                          value={driver.id}
+                          disabled={!canSelect}
+                        >
+                          <div className="flex items-center justify-between w-full">
+                            <span>{driver.name}</span>
+                            {isCurrentlyAssigned && (
+                              <Badge variant="default" className="ml-2 text-xs">
+                                Currently Assigned
+                              </Badge>
+                            )}
+                            {!driver.isAvailable && !isCurrentlyAssigned && (
+                              <Badge variant="secondary" className="ml-2 text-xs">
+                                Already Assigned
+                              </Badge>
+                            )}
+                            {driver.isAvailable && !isCurrentlyAssigned && (
+                              <Badge variant="outline" className="ml-2 text-xs bg-success/10 text-success border-success/30">
+                                Available
+                              </Badge>
+                            )}
+                          </div>
+                        </SelectItem>
+                      );
+                    })}
                   </SelectContent>
                 </Select>
                 {drivers && drivers.length === 0 && (
