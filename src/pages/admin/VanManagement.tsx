@@ -310,8 +310,11 @@ const VanManagement = () => {
       setIsAssignDialogOpen(false);
       setAssigningVan(null);
       setSelectedDriverId('UNASSIGNED');
+      // Invalidate both queries to ensure fresh data
       queryClient.invalidateQueries({ queryKey: ['vans'] });
-      queryClient.invalidateQueries({ queryKey: ['drivers'] });
+      queryClient.invalidateQueries({ queryKey: ['available-drivers'] });
+      // Also refetch the specific data
+      queryClient.refetchQueries({ queryKey: ['vans'] });
     },
     onError: (error: any) => {
       toast({
