@@ -4,60 +4,51 @@
 
 @layer base {
   :root {
-    /* Luxury Theme Colors */
-    --background: 254 254 255;
-    --foreground: 15 23 42;
+    /* Modern SaaS Light Theme */
+    --background: 0 0% 100%;
+    --foreground: 240 10% 3.9%;
 
-    --card: 255 255 255;
-    --card-foreground: 15 23 42;
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 3.9%;
 
-    --popover: 255 255 255;
-    --popover-foreground: 15 23 42;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 3.9%;
 
-    /* Luxury Purple Gradient */
-    --primary: 267 84% 64%;
-    --primary-foreground: 255 255 255;
-    --primary-light: 267 84% 74%;
-    --primary-dark: 267 84% 54%;
+    --primary: 262.1 83.3% 57.8%;
+    --primary-foreground: 210 20% 98%;
+    --primary-light: 262.1 83.3% 67.8%;
 
-    --secondary: 241 245 249;
-    --secondary-foreground: 51 65 85;
+    --secondary: 220 14.3% 95.9%;
+    --secondary-foreground: 220.9 39.3% 11%;
 
-    --muted: 248 250 252;
-    --muted-foreground: 100 116 139;
+    --muted: 220 14.3% 95.9%;
+    --muted-foreground: 220 8.9% 46.1%;
 
-    --accent: 241 245 249;
-    --accent-foreground: 15 23 42;
+    --accent: 220 14.3% 95.9%;
+    --accent-foreground: 220.9 39.3% 11%;
 
-    --destructive: 0 72% 51%;
-    --destructive-foreground: 255 255 255;
+    --destructive: 0 72.2% 50.6%;
+    --destructive-foreground: 210 20% 98%;
 
-    --border: 226 232 240;
-    --input: 226 232 240;
-    --ring: 267 84% 64%;
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 262.1 83.3% 57.8%;
 
-    --success: 142 71% 45%;
-    --warning: 47 96% 53%;
-    --info: 198 93% 60%;
+    --success: 142.1 76.2% 36.3%;
+    --warning: 47.9 95.8% 53.1%;
+    --info: 199.89 89.47% 48.04%;
 
-    --radius: 0.75rem;
+    --radius: 0.5rem;
 
-    /* Luxury Shadows & Gradients */
+    /* Professional Shadows */
     --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
     --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
     --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
-    --shadow-card: 0 4px 6px -1px rgb(0 0 0 / 0.03), 0 2px 4px -2px rgb(0 0 0 / 0.02);
-    --shadow-luxury: 0 20px 25px -5px rgb(0 0 0 / 0.08), 0 10px 10px -5px rgb(0 0 0 / 0.02);
-    --shadow-glow: 0 0 40px rgb(139 92 246 / 0.15);
-
-    --gradient-primary: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-light)));
-    --gradient-luxury: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    --gradient-card: linear-gradient(145deg, #ffffff 0%, #f8fafc 100%);
-    --gradient-subtle: linear-gradient(180deg, #ffffff 0%, #f1f5f9 100%);
+    --shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
 
     /* Smooth Transitions */
-    --transition-all: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    --transition-colors: color, background-color, border-color, text-decoration-color, fill, stroke 0.2s ease-in-out;
+    --transition-all: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-colors: color, background-color, border-color, text-decoration-color, fill, stroke 0.15s ease-in-out;
 
     /* Sidebar Variables */
     --sidebar-background: 250 50% 98%;
@@ -71,49 +62,38 @@
   }
 
   .dark {
-    --background: 8 12 23;
-    --foreground: 248 250 252;
+    --background: 240 10% 3.9%;
+    --foreground: 0 0% 98%;
 
-    --card: 15 23 42;
-    --card-foreground: 248 250 252;
+    --card: 240 10% 3.9%;
+    --card-foreground: 0 0% 98%;
 
-    --popover: 15 23 42;
-    --popover-foreground: 248 250 252;
+    --popover: 240 10% 3.9%;
+    --popover-foreground: 0 0% 98%;
 
-    --primary: 267 84% 64%;
-    --primary-foreground: 255 255 255;
-    --primary-light: 267 84% 74%;
-    --primary-dark: 267 84% 54%;
+    --primary: 262.1 83.3% 57.8%;
+    --primary-foreground: 210 20% 98%;
+    --primary-light: 262.1 83.3% 67.8%;
 
-    --secondary: 30 41 59;
-    --secondary-foreground: 248 250 252;
+    --secondary: 240 3.7% 15.9%;
+    --secondary-foreground: 0 0% 98%;
 
-    --muted: 30 41 59;
-    --muted-foreground: 148 163 184;
+    --muted: 240 3.7% 15.9%;
+    --muted-foreground: 240 5% 64.9%;
 
-    --accent: 30 41 59;
-    --accent-foreground: 248 250 252;
+    --accent: 240 3.7% 15.9%;
+    --accent-foreground: 0 0% 98%;
 
-    --destructive: 0 63% 31%;
-    --destructive-foreground: 248 250 252;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
 
-    --border: 30 41 59;
-    --input: 30 41 59;
-    --ring: 267 84% 64%;
+    --border: 240 3.7% 15.9%;
+    --input: 240 3.7% 15.9%;
+    --ring: 262.1 83.3% 57.8%;
 
-    --success: 142 71% 45%;
-    --warning: 47 96% 53%;
-    --info: 198 93% 60%;
-
-    /* Dark Luxury Shadows & Gradients */
-    --shadow-card: 0 4px 6px -1px rgb(0 0 0 / 0.2), 0 2px 4px -2px rgb(0 0 0 / 0.15);
-    --shadow-luxury: 0 20px 25px -5px rgb(0 0 0 / 0.3), 0 10px 10px -5px rgb(0 0 0 / 0.1);
-    --shadow-glow: 0 0 40px rgb(139 92 246 / 0.25);
-
-    --gradient-primary: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-light)));
-    --gradient-luxury: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    --gradient-card: linear-gradient(145deg, #1e293b 0%, #0f172a 100%);
-    --gradient-subtle: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+    --success: 142.1 70.6% 45.3%;
+    --warning: 47.9 95.8% 53.1%;
+    --info: 199.89 89.47% 48.04%;
 
     /* Dark Sidebar */
     --sidebar-background: 240 5.9% 10%;
@@ -152,74 +132,49 @@
   }
   
   .saas-main {
-    @apply py-8 px-6 sm:px-8 lg:px-12;
-    background: linear-gradient(135deg, hsl(var(--background)) 0%, hsl(var(--muted)) 100%);
-    min-height: calc(100vh - 80px);
+    @apply py-6 px-4 sm:px-6 lg:px-8;
   }
   
-  /* Luxury Typography */
+  /* Typography */
   .saas-title {
-    @apply text-3xl font-bold text-foreground tracking-tight;
-    background: linear-gradient(135deg, hsl(var(--foreground)), hsl(var(--primary)));
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+    @apply text-2xl font-semibold text-foreground tracking-tight;
   }
   
   .saas-subtitle {
-    @apply text-base text-muted-foreground font-medium;
+    @apply text-sm text-muted-foreground;
   }
   
   .saas-heading {
-    @apply text-xl font-bold text-foreground tracking-tight;
-  }
-  
-  .saas-subheading {
     @apply text-lg font-semibold text-foreground;
   }
   
+  .saas-subheading {
+    @apply text-base font-medium text-foreground;
+  }
+  
   .saas-body {
-    @apply text-sm text-foreground leading-relaxed;
+    @apply text-sm text-foreground;
   }
   
   .saas-caption {
-    @apply text-sm text-muted-foreground font-medium;
+    @apply text-xs text-muted-foreground;
   }
   
-  /* Luxury Cards */
+  /* Cards */
   .saas-card {
-    @apply relative bg-card rounded-xl border border-border/60 shadow-card backdrop-blur-sm;
-    background: var(--gradient-card);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-  
-  .saas-card:hover {
-    box-shadow: var(--shadow-luxury);
-    transform: translateY(-2px);
-  }
-
-  .saas-card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(139, 92, 246, 0.3), transparent);
-    border-radius: 0.75rem 0.75rem 0 0;
+    @apply bg-card rounded-lg border shadow-card transition-shadow hover:shadow-md;
   }
   
   .saas-card-header {
-    @apply p-8 pb-6;
+    @apply p-6 pb-4;
   }
   
   .saas-card-content {
-    @apply p-8 pt-0;
+    @apply p-6 pt-0;
   }
   
   .saas-card-compact {
-    @apply relative bg-card rounded-xl border border-border/60 shadow-card p-6;
-    background: var(--gradient-card);
+    @apply bg-card rounded-lg border shadow-card p-4;
   }
   
   /* Forms */
@@ -251,57 +206,42 @@
     @apply flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50;
   }
   
-  /* Luxury Buttons */
+  /* Buttons */
   .saas-button {
-    @apply relative inline-flex items-center justify-center rounded-xl text-sm font-semibold ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    @apply inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50;
   }
   
   .saas-button-default {
-    @apply h-12 px-6 py-3 text-white;
-    background: var(--gradient-primary);
-    box-shadow: var(--shadow-md);
-  }
-
-  .saas-button-default:hover {
-    transform: translateY(-1px);
-    box-shadow: var(--shadow-lg), var(--shadow-glow);
+    @apply bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2;
   }
   
   .saas-button-outline {
-    @apply border-2 border-primary/30 bg-background/80 backdrop-blur-sm text-primary hover:bg-primary/5 hover:border-primary/50 h-12 px-6 py-3;
+    @apply border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2;
   }
   
   .saas-button-ghost {
-    @apply hover:bg-accent/80 hover:text-accent-foreground h-12 px-6 py-3;
+    @apply hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2;
   }
   
   .saas-button-sm {
-    @apply h-10 rounded-lg px-4 text-xs;
+    @apply h-9 rounded-md px-3;
   }
   
   .saas-button-lg {
-    @apply h-14 rounded-xl px-8 text-base;
+    @apply h-11 rounded-md px-8;
   }
   
-  /* Luxury Metrics */
+  /* Status & Metrics */
   .saas-metric {
-    @apply relative text-center p-6 rounded-xl border border-border/40 backdrop-blur-sm;
-    background: var(--gradient-subtle);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-
-  .saas-metric:hover {
-    transform: translateY(-1px);
-    box-shadow: var(--shadow-md);
+    @apply text-center p-4 rounded-lg bg-muted/50;
   }
   
   .saas-metric-value {
-    @apply text-3xl font-bold bg-gradient-to-br from-primary to-primary-light bg-clip-text text-transparent;
+    @apply text-2xl font-bold text-foreground;
   }
   
   .saas-metric-label {
-    @apply text-sm text-muted-foreground font-medium;
+    @apply text-sm text-muted-foreground;
   }
   
   .saas-status {
@@ -367,18 +307,13 @@
     @apply h-6;
   }
   
-  /* Interactive Luxury Effects */
+  /* Interactive */
   .saas-hover {
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-
-  .saas-hover:hover {
-    transform: translateY(-3px);
-    box-shadow: var(--shadow-luxury);
+    @apply transition-all duration-200 hover:shadow-md;
   }
   
   .saas-press {
-    @apply transition-transform duration-150 active:scale-[0.98];
+    @apply transition-transform duration-100 active:scale-95;
   }
   
   /* Loading */
