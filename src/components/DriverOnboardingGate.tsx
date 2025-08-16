@@ -53,13 +53,22 @@ const DriverOnboardingGate: React.FC<DriverOnboardingGateProps> = ({ children })
 
   // Driver users - check onboarding status
   if (profile?.user_type === 'driver') {
+    console.log('DriverOnboardingGate - Driver profile check:', {
+      driverProfile,
+      requiresOnboarding: driverProfile?.requires_onboarding,
+      status: driverProfile?.status,
+      firstLoginCompleted: driverProfile?.first_login_completed
+    });
+
     // No driver profile exists or requires onboarding
     if (!driverProfile || driverProfile.requires_onboarding || driverProfile.status === 'pending_onboarding') {
+      console.log('DriverOnboardingGate - Redirecting to onboarding: missing profile or requires onboarding');
       return <Navigate to="/driver/onboarding" replace />;
     }
 
     // First login check
     if (!driverProfile.first_login_completed) {
+      console.log('DriverOnboardingGate - Redirecting to onboarding: first login not completed');
       return <Navigate to="/driver/onboarding" replace />;
     }
 
@@ -74,9 +83,22 @@ const DriverOnboardingGate: React.FC<DriverOnboardingGateProps> = ({ children })
       driverProfile.status !== 'pending_onboarding'
     );
 
+    console.log('DriverOnboardingGate - Onboarding completion check:', {
+      driving_license_number: !!driverProfile.driving_license_number,
+      license_expiry: !!driverProfile.license_expiry,
+      driving_license_document: !!driverProfile.driving_license_document,
+      right_to_work_document: !!driverProfile.right_to_work_document,
+      requires_onboarding: driverProfile.requires_onboarding,
+      status: driverProfile.status,
+      isOnboardingComplete
+    });
+
     if (!isOnboardingComplete) {
+      console.log('DriverOnboardingGate - Redirecting to onboarding: incomplete onboarding');
       return <Navigate to="/driver/onboarding" replace />;
     }
+
+    console.log('DriverOnboardingGate - Onboarding complete, allowing access');
   }
 
   return <>{children}</>;

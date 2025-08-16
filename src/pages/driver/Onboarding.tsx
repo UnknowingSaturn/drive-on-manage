@@ -235,6 +235,8 @@ const DriverOnboarding = () => {
       }
     },
     onSuccess: () => {
+      console.log('Onboarding completed successfully');
+      
       toast({
         title: "Onboarding completed!",
         description: "Welcome to the driver portal. You can now access all features.",
@@ -244,10 +246,13 @@ const DriverOnboarding = () => {
       queryClient.invalidateQueries({ queryKey: ['driver-profile-onboarding'] });
       queryClient.invalidateQueries({ queryKey: ['profile'] });
       
-      // Refresh the auth profile
-      refreshProfile().then(() => {
-        navigate('/dashboard');
-      });
+      // Short delay to ensure data is refreshed before navigation
+      setTimeout(() => {
+        refreshProfile().then(() => {
+          console.log('Profile refreshed, navigating to dashboard');
+          navigate('/dashboard');
+        });
+      }, 1000);
     },
     onError: (error: any) => {
       toast({
