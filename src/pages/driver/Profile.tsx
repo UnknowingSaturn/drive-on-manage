@@ -30,6 +30,14 @@ const DriverProfile = () => {
     employeeId: ''
   });
 
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
+
+  const [showPasswordForm, setShowPasswordForm] = useState(false);
+
   // Fetch driver profile data
   const { data: driverProfile, isLoading } = useQuery({
     queryKey: ['driver-profile', user?.id],
@@ -89,9 +97,62 @@ const DriverProfile = () => {
     }
   });
 
+  // Change password mutation
+  const changePasswordMutation = useMutation({
+    mutationFn: async (passwords: { currentPassword: string; newPassword: string }) => {
+      const { error } = await supabase.auth.updateUser({
+        password: passwords.newPassword
+      });
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({
+        title: "Password changed",
+        description: "Your password has been updated successfully.",
+      });
+      setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+      setShowPasswordForm(false);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error changing password",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  });
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     updateProfileMutation.mutate(formData);
+  };
+
+  const handlePasswordChange = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      toast({
+        title: "Password mismatch",
+        description: "New password and confirmation password do not match.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (passwordData.newPassword.length < 6) {
+      toast({
+        title: "Password too short",
+        description: "Password must be at least 6 characters long.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    changePasswordMutation.mutate({
+      currentPassword: passwordData.currentPassword,
+      newPassword: passwordData.newPassword
+    });
   };
 
   const handleDocumentUpload = (documentType: string) => {
@@ -360,7 +421,87 @@ const DriverProfile = () => {
                         />
                       </div>
 
-                      <Button 
+                      {/* Change Password Section */}
+                      <div className="space-y-4 pt-4 border-t">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-base font-medium">Password</Label>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setShowPasswordForm(!showPasswordForm)}
+                          >
+                            {showPasswordForm ? 'Cancel' : 'Change Password'}
+                          </Button>
+                        </div>
+                        
+                        {showPasswordForm && (
+                          <div className="space-y-4 p-4 bg-muted rounded-lg">
+                            <form onSubmit={handlePasswordChange} className="space-y-4">
+                              <div className="space-y-2">
+                                <Label htmlFor="currentPassword">Current Password</Label>
+                                <Input
+                                  id="currentPassword"
+                                  type="password"
+                                  value={passwordData.currentPassword}
+                                  onChange={(e) => setPasswordData(prev => ({ ...prev, currentPassword: e.target.value }))}
+                                  placeholder="Enter current password"
+                                  required
+                                />
+                              </div>
+                              
+                              <div className="space-y-2">
+                                <Label htmlFor="newPassword">New Password</Label>
+                                <Input
+                                  id="newPassword"
+                                  type="password"
+                                  value={passwordData.newPassword}
+                                  onChange={(e) => setPasswordData(prev => ({ ...prev, newPassword: e.target.value }))}
+                                  placeholder="Enter new password (min. 6 characters)"
+                                  required
+                                  minLength={6}
+                                />
+                              </div>
+                              
+                              <div className="space-y-2">
+                                <Label htmlFor="confirmPassword">Confirm New Password</Label>
+                                <Input
+                                  id="confirmPassword"
+                                  type="password"
+                                  value={passwordData.confirmPassword}
+                                  onChange={(e) => setPasswordData(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                                  placeholder="Confirm new password"
+                                  required
+                                />
+                              </div>
+                              
+                              <div className="flex gap-2">
+                                <Button 
+                                  type="submit" 
+                                  size="sm"
+                                  disabled={changePasswordMutation.isPending}
+                                  className="bg-primary hover:bg-primary/90"
+                                >
+                                  {changePasswordMutation.isPending ? 'Updating...' : 'Update Password'}
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => {
+                                    setShowPasswordForm(false);
+                                    setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+                                  }}
+                                >
+                                  Cancel
+                                </Button>
+                              </div>
+                            </form>
+                          </div>
+                        )}
+                      </div>
+
+                      <Button
                         type="submit" 
                         className="logistics-button mobile-button w-full sm:w-auto"
                         disabled={updateProfileMutation.isPending}
