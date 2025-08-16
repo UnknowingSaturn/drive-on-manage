@@ -789,7 +789,7 @@ const VanManagement = () => {
                   </SelectTrigger>
                   <SelectContent className="bg-popover border border-border shadow-md z-50">
                     <SelectItem value="UNASSIGNED">Unassigned</SelectItem>
-                    {drivers?.filter(driver => !driver.assigned_van_id).map((driver) => (
+                    {drivers?.map((driver) => (
                       <SelectItem key={driver.id} value={driver.id}>
                         {driver.name}
                       </SelectItem>
