@@ -7,7 +7,7 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instanciate createClient with right options
+  // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "13.0.4"
@@ -1390,39 +1390,39 @@ export type Database = {
       audit_rls_coverage: {
         Args: Record<PropertyKey, never>
         Returns: {
-          table_name: string
-          rls_enabled: boolean
           policy_count: number
+          rls_enabled: boolean
           security_status: string
+          table_name: string
         }[]
       }
       calculate_driver_invoice_data: {
         Args: {
           driver_id_param: string
-          period_start: string
           period_end: string
+          period_start: string
         }
         Returns: {
-          total_parcels: number
           parcel_rate: number
           total_amount: number
+          total_parcels: number
         }[]
       }
       calculate_driver_pay: {
         Args: {
+          base_pay_param?: number
           driver_id_param: string
           parcel_count_param: number
-          base_pay_param?: number
         }
         Returns: number
       }
       calculate_driver_pay_with_rates: {
         Args: {
-          driver_id_param: string
-          route_id_param: string
-          regular_parcels_param: number
-          cover_parcels_param?: number
           base_pay_param?: number
+          cover_parcels_param?: number
+          driver_id_param: string
+          regular_parcels_param: number
+          route_id_param: string
         }
         Returns: Json
       }
@@ -1437,33 +1437,33 @@ export type Database = {
       get_drivers_with_profiles: {
         Args: { company_ids: string[] }
         Returns: {
-          id: string
-          user_id: string
-          company_id: string
-          driving_license_number: string
-          license_expiry: string
-          right_to_work_document: string
-          insurance_document: string
-          driving_license_document: string
-          parcel_rate: number
           assigned_van_id: string
-          status: string
-          created_at: string
-          updated_at: string
           avatar_url: string
+          company_id: string
           cover_rate: number
-          first_login_completed: boolean
-          requires_onboarding: boolean
-          onboarding_completed_at: string
+          created_at: string
+          driving_license_document: string
+          driving_license_number: string
+          email: string
           emergency_contact_name: string
           emergency_contact_phone: string
           emergency_contact_relation: string
-          vehicle_notes: string
+          first_login_completed: boolean
           first_name: string
-          last_name: string
-          email: string
-          phone: string
+          id: string
+          insurance_document: string
           is_active: boolean
+          last_name: string
+          license_expiry: string
+          onboarding_completed_at: string
+          parcel_rate: number
+          phone: string
+          requires_onboarding: boolean
+          right_to_work_document: string
+          status: string
+          updated_at: string
+          user_id: string
+          vehicle_notes: string
         }[]
       }
       get_validation_summary: {
@@ -1474,33 +1474,33 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: {
           bucket_name: string
-          file_path: string
           file_age_days: number
+          file_path: string
           file_size: number
           should_cleanup: boolean
         }[]
       }
       send_driver_credentials_email: {
         Args: {
+          company_id_param: string
           driver_email: string
           driver_name: string
           temp_password: string
-          company_id_param: string
         }
         Returns: undefined
       }
       set_driver_password: {
-        Args: { user_email: string; new_password: string }
+        Args: { new_password: string; user_email: string }
         Returns: undefined
       }
       test_auth_context: {
         Args: Record<PropertyKey, never>
         Returns: {
-          current_uid: string
           current_db_role: string
+          current_uid: string
           jwt_claims: Json
-          profile_exists: boolean
           profile_data: Json
+          profile_exists: boolean
         }[]
       }
       test_validation_system: {
@@ -1509,9 +1509,9 @@ export type Database = {
       }
       user_has_company_role: {
         Args: {
-          user_id_param: string
           company_id_param: string
           role_param?: string
+          user_id_param: string
         }
         Returns: boolean
       }
