@@ -12,30 +12,34 @@ import { SidebarProvider, SidebarTrigger, SidebarInset } from '@/components/ui/s
 import { AppSidebar } from '@/components/AppSidebar';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-
 const ScheduleView = () => {
-  const { profile } = useAuth();
-  const { toast } = useToast();
+  const {
+    profile
+  } = useAuth();
+  const {
+    toast
+  } = useToast();
   const queryClient = useQueryClient();
   const [currentWeek, setCurrentWeek] = useState(new Date());
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-  
-  const weekStart = startOfWeek(currentWeek, { weekStartsOn: 1 }); // Monday start
-  const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
+  const weekStart = startOfWeek(currentWeek, {
+    weekStartsOn: 1
+  }); // Monday start
+  const weekDays = Array.from({
+    length: 7
+  }, (_, i) => addDays(weekStart, i));
 
   // Fetch rounds for the company
-  const { data: rounds } = useQuery({
+  const {
+    data: rounds
+  } = useQuery({
     queryKey: ['rounds', profile?.company_id],
     queryFn: async () => {
       if (!profile?.company_id) return [];
-      
-      const { data, error } = await supabase
-        .from('rounds')
-        .select('*')
-        .eq('company_id', profile.company_id)
-        .eq('is_active', true)
-        .order('round_number');
-
+      const {
+        data,
+        error
+      } = await supabase.from('rounds').select('*').eq('company_id', profile.company_id).eq('is_active', true).order('round_number');
       if (error) throw error;
       return data;
     },
@@ -43,50 +47,54 @@ const ScheduleView = () => {
   });
 
   // Fetch drivers for the company - use the same working pattern as driver management
-  const { data: drivers, isLoading: driversLoading, error: driversError } = useQuery({
+  const {
+    data: drivers,
+    isLoading: driversLoading,
+    error: driversError
+  } = useQuery({
     queryKey: ['schedule-drivers', profile?.company_id],
     queryFn: async () => {
       if (!profile?.company_id) return [];
-      
       console.log('Fetching drivers for schedule, company_id:', profile.company_id);
-      
-      // Use the same query pattern as the working driver management page
-      const { data, error } = await supabase
-        .rpc('get_drivers_with_profiles', {
-          company_ids: [profile.company_id]
-        });
 
+      // Use the same query pattern as the working driver management page
+      const {
+        data,
+        error
+      } = await supabase.rpc('get_drivers_with_profiles', {
+        company_ids: [profile.company_id]
+      });
       if (error) {
         console.error('Error fetching drivers for schedule:', error);
         throw error;
       }
-      
       console.log('Schedule drivers query result:', data);
-      
+
       // Filter for active drivers and format for schedule use
-      return data?.filter((driver: any) => driver.is_active && driver.status === 'active')
-        .map((driver: any) => ({
-          ...driver,
-          profiles: {
-            first_name: driver.first_name,
-            last_name: driver.last_name
-          }
-        })) || [];
+      return data?.filter((driver: any) => driver.is_active && driver.status === 'active').map((driver: any) => ({
+        ...driver,
+        profiles: {
+          first_name: driver.first_name,
+          last_name: driver.last_name
+        }
+      })) || [];
     },
     enabled: !!profile?.company_id
   });
 
   // Fetch schedule assignments for the current week
-  const { data: scheduleAssignments, isLoading: scheduleLoading } = useQuery({
+  const {
+    data: scheduleAssignments,
+    isLoading: scheduleLoading
+  } = useQuery({
     queryKey: ['schedules', profile?.company_id, weekStart.toISOString()],
     queryFn: async () => {
       if (!profile?.company_id) return [];
-      
       const weekEnd = addDays(weekStart, 6);
-      
-      const { data, error } = await supabase
-        .from('schedules')
-        .select(`
+      const {
+        data,
+        error
+      } = await supabase.from('schedules').select(`
           *,
           driver:driver_profiles(
             id,
@@ -95,12 +103,7 @@ const ScheduleView = () => {
             profiles:profiles(first_name, last_name)
           ),
           round:rounds(round_number, description, base_rate)
-        `)
-        .eq('company_id', profile.company_id)
-        .gte('scheduled_date', format(weekStart, 'yyyy-MM-dd'))
-        .lte('scheduled_date', format(weekEnd, 'yyyy-MM-dd'))
-        .eq('status', 'scheduled');
-
+        `).eq('company_id', profile.company_id).gte('scheduled_date', format(weekStart, 'yyyy-MM-dd')).lte('scheduled_date', format(weekEnd, 'yyyy-MM-dd')).eq('status', 'scheduled');
       if (error) throw error;
       return data || [];
     },
@@ -110,16 +113,17 @@ const ScheduleView = () => {
 
   // Convert schedule data to grid format
   const schedule = React.useMemo(() => {
-    const scheduleGrid: {[roundId: string]: {[dayKey: string]: any}} = {};
-    
+    const scheduleGrid: {
+      [roundId: string]: {
+        [dayKey: string]: any;
+      };
+    } = {};
     scheduleAssignments?.forEach(assignment => {
       const dayKey = format(new Date(assignment.scheduled_date), 'EEE');
       const roundId = assignment.round_id;
-      
       if (!scheduleGrid[roundId]) {
         scheduleGrid[roundId] = {};
       }
-      
       scheduleGrid[roundId][dayKey] = {
         id: assignment.id,
         driver_id: assignment.driver_id,
@@ -127,13 +131,17 @@ const ScheduleView = () => {
         driver: assignment.driver
       };
     });
-    
     return scheduleGrid;
   }, [scheduleAssignments]);
 
   // Save schedule mutation
   const saveScheduleMutation = useMutation({
-    mutationFn: async ({ roundId, dayKey, driverId, remove = false }: {
+    mutationFn: async ({
+      roundId,
+      dayKey,
+      driverId,
+      remove = false
+    }: {
       roundId: string;
       dayKey: string;
       driverId?: string;
@@ -141,15 +149,12 @@ const ScheduleView = () => {
     }) => {
       const scheduledDate = format(weekDays.find(day => format(day, 'EEE') === dayKey)!, 'yyyy-MM-dd');
       const existingAssignment = schedule[roundId]?.[dayKey];
-      
       if (remove || !driverId) {
         // Remove assignment
         if (existingAssignment?.id) {
-          const { error } = await supabase
-            .from('schedules')
-            .delete()
-            .eq('id', existingAssignment.id);
-          
+          const {
+            error
+          } = await supabase.from('schedules').delete().eq('id', existingAssignment.id);
           if (error) throw error;
         }
         return;
@@ -159,34 +164,30 @@ const ScheduleView = () => {
       const driver = drivers?.find(d => d.id === driverId);
       const round = rounds?.find(r => r.id === roundId);
       const driverRate = driver?.parcel_rate || round?.parcel_rate || 0;
-
       if (existingAssignment?.id) {
         // Update existing assignment
-        const { error } = await supabase
-          .from('schedules')
-          .update({
-            driver_id: driverId,
-            driver_rate: driverRate,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', existingAssignment.id);
-        
+        const {
+          error
+        } = await supabase.from('schedules').update({
+          driver_id: driverId,
+          driver_rate: driverRate,
+          updated_at: new Date().toISOString()
+        }).eq('id', existingAssignment.id);
         if (error) throw error;
       } else {
         // Create new assignment
-        const { error } = await supabase
-          .from('schedules')
-          .insert({
-            company_id: profile!.company_id!,
-            round_id: roundId,
-            driver_id: driverId,
-            scheduled_date: scheduledDate,
-            week_start_date: format(weekStart, 'yyyy-MM-dd'),
-            driver_rate: driverRate,
-            created_by: profile!.user_id,
-            status: 'scheduled'
-          });
-        
+        const {
+          error
+        } = await supabase.from('schedules').insert({
+          company_id: profile!.company_id!,
+          round_id: roundId,
+          driver_id: driverId,
+          scheduled_date: scheduledDate,
+          week_start_date: format(weekStart, 'yyyy-MM-dd'),
+          driver_rate: driverRate,
+          created_by: profile!.user_id,
+          status: 'scheduled'
+        });
         if (error) throw error;
       }
     },
@@ -194,54 +195,52 @@ const ScheduleView = () => {
       setHasUnsavedChanges(false);
       toast({
         title: "Schedule updated",
-        description: "Driver assignment has been saved successfully.",
+        description: "Driver assignment has been saved successfully."
       });
-      queryClient.invalidateQueries({ queryKey: ['schedules'] });
+      queryClient.invalidateQueries({
+        queryKey: ['schedules']
+      });
     },
     onError: (error: any) => {
       toast({
         title: "Error saving schedule",
         description: error.message,
-        variant: "destructive",
+        variant: "destructive"
       });
-    },
+    }
   });
-
   const getDriverName = (assignment: any) => {
     if (!assignment?.driver) return null;
     const profile = assignment.driver.profiles;
     return profile ? `${profile.first_name} ${profile.last_name}` : null;
   };
-
   const getAssignmentStatus = (roundId: string, dayKey: string) => {
     return schedule[roundId]?.[dayKey] ? 'covered' : 'uncovered';
   };
-
   const getCellBackgroundColor = (roundId: string, dayKey: string) => {
     const status = getAssignmentStatus(roundId, dayKey);
-    return status === 'covered' 
-      ? 'bg-green-50 hover:bg-green-100 border-green-200' 
-      : 'bg-red-50 hover:bg-red-100 border-red-200';
+    return status === 'covered' ? 'bg-green-50 hover:bg-green-100 border-green-200' : 'bg-red-50 hover:bg-red-100 border-red-200';
   };
-
   const handleAssignment = (roundId: string, dayKey: string, driverId: string | null) => {
     setHasUnsavedChanges(true);
-    
     if (driverId === '__unassigned__' || !driverId) {
-      saveScheduleMutation.mutate({ roundId, dayKey, remove: true });
+      saveScheduleMutation.mutate({
+        roundId,
+        dayKey,
+        remove: true
+      });
     } else {
-      saveScheduleMutation.mutate({ roundId, dayKey, driverId });
+      saveScheduleMutation.mutate({
+        roundId,
+        dayKey,
+        driverId
+      });
     }
   };
-
   const navigateWeek = (direction: 'prev' | 'next') => {
-    setCurrentWeek(prev => 
-      direction === 'prev' ? subWeeks(prev, 1) : addWeeks(prev, 1)
-    );
+    setCurrentWeek(prev => direction === 'prev' ? subWeeks(prev, 1) : addWeeks(prev, 1));
   };
-
-  return (
-    <SidebarProvider>
+  return <SidebarProvider>
       <div className="min-h-screen flex w-full bg-background">
         <AppSidebar />
         
@@ -276,14 +275,12 @@ const ScheduleView = () => {
         </div>
       </div>
 
-      {hasUnsavedChanges && (
-        <Alert className="mb-4">
+      {hasUnsavedChanges && <Alert className="mb-4">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
             You have unsaved changes. They will be saved automatically when you make assignments.
           </AlertDescription>
-        </Alert>
-      )}
+        </Alert>}
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
@@ -314,13 +311,11 @@ const ScheduleView = () => {
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
               {(() => {
-                const totalSlots = (rounds?.length || 0) * 7;
-                const coveredSlots = Object.values(schedule).reduce((acc, roundSchedule) => 
-                  acc + Object.keys(roundSchedule).length, 0
-                );
-                const coverage = totalSlots > 0 ? Math.round((coveredSlots / totalSlots) * 100) : 0;
-                return `${coverage}%`;
-              })()}
+                    const totalSlots = (rounds?.length || 0) * 7;
+                    const coveredSlots = Object.values(schedule).reduce((acc, roundSchedule) => acc + Object.keys(roundSchedule).length, 0);
+                    const coverage = totalSlots > 0 ? Math.round(coveredSlots / totalSlots * 100) : 0;
+                    return `${coverage}%`;
+                  })()}
             </div>
           </CardContent>
         </Card>
@@ -332,9 +327,7 @@ const ScheduleView = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {Object.values(schedule).reduce((acc, roundSchedule) => 
-                acc + Object.keys(roundSchedule).length, 0
-              )}
+              {Object.values(schedule).reduce((acc, roundSchedule) => acc + Object.keys(roundSchedule).length, 0)}
             </div>
           </CardContent>
         </Card>
@@ -342,52 +335,42 @@ const ScheduleView = () => {
 
       <Card>
         <CardHeader>
-          <CardTitle>Weekly Schedule - Excel View</CardTitle>
+          <CardTitle>Weekly Schedule</CardTitle>
           <CardDescription>
             Rounds listed on the left, days across the top. Click to assign drivers.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {scheduleLoading ? (
-            <div className="flex items-center justify-center py-8">
+          {scheduleLoading ? <div className="flex items-center justify-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mr-4"></div>
               <span>Loading rounds and assignments...</span>
-            </div>
-          ) : rounds?.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
+            </div> : rounds?.length === 0 ? <div className="text-center py-8 text-muted-foreground">
               <MapPin className="h-12 w-12 mx-auto mb-4 opacity-50" />
               <h3 className="text-lg font-medium mb-2">No rounds available</h3>
               <p>Create rounds first to schedule driver assignments.</p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
+            </div> : <div className="overflow-x-auto">
               <div className="min-w-[800px]">
                 {/* Header Row */}
                 <div className="grid grid-cols-8 gap-2 mb-4 p-2 bg-muted rounded-lg">
                   <div className="font-semibold text-sm text-muted-foreground">Round</div>
-                  {weekDays.map((day, index) => (
-                    <div key={index} className="text-center">
+                  {weekDays.map((day, index) => <div key={index} className="text-center">
                       <div className="font-semibold text-sm">{format(day, 'EEE')}</div>
                       <div className="text-xs text-muted-foreground">{format(day, 'dd/MM')}</div>
-                    </div>
-                  ))}
+                    </div>)}
                 </div>
 
                 {/* Data Rows */}
                 <div className="space-y-2">
-                  {rounds?.map((round) => (
-                    <div key={round.id} className="grid grid-cols-8 gap-2 p-2 border rounded-lg hover:bg-muted/50">
+                  {rounds?.map(round => <div key={round.id} className="grid grid-cols-8 gap-2 p-2 border rounded-lg hover:bg-muted/50">
                       {/* Round Info Column */}
                       <div className="flex flex-col justify-center">
                         <div className="font-semibold text-sm">Round {round.round_number}</div>
                         <div className="text-xs text-muted-foreground truncate" title={round.description}>
                           {round.description || 'No description'}
                         </div>
-                        {round.base_rate && (
-                          <Badge variant="outline" className="text-xs w-fit mt-1">
+                        {round.base_rate && <Badge variant="outline" className="text-xs w-fit mt-1">
                             £{round.base_rate}/day
-                          </Badge>
-                        )}
+                          </Badge>}
                       </div>
 
                       {/* Day Assignment Columns */}
@@ -396,16 +379,8 @@ const ScheduleView = () => {
                         const assignment = schedule[round.id]?.[dayKey];
                         const status = getAssignmentStatus(round.id, dayKey);
                         const cellBgColor = getCellBackgroundColor(round.id, dayKey);
-                        
-                        return (
-                          <div key={dayIndex} className={`p-2 rounded border ${cellBgColor} min-h-[80px]`}>
-                            <Select
-                              value={assignment?.driver_id || '__unassigned__'}
-                              onValueChange={(value) => 
-                                handleAssignment(round.id, dayKey, value === '__unassigned__' ? null : value)
-                              }
-                              disabled={saveScheduleMutation.isPending}
-                            >
+                        return <div key={dayIndex} className={`p-2 rounded border ${cellBgColor} min-h-[80px]`}>
+                            <Select value={assignment?.driver_id || '__unassigned__'} onValueChange={value => handleAssignment(round.id, dayKey, value === '__unassigned__' ? null : value)} disabled={saveScheduleMutation.isPending}>
                               <SelectTrigger className="w-full text-xs h-auto p-1">
                                 <SelectValue placeholder="Select" />
                               </SelectTrigger>
@@ -413,56 +388,39 @@ const ScheduleView = () => {
                                 <SelectItem value="__unassigned__" className="text-muted-foreground">
                                   Unassigned
                                 </SelectItem>
-                                {drivers?.map((driver) => (
-                                  <SelectItem key={driver.id} value={driver.id}>
+                                {drivers?.map(driver => <SelectItem key={driver.id} value={driver.id}>
                                     <div className="flex flex-col items-start">
                                       <span className="font-medium text-xs">
                                         {driver.profiles?.first_name} {driver.profiles?.last_name}
                                       </span>
-                                      {driver.parcel_rate && (
-                                        <span className="text-xs text-muted-foreground">
+                                      {driver.parcel_rate && <span className="text-xs text-muted-foreground">
                                           £{driver.parcel_rate}/parcel
-                                        </span>
-                                      )}
+                                        </span>}
                                     </div>
-                                  </SelectItem>
-                                ))}
+                                  </SelectItem>)}
                               </SelectContent>
                             </Select>
                             
-                            {assignment && (
-                              <div className="mt-1 text-center">
+                            {assignment && <div className="mt-1 text-center">
                                 <div className="text-xs font-medium truncate" title={getDriverName(assignment)}>
                                   {getDriverName(assignment)}
                                 </div>
-                                <Badge 
-                                  variant="default"
-                                  className="text-xs"
-                                >
+                                <Badge variant="default" className="text-xs">
                                   Assigned
                                 </Badge>
-                              </div>
-                            )}
+                              </div>}
                             
-                            {!assignment && (
-                              <div className="mt-1 text-center">
-                                <Badge 
-                                  variant="destructive"
-                                  className="text-xs"
-                                >
+                            {!assignment && <div className="mt-1 text-center">
+                                <Badge variant="destructive" className="text-xs">
                                   Open
                                 </Badge>
-                              </div>
-                            )}
-                          </div>
-                        );
+                              </div>}
+                          </div>;
                       })}
-                    </div>
-                  ))}
+                    </div>)}
                 </div>
               </div>
-            </div>
-          )}
+            </div>}
         </CardContent>
       </Card>
 
@@ -515,8 +473,6 @@ const ScheduleView = () => {
           </main>
         </SidebarInset>
       </div>
-    </SidebarProvider>
-  );
+    </SidebarProvider>;
 };
-
 export default ScheduleView;
