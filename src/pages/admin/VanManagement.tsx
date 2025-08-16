@@ -98,9 +98,9 @@ const VanManagement = () => {
         const assignedDriver = driversData.find(driver => driver.assigned_van_id === van.id);
         return {
           ...van,
-          assignedDriver: assignedDriver ? {
+          assignedDriver: assignedDriver && assignedDriver.profiles ? {
             id: assignedDriver.id,
-            name: `${assignedDriver.profiles.first_name} ${assignedDriver.profiles.last_name}`.trim()
+            name: `${assignedDriver.profiles.first_name || ''} ${assignedDriver.profiles.last_name || ''}`.trim()
           } : null
         };
       });
