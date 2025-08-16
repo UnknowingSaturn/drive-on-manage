@@ -18,7 +18,8 @@ import {
   Truck,
   BarChart3,
   Settings,
-  UserCheck
+  UserCheck,
+  Bell
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -142,318 +143,291 @@ const AdminDashboard = () => {
         </p>
       </div>
 
-      {/* Key Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <Card className="saas-card-compact">
-          <div className="saas-metric">
-            <div className="saas-metric-value text-primary">{stats.totalDrivers}</div>
-            <div className="saas-metric-label">Total Drivers</div>
-          </div>
-        </Card>
-        <Card className="saas-card-compact">
-          <div className="saas-metric">
-            <div className="saas-metric-value text-success">{stats.activeDrivers}</div>
-            <div className="saas-metric-label">Active Drivers</div>
-          </div>
-        </Card>
-        <Card className="saas-card-compact">
-          <div className="saas-metric">
-            <div className="saas-metric-value text-info">{deliveriesThisWeek}</div>
-            <div className="saas-metric-label">Deliveries (7 days)</div>
-          </div>
-        </Card>
-        <Card className="saas-card-compact">
-          <div className="saas-metric">
-            <div className="saas-metric-value text-warning">{stats.totalIncidents}</div>
-            <div className="saas-metric-label">Incidents (30 days)</div>
-          </div>
-        </Card>
-      </div>
-
       {/* Main Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         
-        {/* Left Column - Operations */}
-        <div className="lg:col-span-2 space-y-6">
-          
-          {/* Driver Performance */}
-          <Card className="saas-card">
-            <CardHeader className="saas-card-header">
-              <CardTitle className="saas-heading flex items-center">
-                <TrendingUp className="h-5 w-5 text-primary mr-2" />
-                Driver Performance
-              </CardTitle>
-              <CardDescription className="saas-subtitle">Last 7 days</CardDescription>
-            </CardHeader>
-            <CardContent className="saas-card-content">
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                <div className="text-center p-4 bg-muted/50 rounded-lg">
-                  <div className="text-2xl font-bold text-success">{deliveriesThisWeek}</div>
-                  <div className="text-sm text-muted-foreground">Total Deliveries</div>
-                </div>
-                <div className="text-center p-4 bg-muted/50 rounded-lg">
-                  <div className="text-2xl font-bold text-primary">{successRate.toFixed(1)}%</div>
-                  <div className="text-sm text-muted-foreground">Success Rate</div>
-                </div>
-                <div className="text-center p-4 bg-muted/50 rounded-lg">
-                  <div className="text-2xl font-bold text-info">{stats.completedEODs}</div>
-                  <div className="text-sm text-muted-foreground">EOD Reports</div>
-                </div>
+        {/* Company Overview */}
+        <Card className="saas-card">
+          <CardHeader className="saas-card-header">
+            <CardTitle className="saas-heading flex items-center">
+              <Users className="h-5 w-5 text-primary mr-2" />
+              Company Overview
+            </CardTitle>
+            <CardDescription>Real-time company metrics</CardDescription>
+          </CardHeader>
+          <CardContent className="saas-card-content">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="text-center p-3 bg-muted/50 rounded-lg">
+                <div className="text-xl font-bold text-primary">{stats.activeDrivers}</div>
+                <div className="text-xs text-muted-foreground">Active Drivers</div>
               </div>
-              <div className="mt-4">
-                <Button 
-                  onClick={() => navigate('/admin/driver-engagement')}
-                  variant="outline" 
-                  size="sm"
-                  className="w-full"
-                >
-                  View Detailed Analytics
-                </Button>
+              <div className="text-center p-3 bg-muted/50 rounded-lg">
+                <div className="text-xl font-bold text-success">{stats.completedEODs}</div>
+                <div className="text-xs text-muted-foreground">Rounds Completed</div>
               </div>
-            </CardContent>
-          </Card>
+              <div className="text-center p-3 bg-muted/50 rounded-lg">
+                <div className="text-xl font-bold text-info">{stats.totalVans}</div>
+                <div className="text-xs text-muted-foreground">Fleet Size</div>
+              </div>
+              <div className="text-center p-3 bg-muted/50 rounded-lg">
+                <div className="text-xl font-bold text-warning">{stats.totalIncidents}</div>
+                <div className="text-xs text-muted-foreground">Incidents</div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
-          {/* Recent Activity */}
-          <Card className="saas-card">
-            <CardHeader className="saas-card-header">
-              <CardTitle className="saas-heading flex items-center">
-                <Clock className="h-5 w-5 text-primary mr-2" />
-                Recent Activity
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="saas-card-content">
-              <div className="space-y-3">
-                {recentEODs.slice(0, 5).map((eod: any) => (
-                  <div key={eod.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-8 h-8 bg-success/10 rounded-full flex items-center justify-center">
-                        <CheckCircle2 className="h-4 w-4 text-success" />
-                      </div>
-                      <div>
-                        <div className="font-medium text-sm">
-                          {eod.driver_profiles?.first_name} {eod.driver_profiles?.last_name}
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          {eod.successful_deliveries} deliveries completed
-                        </div>
-                      </div>
+        {/* Driver Performance */}
+        <Card className="saas-card">
+          <CardHeader className="saas-card-header">
+            <CardTitle className="saas-heading flex items-center">
+              <TrendingUp className="h-5 w-5 text-primary mr-2" />
+              Driver Performance
+            </CardTitle>
+            <CardDescription>Last 7 days performance</CardDescription>
+          </CardHeader>
+          <CardContent className="saas-card-content">
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Total Deliveries</span>
+                <span className="font-bold text-success">{deliveriesThisWeek}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Success Rate</span>
+                <span className="font-bold text-primary">{successRate.toFixed(1)}%</span>
+              </div>
+              <Progress value={successRate} className="h-2" />
+              <Button 
+                onClick={() => navigate('/admin/driver-engagement')}
+                variant="outline" 
+                size="sm"
+                className="w-full"
+              >
+                View Analytics
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Finance Overview */}
+        <Card className="saas-card">
+          <CardHeader className="saas-card-header">
+            <CardTitle className="saas-heading flex items-center">
+              <DollarSign className="h-5 w-5 text-primary mr-2" />
+              Finance Overview
+            </CardTitle>
+            <CardDescription>Monthly financial snapshot</CardDescription>
+          </CardHeader>
+          <CardContent className="saas-card-content">
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Operating Costs</span>
+                <span className="font-bold text-destructive">£{stats.monthlyOperatingCosts.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Driver Earnings</span>
+                <span className="font-bold text-success">£{(deliveriesThisWeek * 0.75).toFixed(2)}</span>
+              </div>
+              <Button 
+                onClick={() => navigate('/admin/finance')}
+                variant="outline" 
+                size="sm"
+                className="w-full"
+              >
+                <BarChart3 className="h-4 w-4 mr-2" />
+                View P&L
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Schedule & Round Assignment */}
+        <Card className="saas-card">
+          <CardHeader className="saas-card-header">
+            <CardTitle className="saas-heading flex items-center">
+              <Calendar className="h-5 w-5 text-primary mr-2" />
+              Schedule & Routes
+            </CardTitle>
+            <CardDescription>Assignment management</CardDescription>
+          </CardHeader>
+          <CardContent className="saas-card-content">
+            <div className="space-y-3">
+              <Button 
+                onClick={() => navigate('/admin/schedule-view')}
+                variant="outline" 
+                size="sm"
+                className="w-full justify-start"
+              >
+                <Calendar className="h-4 w-4 mr-2" />
+                View Schedule
+              </Button>
+              <Button 
+                onClick={() => navigate('/admin/round-management')}
+                variant="outline" 
+                size="sm"
+                className="w-full justify-start"
+              >
+                <Package className="h-4 w-4 mr-2" />
+                Manage Rounds
+              </Button>
+              <div className="pt-2 border-t">
+                <div className="text-xs text-muted-foreground text-center">
+                  {drivers.filter(d => d.assigned_van_id).length} of {stats.totalDrivers} drivers assigned
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Driver Document Status */}
+        <Card className="saas-card">
+          <CardHeader className="saas-card-header">
+            <CardTitle className="saas-heading flex items-center">
+              <UserCheck className="h-5 w-5 text-primary mr-2" />
+              Onboarding Status
+            </CardTitle>
+            <CardDescription>Driver document verification</CardDescription>
+          </CardHeader>
+          <CardContent className="saas-card-content">
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Pending Onboarding</span>
+                <Badge variant={stats.pendingOnboarding > 0 ? "destructive" : "default"}>
+                  {stats.pendingOnboarding}
+                </Badge>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Documents Missing</span>
+                <Badge variant="secondary">
+                  {drivers.filter(d => !d.driving_license_document || !d.insurance_document).length}
+                </Badge>
+              </div>
+              <Button 
+                onClick={() => navigate('/admin/drivers')}
+                variant="outline" 
+                size="sm"
+                className="w-full"
+              >
+                Manage Drivers
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* News & Chat Manager */}
+        <Card className="saas-card">
+          <CardHeader className="saas-card-header">
+            <CardTitle className="saas-heading flex items-center">
+              <MessageCircle className="h-5 w-5 text-primary mr-2" />
+              Communication Hub
+            </CardTitle>
+            <CardDescription>News and chat management</CardDescription>
+          </CardHeader>
+          <CardContent className="saas-card-content">
+            <div className="space-y-3">
+              <Button 
+                onClick={() => navigate('/admin/driver-engagement')}
+                variant="outline" 
+                size="sm"
+                className="w-full justify-start"
+              >
+                <MessageCircle className="h-4 w-4 mr-2" />
+                Driver Chat
+              </Button>
+              <Button 
+                onClick={() => navigate('/admin/companies')}
+                variant="outline" 
+                size="sm"
+                className="w-full justify-start"
+              >
+                <Bell className="h-4 w-4 mr-2" />
+                Send Announcement
+              </Button>
+              <div className="pt-2 border-t">
+                <div className="text-xs text-muted-foreground text-center">
+                  Last message: {format(new Date(), 'MMM dd, HH:mm')}
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Recent Activity */}
+        <Card className="saas-card md:col-span-2 lg:col-span-3">
+          <CardHeader className="saas-card-header">
+            <CardTitle className="saas-heading flex items-center">
+              <Clock className="h-5 w-5 text-primary mr-2" />
+              Recent Activity
+            </CardTitle>
+            <CardDescription>Latest end-of-day reports and driver activity</CardDescription>
+          </CardHeader>
+          <CardContent className="saas-card-content">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {recentEODs.slice(0, 6).map((eod: any) => (
+                <div key={eod.id} className="flex items-center space-x-3 p-3 bg-muted/50 rounded-lg">
+                  <div className="w-8 h-8 bg-success/10 rounded-full flex items-center justify-center">
+                    <CheckCircle2 className="h-4 w-4 text-success" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="font-medium text-sm">
+                      {eod.driver_profiles?.first_name} {eod.driver_profiles?.last_name}
                     </div>
                     <div className="text-xs text-muted-foreground">
-                      {format(new Date(eod.submitted_at), 'HH:mm')}
+                      {eod.successful_deliveries} deliveries • {format(new Date(eod.submitted_at), 'HH:mm')}
                     </div>
                   </div>
-                ))}
-                {recentEODs.length === 0 && (
-                  <div className="text-center py-4 text-muted-foreground">
-                    No recent activity
+                </div>
+              ))}
+              {recentEODs.length === 0 && (
+                <div className="col-span-full text-center py-8 text-muted-foreground">
+                  No recent activity
+                </div>
+              )}
+            </div>
+            <div className="mt-4">
+              <Button 
+                onClick={() => navigate('/admin/eod-reports')}
+                variant="outline" 
+                size="sm"
+                className="w-full"
+              >
+                View All Reports
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* System Alerts */}
+        {(stats.criticalIncidents > 0 || stats.pendingOnboarding > 3) && (
+          <Card className="saas-card border-destructive/50 md:col-span-2 lg:col-span-3">
+            <CardHeader className="saas-card-header">
+              <CardTitle className="saas-heading flex items-center text-destructive">
+                <AlertTriangle className="h-5 w-5 mr-2" />
+                Attention Required
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="saas-card-content">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {stats.criticalIncidents > 0 && (
+                  <div className="p-3 bg-destructive/10 rounded-lg">
+                    <div className="font-medium text-destructive">Critical Incidents</div>
+                    <div className="text-sm text-muted-foreground">
+                      {stats.criticalIncidents} incident(s) require immediate attention
+                    </div>
+                  </div>
+                )}
+                {stats.pendingOnboarding > 3 && (
+                  <div className="p-3 bg-warning/10 rounded-lg">
+                    <div className="font-medium text-warning">Onboarding Backlog</div>
+                    <div className="text-sm text-muted-foreground">
+                      {stats.pendingOnboarding} driver(s) pending onboarding completion
+                    </div>
                   </div>
                 )}
               </div>
             </CardContent>
           </Card>
-
-          {/* Fleet Overview */}
-          <Card className="saas-card">
-            <CardHeader className="saas-card-header">
-              <CardTitle className="saas-heading flex items-center">
-                <Truck className="h-5 w-5 text-primary mr-2" />
-                Fleet Overview
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="saas-card-content">
-              <div className="grid grid-cols-3 gap-4">
-                <div className="text-center">
-                  <div className="text-2xl font-bold">{stats.totalVans}</div>
-                  <div className="text-sm text-muted-foreground">Active Vans</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold">{drivers.filter(d => d.assigned_van_id).length}</div>
-                  <div className="text-sm text-muted-foreground">Assigned</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold">{stats.totalVans - drivers.filter(d => d.assigned_van_id).length}</div>
-                  <div className="text-sm text-muted-foreground">Available</div>
-                </div>
-              </div>
-              <div className="mt-4">
-                <Button 
-                  onClick={() => navigate('/admin/van-management')}
-                  variant="outline" 
-                  size="sm"
-                  className="w-full"
-                >
-                  Manage Fleet
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Right Column - Management & Quick Actions */}
-        <div className="space-y-6">
-          
-          {/* Pending Tasks */}
-          <Card className="saas-card">
-            <CardHeader className="saas-card-header">
-              <CardTitle className="saas-heading flex items-center">
-                <UserCheck className="h-5 w-5 text-primary mr-2" />
-                Pending Tasks
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="saas-card-content">
-              <div className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm">Driver Onboarding</span>
-                  <Badge variant={stats.pendingOnboarding > 0 ? "destructive" : "default"}>
-                    {stats.pendingOnboarding}
-                  </Badge>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm">Critical Incidents</span>
-                  <Badge variant={stats.criticalIncidents > 0 ? "destructive" : "default"}>
-                    {stats.criticalIncidents}
-                  </Badge>
-                </div>
-                <div className="pt-2">
-                  <Button 
-                    onClick={() => navigate('/admin/drivers')}
-                    variant="outline" 
-                    size="sm"
-                    className="w-full"
-                  >
-                    Manage Drivers
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Finance Overview */}
-          <Card className="saas-card">
-            <CardHeader className="saas-card-header">
-              <CardTitle className="saas-heading flex items-center">
-                <DollarSign className="h-5 w-5 text-primary mr-2" />
-                Finance Overview
-              </CardTitle>
-              <CardDescription className="saas-subtitle">This month</CardDescription>
-            </CardHeader>
-            <CardContent className="saas-card-content">
-              <div className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">Operating Costs</span>
-                  <span className="font-bold">£{stats.monthlyOperatingCosts.toFixed(2)}</span>
-                </div>
-                <div className="pt-2">
-                  <Button 
-                    onClick={() => navigate('/admin/finance')}
-                    variant="outline" 
-                    size="sm"
-                    className="w-full"
-                  >
-                    <BarChart3 className="h-4 w-4 mr-2" />
-                    View Finance
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Schedule Management */}
-          <Card className="saas-card">
-            <CardHeader className="saas-card-header">
-              <CardTitle className="saas-heading flex items-center">
-                <Calendar className="h-5 w-5 text-primary mr-2" />
-                Schedule & Routes
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="saas-card-content">
-              <div className="space-y-3">
-                <Button 
-                  onClick={() => navigate('/admin/schedule-view')}
-                  variant="outline" 
-                  size="sm"
-                  className="w-full justify-start"
-                >
-                  <Calendar className="h-4 w-4 mr-2" />
-                  View Schedule
-                </Button>
-                <Button 
-                  onClick={() => navigate('/admin/round-management')}
-                  variant="outline" 
-                  size="sm"
-                  className="w-full justify-start"
-                >
-                  <Package className="h-4 w-4 mr-2" />
-                  Manage Rounds
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Quick Actions */}
-          <Card className="saas-card">
-            <CardHeader className="saas-card-header">
-              <CardTitle className="saas-heading">Management Tools</CardTitle>
-            </CardHeader>
-            <CardContent className="saas-card-content">
-              <div className="space-y-3">
-                <Button 
-                  onClick={() => navigate('/admin/companies')}
-                  variant="outline" 
-                  size="sm"
-                  className="w-full justify-start"
-                >
-                  <Settings className="h-4 w-4 mr-2" />
-                  Company Settings
-                </Button>
-                <Button 
-                  onClick={() => navigate('/admin/eod-reports')}
-                  variant="outline" 
-                  size="sm"
-                  className="w-full justify-start"
-                >
-                  <FileText className="h-4 w-4 mr-2" />
-                  EOD Reports
-                </Button>
-                <Button 
-                  onClick={() => navigate('/admin/driver-engagement')}
-                  variant="outline" 
-                  size="sm"
-                  className="w-full justify-start"
-                >
-                  <MessageCircle className="h-4 w-4 mr-2" />
-                  Driver Chat
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* System Alerts */}
-          {(stats.criticalIncidents > 0 || stats.pendingOnboarding > 3) && (
-            <Card className="saas-card border-destructive/50">
-              <CardHeader className="saas-card-header">
-                <CardTitle className="saas-heading flex items-center text-destructive">
-                  <AlertTriangle className="h-5 w-5 mr-2" />
-                  Attention Required
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="saas-card-content">
-                <div className="space-y-2">
-                  {stats.criticalIncidents > 0 && (
-                    <div className="text-sm">
-                      {stats.criticalIncidents} critical incident(s) need review
-                    </div>
-                  )}
-                  {stats.pendingOnboarding > 3 && (
-                    <div className="text-sm">
-                      {stats.pendingOnboarding} drivers pending onboarding
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </div>
+        )}
       </div>
     </div>
   );
