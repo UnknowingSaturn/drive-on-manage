@@ -99,14 +99,23 @@ const VanManagement = () => {
 
       if (driversError) throw driversError;
 
-      console.log('All drivers data for van mapping:', driversData);
+      console.log('All drivers data for van mapping:', JSON.stringify(driversData, null, 2));
 
       // Map vans with their assigned drivers
       return vansData.map((van: any) => {
         const assignedDriver = driversData.find(driver => driver.assigned_van_id === van.id);
-        console.log(`Van ${van.registration} (${van.id}):`, {
-          assignedDriver,
-          allDrivers: driversData.map(d => ({ id: d.id, assigned_van_id: d.assigned_van_id }))
+        console.log(`Van ${van.registration} (${van.id}): assigned_van_id matches:`, {
+          vanId: van.id,
+          assignedDriver: assignedDriver ? {
+            driverId: assignedDriver.id,
+            assigned_van_id: assignedDriver.assigned_van_id,
+            name: assignedDriver.profiles
+          } : null,
+          allDriverAssignments: driversData.map(d => ({ 
+            driverId: d.id, 
+            assigned_van_id: d.assigned_van_id,
+            profiles: d.profiles
+          }))
         });
         return {
           ...van,
