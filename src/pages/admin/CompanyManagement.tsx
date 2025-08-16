@@ -260,11 +260,11 @@ const CompanyManagement = () => {
             </div>
           </header>
 
-          <main className="saas-main">
+          <main className="p-6 space-y-6">
             <div className="flex justify-between items-center">
               <div>
-                <h2 className="saas-title">Locations Overview</h2>
-                <p className="saas-subtitle">Manage all your locations</p>
+                <h2 className="text-2xl font-bold">Locations Overview</h2>
+                <p className="text-muted-foreground">Manage all your locations</p>
               </div>
         
               <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -398,27 +398,27 @@ const CompanyManagement = () => {
               </Dialog>
             </div>
 
-            <Card className="saas-card">
-              <CardHeader className="saas-card-header">
-                <CardTitle className="saas-heading">Active Locations</CardTitle>
-                <CardDescription className="saas-subtitle">All your locations</CardDescription>
+            <Card>
+              <CardHeader>
+                <CardTitle>Active Locations</CardTitle>
+                <CardDescription>All your locations</CardDescription>
               </CardHeader>
-              <CardContent className="saas-card-content">
-                <Table className="saas-table">
-                  <TableHeader className="saas-table-header">
+              <CardContent>
+                <Table>
+                  <TableHeader>
                     <TableRow>
-                      <TableHead className="saas-table-head">Location Name</TableHead>
-                      <TableHead className="saas-table-head">Contact</TableHead>
-                      <TableHead className="saas-table-head">Address</TableHead>
-                      <TableHead className="saas-table-head">Status</TableHead>
-                      <TableHead className="saas-table-head">Created</TableHead>
-                      <TableHead className="saas-table-head">Actions</TableHead>
+                      <TableHead>Location Name</TableHead>
+                      <TableHead>Contact</TableHead>
+                      <TableHead>Address</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Created</TableHead>
+                      <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {companies?.map((company) => (
-                      <TableRow key={company.id} className="saas-table-row">
-                        <TableCell className="saas-table-cell font-medium">
+                      <TableRow key={company.id}>
+                        <TableCell className="font-medium">
                           <div className="flex items-center">
                             <Building2 className="h-4 w-4 mr-2 text-primary" />
                             {company.name}

@@ -320,7 +320,7 @@ const EndOfDay = () => {
                     })}
                   </CardDescription>
                 </CardHeader>
-              <CardContent className="saas-card-content">
+                <CardContent>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div className="text-center p-4 rounded-lg bg-card/50">
                       <div className="text-2xl font-bold text-gradient">

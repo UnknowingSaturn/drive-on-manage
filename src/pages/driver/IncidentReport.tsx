@@ -258,7 +258,7 @@ const IncidentReport = () => {
             </div>
           </header>
 
-          <main className="saas-main">
+          <main className="p-6 space-y-6">
             {/* Emergency Contact Info */}
             <Card className="logistics-card border-destructive/20 bg-destructive/5">
               <CardHeader>
@@ -267,7 +267,7 @@ const IncidentReport = () => {
                   Emergency Contact
                 </CardTitle>
               </CardHeader>
-              <CardContent className="saas-card-content">
+              <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <Label className="text-sm font-medium">Emergency Services</Label>

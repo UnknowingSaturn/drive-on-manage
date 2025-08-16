@@ -47,7 +47,7 @@ const Finance = () => {
             </div>
           </header>
 
-          <main className="saas-main">
+          <main className="mobile-container py-4 md:py-6">
             <Tabs defaultValue="invoicing" className="mobile-space-y">
               <TabsList className="mobile-grid-auto w-full">
                 <TabsTrigger value="invoicing" className="mobile-button-sm">
