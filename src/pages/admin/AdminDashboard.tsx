@@ -223,22 +223,44 @@ const AdminDashboard = () => {
           </header>
 
           <main className="mobile-container py-4 md:py-6 mobile-space-y no-overflow">
-            {/* Welcome Section */}
-            <div className="mobile-flex-responsive">
-              <div>
-                <h2 className="mobile-heading text-gradient">Welcome back, {profile?.first_name}!</h2>
-                <p className="text-responsive-base text-muted-foreground mt-1">
-                  Here's what's happening with your logistics operations today.
-                </p>
+            {/* Luxury Welcome Section */}
+            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border border-primary/20 backdrop-blur-sm">
+              <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-transparent opacity-50"></div>
+              <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 rounded-full blur-3xl transform translate-x-16 -translate-y-16"></div>
+              <div className="absolute bottom-0 left-0 w-24 h-24 bg-secondary/10 rounded-full blur-2xl transform -translate-x-12 translate-y-12"></div>
+              
+              <div className="relative p-6 md:p-8">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
+                  <div className="animate-fade-in">
+                    <div className="flex items-center space-x-3 mb-2">
+                      <div className="w-2 h-2 rounded-full bg-primary animate-pulse"></div>
+                      <span className="text-sm font-medium text-primary uppercase tracking-wider">Admin Dashboard</span>
+                    </div>
+                    <h2 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-foreground via-primary to-foreground bg-clip-text text-transparent mb-2">
+                      Welcome back, {profile?.first_name}!
+                    </h2>
+                    <p className="text-base text-muted-foreground max-w-2xl leading-relaxed">
+                      Here's what's happening with your logistics operations today. Monitor performance, track deliveries, and manage your fleet efficiently.
+                    </p>
+                  </div>
+                  
+                  <div className="animate-scale-in">
+                    <Button 
+                      onClick={() => navigate('/admin/reports')}
+                      className="group relative overflow-hidden bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary text-primary-foreground border-0 shadow-lg hover:shadow-xl transition-all duration-300 px-6 py-3 rounded-xl"
+                    >
+                      <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                      <div className="relative flex items-center space-x-2">
+                        <FileText className="h-4 w-4 transition-transform group-hover:scale-110" />
+                        <span className="font-medium">
+                          <span className="hidden md:inline">View Full Reports</span>
+                          <span className="md:hidden">Reports</span>
+                        </span>
+                      </div>
+                    </Button>
+                  </div>
+                </div>
               </div>
-              <Button 
-                onClick={() => navigate('/admin/reports')}
-                className="logistics-button mobile-button w-full md:w-auto"
-              >
-                <FileText className="h-4 w-4 mr-2" />
-                <span className="mobile-hidden">View Full Reports</span>
-                <span className="mobile-only">Reports</span>
-              </Button>
             </div>
 
             {/* Compact Active Stats Widgets */}
