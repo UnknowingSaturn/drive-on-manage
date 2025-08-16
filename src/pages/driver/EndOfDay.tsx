@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/AppSidebar';
@@ -7,110 +7,207 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { Package, Clock, CheckCircle2, Camera, Upload, AlertTriangle, DollarSign, FileText, Check } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { CalendarIcon, Upload, CheckCircle, Loader2, Package, Clock } from 'lucide-react';
+import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
-import { sanitizeInput } from '@/lib/security';
+
+interface EndOfDayFormData {
+  did_support: boolean;
+  support_parcels: number;
+  successful_deliveries: number;
+  successful_collections: number;
+  round_start_time: Date | null;
+  round_end_time: Date | null;
+  app_screenshot: File | null;
+}
 
 const EndOfDay = () => {
-  const { user, profile } = useAuth();
+  const { profile } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const fileInputRef = useRef<HTMLInputElement>(null);
   
-  const [formData, setFormData] = useState({
-    parcelsDelivered: '',
-    issues: ''
+  const [formData, setFormData] = useState<EndOfDayFormData>({
+    did_support: false,
+    support_parcels: 0,
+    successful_deliveries: 0,
+    successful_collections: 0,
+    round_start_time: null,
+    round_end_time: null,
+    app_screenshot: null,
   });
 
-  const [screenshot, setScreenshot] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string>('');
-  const [showSuccess, setShowSuccess] = useState(false);
-  const [successData, setSuccessData] = useState<any>(null);
-  const [errors, setErrors] = useState<{[key: string]: string}>({});
-  const [isUploading, setIsUploading] = useState(false);
+  const [isSubmitted, setIsSubmitted] = useState(false);
 
-  const today = new Date().toISOString().split('T')[0];
-
-  // Get driver profile
-  const { data: driverProfile } = useQuery({
-    queryKey: ['driver-profile', user?.id],
+  // Fetch driver profile with assigned van and schedule info
+  const { data: driverInfo, isLoading: loadingDriverInfo } = useQuery({
+    queryKey: ['driver-eod-info', profile?.user_id],
     queryFn: async () => {
-      if (!user?.id) return null;
-      const { data } = await supabase
+      if (!profile?.user_id) return null;
+
+      // Get driver profile with van information
+      const { data: driverProfile, error: driverError } = await supabase
         .from('driver_profiles')
-        .select('*')
-        .eq('user_id', user.id)
+        .select(`
+          id,
+          user_id,
+          assigned_van_id,
+          company_id,
+          profiles!inner(first_name, last_name),
+          vans(registration, make, model)
+        `)
+        .eq('user_id', profile.user_id)
         .single();
-      return data;
+
+      if (driverError) throw driverError;
+
+      // Get today's assigned rounds/schedule
+      const today = new Date().toISOString().split('T')[0];
+      const { data: schedules, error: scheduleError } = await supabase
+        .from('schedules')
+        .select(`
+          *,
+          rounds(round_number, description)
+        `)
+        .eq('driver_id', driverProfile.id)
+        .eq('scheduled_date', today);
+
+      if (scheduleError) throw scheduleError;
+
+      return {
+        driverProfile,
+        schedules: schedules || [],
+        driverName: `${driverProfile.profiles.first_name} ${driverProfile.profiles.last_name}`.trim(),
+        assignedVan: driverProfile.vans,
+        hasCompanyVan: !!driverProfile.assigned_van_id,
+        roundNumbers: schedules?.map(s => s.rounds?.round_number).filter(Boolean) || []
+      };
     },
-    enabled: !!user?.id
+    enabled: !!profile?.user_id,
   });
 
-  // Get today's EOD report
-  const { data: todayEOD, isLoading } = useQuery({
-    queryKey: ['today-eod-report', driverProfile?.id, today],
+  // Check if today's EOD already exists
+  const { data: todayEOD } = useQuery({
+    queryKey: ['today-eod-check', driverInfo?.driverProfile?.id],
     queryFn: async () => {
-      if (!driverProfile?.id) return null;
+      if (!driverInfo?.driverProfile?.id) return null;
+      const today = new Date().toISOString().split('T')[0];
       const { data } = await supabase
-        .from('eod_reports')
+        .from('end_of_day_reports')
         .select('*')
-        .eq('driver_id', driverProfile.id)
-        .eq('log_date', today)
+        .eq('driver_id', driverInfo.driverProfile.id)
+        .gte('submitted_at', `${today}T00:00:00.000Z`)
+        .lt('submitted_at', `${today}T23:59:59.999Z`)
         .maybeSingle();
       return data;
     },
-    enabled: !!driverProfile?.id
+    enabled: !!driverInfo?.driverProfile?.id
   });
 
-  // Get today's SOD log for parcel count validation
-  const { data: todaySOD } = useQuery({
-    queryKey: ['today-sod-log', driverProfile?.id, today],
-    queryFn: async () => {
-      if (!driverProfile?.id) return null;
-      const { data } = await supabase
-        .from('sod_logs')
-        .select('parcel_count')
-        .eq('driver_id', driverProfile.id)
-        .eq('log_date', today)
-        .maybeSingle();
-      return data;
+  const submitEODMutation = useMutation({
+    mutationFn: async (data: EndOfDayFormData) => {
+      if (!driverInfo?.driverProfile?.id) {
+        throw new Error('Driver profile not found');
+      }
+
+      let screenshotUrl = null;
+
+      // Upload screenshot if provided
+      if (data.app_screenshot) {
+        const fileExt = data.app_screenshot.name.split('.').pop();
+        const fileName = `${profile?.user_id}/eod-${Date.now()}.${fileExt}`;
+        
+        const { error: uploadError } = await supabase.storage
+          .from('eod-screenshots')
+          .upload(fileName, data.app_screenshot);
+
+        if (uploadError) {
+          throw new Error(`Failed to upload screenshot: ${uploadError.message}`);
+        }
+
+        screenshotUrl = fileName;
+      }
+
+      // Insert EOD report with auto-filled data
+      const { error } = await supabase
+        .from('end_of_day_reports')
+        .insert({
+          driver_id: driverInfo.driverProfile.id,
+          name: driverInfo.driverName,
+          round_1_number: driverInfo.roundNumbers[0] || null,
+          round_2_number: driverInfo.roundNumbers[1] || null,
+          round_3_number: driverInfo.roundNumbers[2] || null,
+          round_4_number: driverInfo.roundNumbers[3] || null,
+          did_support: data.did_support,
+          support_parcels: data.support_parcels,
+          successful_deliveries: data.successful_deliveries,
+          successful_collections: data.successful_collections,
+          has_company_van: driverInfo.hasCompanyVan,
+          van_registration: driverInfo.assignedVan?.registration || null,
+          round_start_time: data.round_start_time?.toISOString(),
+          round_end_time: data.round_end_time?.toISOString(),
+          app_screenshot: screenshotUrl,
+        });
+
+      if (error) {
+        throw error;
+      }
     },
-    enabled: !!driverProfile?.id
+    onSuccess: () => {
+      toast({
+        title: "End of Day Report Submitted",
+        description: "Your EOD report has been submitted successfully.",
+      });
+      setIsSubmitted(true);
+      queryClient.invalidateQueries({ queryKey: ['eod-reports'] });
+      queryClient.invalidateQueries({ queryKey: ['today-eod-report'] });
+      queryClient.invalidateQueries({ queryKey: ['today-eod-check'] });
+      
+      // Navigate back to dashboard after brief delay
+      setTimeout(() => {
+        navigate('/dashboard');
+      }, 2000);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Submission Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
   });
 
-  const validateForm = () => {
-    const newErrors: {[key: string]: string} = {};
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
     
-    if (!formData.parcelsDelivered || parseInt(formData.parcelsDelivered) < 0) {
-      newErrors.parcelsDelivered = 'Please enter a valid number of parcels delivered';
+    // Validation
+    if (formData.successful_deliveries < 0 || formData.successful_collections < 0) {
+      toast({
+        title: "Validation Error",
+        description: "Deliveries and collections cannot be negative.",
+        variant: "destructive",
+      });
+      return;
     }
 
-    // Optional validation: only check if SOD exists
-    if (todaySOD && parseInt(formData.parcelsDelivered) > todaySOD.parcel_count) {
-      newErrors.parcelsDelivered = `Cannot exceed starting parcel count (${todaySOD.parcel_count})`;
+    if (formData.did_support && formData.support_parcels < 0) {
+      toast({
+        title: "Validation Error",
+        description: "Support parcels cannot be negative.",
+        variant: "destructive",
+      });
+      return;
     }
-    
-    if (!screenshot) {
-      newErrors.screenshot = 'Please upload a screenshot of your delivery summary';
-    }
-    
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
 
-  const calculateEstimatedPay = () => {
-    if (!driverProfile?.parcel_rate || !formData.parcelsDelivered) return 0;
-    const parcelCount = parseInt(formData.parcelsDelivered);
-    const baseRate = driverProfile.parcel_rate || 0;
-    const parcelPay = parcelCount * (driverProfile.parcel_rate || 0);
-    return Number((baseRate + parcelPay).toFixed(2));
+    submitEODMutation.mutate(formData);
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -118,101 +215,29 @@ const EndOfDay = () => {
     if (file) {
       // Validate file type
       if (!file.type.startsWith('image/')) {
-        setErrors(prev => ({ ...prev, screenshot: 'Please upload an image file' }));
+        toast({
+          title: "Invalid File",
+          description: "Please select an image file.",
+          variant: "destructive",
+        });
         return;
       }
       
-      // Validate file size (5MB max)
+      // Validate file size (max 5MB)
       if (file.size > 5 * 1024 * 1024) {
-        setErrors(prev => ({ ...prev, screenshot: 'File size must be less than 5MB' }));
+        toast({
+          title: "File Too Large",
+          description: "Please select an image smaller than 5MB.",
+          variant: "destructive",
+        });
         return;
       }
 
-      setScreenshot(file);
-      setPreviewUrl(URL.createObjectURL(file));
-      if (errors.screenshot) {
-        setErrors(prev => ({ ...prev, screenshot: '' }));
-      }
+      setFormData(prev => ({ ...prev, app_screenshot: file }));
     }
   };
 
-  // End of day mutation
-  const endDayMutation = useMutation({
-    mutationFn: async (data: typeof formData) => {
-      if (!driverProfile?.id || !profile?.company_id) {
-        throw new Error('Driver profile not found');
-      }
-
-      setIsUploading(true);
-      
-      let screenshotUrl = '';
-      if (screenshot) {
-        const fileName = `${user?.id}/${Date.now()}-${screenshot.name}`;
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('eod-screenshots')
-          .upload(fileName, screenshot);
-
-        if (uploadError) throw uploadError;
-        screenshotUrl = uploadData.path;
-      }
-
-      const estimatedPay = calculateEstimatedPay();
-
-      const eodData = {
-        driver_id: driverProfile.id,
-        company_id: profile.company_id,
-        van_id: driverProfile.assigned_van_id,
-        log_date: today,
-        parcels_delivered: parseInt(data.parcelsDelivered),
-        screenshot_url: screenshotUrl,
-        issues_reported: data.issues ? sanitizeInput(data.issues) : null,
-        estimated_pay: estimatedPay,
-        timestamp: new Date().toISOString()
-      };
-
-      const { data: result, error } = await supabase
-        .from('eod_reports')
-        .insert(eodData)
-        .select()
-        .single();
-
-      if (error) throw error;
-      return result;
-    },
-    onSuccess: (data) => {
-      setSuccessData(data);
-      setShowSuccess(true);
-      queryClient.invalidateQueries({ queryKey: ['today-eod-report'] });
-    },
-    onError: (error) => {
-      toast({
-        title: "Error completing end of day",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-    onSettled: () => {
-      setIsUploading(false);
-    }
-  });
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!validateForm()) {
-      toast({
-        title: "Please fix the errors",
-        description: "Check all required fields and try again",
-        variant: "destructive",
-      });
-      return;
-    }
-    endDayMutation.mutate(formData);
-  };
-
-  const isAlreadyCompleted = todayEOD?.timestamp;
-  const canSubmitEOD = true; // SOD is now optional
-
-  if (isLoading) {
+  if (loadingDriverInfo) {
     return (
       <SidebarProvider>
         <div className="min-h-screen flex w-full bg-background">
@@ -220,10 +245,105 @@ const EndOfDay = () => {
           <SidebarInset className="flex-1">
             <div className="flex items-center justify-center h-full">
               <div className="text-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+                <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
                 <p>Loading...</p>
               </div>
             </div>
+          </SidebarInset>
+        </div>
+      </SidebarProvider>
+    );
+  }
+
+  if (isSubmitted) {
+    return (
+      <SidebarProvider>
+        <div className="min-h-screen flex w-full bg-background">
+          <AppSidebar />
+          <SidebarInset className="flex-1">
+            <div className="flex items-center justify-center h-full">
+              <div className="text-center py-6">
+                <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
+                <h2 className="text-2xl font-bold mb-2">Report Submitted!</h2>
+                <p className="text-muted-foreground">
+                  Your End of Day report has been submitted successfully.
+                </p>
+                <p className="text-sm text-muted-foreground mt-2">
+                  Redirecting to dashboard...
+                </p>
+              </div>
+            </div>
+          </SidebarInset>
+        </div>
+      </SidebarProvider>
+    );
+  }
+
+  // If already completed today
+  if (todayEOD) {
+    return (
+      <SidebarProvider>
+        <div className="min-h-screen flex w-full bg-background no-overflow">
+          <AppSidebar />
+          
+          <SidebarInset className="flex-1 no-overflow">
+            <header className="border-b bg-card sticky top-0 z-10">
+              <div className="flex items-center justify-between mobile-padding py-3 md:py-4">
+                <div className="flex items-center space-x-3">
+                  <SidebarTrigger className="mr-2 hidden md:flex" />
+                  <MobileNav className="md:hidden" />
+                  <div>
+                    <h1 className="mobile-heading font-semibold text-foreground">End of Day</h1>
+                    <p className="text-xs md:text-sm text-muted-foreground">Already completed for today</p>
+                  </div>
+                </div>
+              </div>
+            </header>
+
+            <main className="mobile-padding py-4 md:py-6">
+              <Card className="logistics-card">
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <Package className="h-5 w-5 text-primary mr-2" />
+                    End of Day Summary
+                    <Badge variant="default" className="ml-2">
+                      <CheckCircle className="h-3 w-3 mr-1" />
+                      Completed
+                    </Badge>
+                  </CardTitle>
+                  <CardDescription>
+                    {new Date().toLocaleDateString('en-GB', { 
+                      weekday: 'long', 
+                      year: 'numeric', 
+                      month: 'long', 
+                      day: 'numeric' 
+                    })}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div className="text-center p-4 rounded-lg bg-card/50">
+                      <div className="text-2xl font-bold text-gradient">
+                        {todayEOD.total_parcels || (todayEOD.successful_deliveries + todayEOD.successful_collections + todayEOD.support_parcels)}
+                      </div>
+                      <div className="text-sm text-muted-foreground">Total Parcels</div>
+                    </div>
+                    <div className="text-center p-4 rounded-lg bg-card/50">
+                      <div className="text-2xl font-bold text-gradient">
+                        {todayEOD.successful_deliveries}
+                      </div>
+                      <div className="text-sm text-muted-foreground">Deliveries</div>
+                    </div>
+                    <div className="text-center p-4 rounded-lg bg-card/50">
+                      <div className="text-sm text-success">
+                        Completed at {new Date(todayEOD.submitted_at).toLocaleTimeString()}
+                      </div>
+                      <div className="text-sm text-muted-foreground">Time</div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </main>
           </SidebarInset>
         </div>
       </SidebarProvider>
@@ -249,307 +369,225 @@ const EndOfDay = () => {
             </div>
           </header>
 
-          <main className="mobile-padding py-4 md:py-6 space-y-4 md:space-y-6 no-overflow">
-            {/* Status Card */}
+          <main className="mobile-padding py-4 md:py-6 space-y-4 md:space-y-6 no-overflow overflow-y-auto">
             <Card className="logistics-card">
               <CardHeader>
                 <CardTitle className="flex items-center">
                   <Package className="h-5 w-5 text-primary mr-2" />
-                  End of Day Summary
-                  {isAlreadyCompleted && (
-                    <Badge variant="default" className="ml-2">
-                      <CheckCircle2 className="h-3 w-3 mr-1" />
-                      Completed
-                    </Badge>
-                  )}
+                  End of Day Report
                 </CardTitle>
                 <CardDescription>
-                  {new Date().toLocaleDateString('en-GB', { 
-                    weekday: 'long', 
-                    year: 'numeric', 
-                    month: 'long', 
-                    day: 'numeric' 
-                  })}
+                  Complete your daily delivery report with performance metrics.
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                {isAlreadyCompleted ? (
+                <form onSubmit={handleSubmit} className="space-y-6">
+                  {/* Auto-filled Information Display */}
+                  <div className="bg-muted p-4 rounded-lg space-y-2">
+                    <h3 className="font-semibold text-sm">Auto-filled Information</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+                      <div>
+                        <span className="text-muted-foreground">Driver:</span>
+                        <span className="ml-2 font-medium">{driverInfo?.driverName}</span>
+                      </div>
+                      {driverInfo?.hasCompanyVan && driverInfo?.assignedVan && (
+                        <div>
+                          <span className="text-muted-foreground">Van:</span>
+                          <span className="ml-2 font-medium">{driverInfo.assignedVan.registration}</span>
+                        </div>
+                      )}
+                      {driverInfo?.roundNumbers && driverInfo.roundNumbers.length > 0 && (
+                        <div className="md:col-span-2">
+                          <span className="text-muted-foreground">Assigned Rounds:</span>
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {driverInfo.roundNumbers.map((round, index) => (
+                              <Badge key={index} variant="outline" className="text-xs">
+                                {round}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Support Work */}
                   <div className="space-y-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                      <div className="text-center p-4 rounded-lg bg-card/50">
-                        <div className="text-2xl font-bold text-gradient">
-                          {todayEOD.parcels_delivered}
-                        </div>
-                        <div className="text-sm text-muted-foreground">Delivered</div>
-                      </div>
-                      <div className="text-center p-4 rounded-lg bg-card/50">
-                        <div className="text-2xl font-bold text-gradient">
-                          £{todayEOD.estimated_pay || 0}
-                        </div>
-                        <div className="text-sm text-muted-foreground">Estimated Pay</div>
-                      </div>
-                      <div className="text-center p-4 rounded-lg bg-card/50">
-                        <div className="text-sm text-success">
-                          Completed at {new Date(todayEOD.timestamp).toLocaleTimeString()}
-                        </div>
-                        <div className="text-sm text-muted-foreground">Time</div>
-                      </div>
+                    <div className="flex items-center space-x-2">
+                      <Switch
+                        id="support"
+                        checked={formData.did_support}
+                        onCheckedChange={(checked) => setFormData(prev => ({ 
+                          ...prev, 
+                          did_support: checked,
+                          support_parcels: checked ? prev.support_parcels : 0
+                        }))}
+                      />
+                      <Label htmlFor="support">Did you do any support work?</Label>
                     </div>
                     
-                    {todayEOD.screenshot_url && (
-                      <div className="p-4 bg-card/50 rounded-lg">
-                        <Label className="text-sm font-medium">Screenshot:</Label>
-                        <div className="mt-2">
-                          <img 
-                            src={supabase.storage.from('eod-screenshots').getPublicUrl(todayEOD.screenshot_url).data.publicUrl}
-                            alt="Delivery summary screenshot"
-                            className="max-w-sm rounded-lg border"
-                          />
-                        </div>
-                      </div>
-                    )}
-
-                    {todayEOD.issues_reported && (
-                      <div className="p-4 bg-muted rounded-lg">
-                        <Label className="text-sm font-medium">Issues Reported:</Label>
-                        <p className="text-sm mt-1">{todayEOD.issues_reported}</p>
+                    {formData.did_support && (
+                      <div className="space-y-2">
+                        <Label htmlFor="supportParcels">Support Parcels</Label>
+                        <Input
+                          id="supportParcels"
+                          type="number"
+                          min="0"
+                          value={formData.support_parcels}
+                          onChange={(e) => setFormData(prev => ({ ...prev, support_parcels: parseInt(e.target.value) || 0 }))}
+                          placeholder="Number of support parcels"
+                        />
                       </div>
                     )}
                   </div>
-                ) : (
-                  <div className="text-center py-8">
-                    <Package className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                    <p className="text-muted-foreground">Ready to complete your day?</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
 
-            {/* Pay Calculation Preview */}
-            {!isAlreadyCompleted && formData.parcelsDelivered && (
-              <Card className="logistics-card">
-                <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <DollarSign className="h-5 w-5 text-primary mr-2" />
-                    Estimated Pay
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div className="text-center p-4 rounded-lg bg-card/50">
-                      <div className="text-lg font-bold">
-                        £{driverProfile?.parcel_rate || 0}
-                      </div>
-                      <div className="text-sm text-muted-foreground">Base Rate</div>
-                    </div>
-                    <div className="text-center p-4 rounded-lg bg-card/50">
-                      <div className="text-lg font-bold">
-                        £{((driverProfile?.parcel_rate || 0) * parseInt(formData.parcelsDelivered || '0')).toFixed(2)}
-                      </div>
-                      <div className="text-sm text-muted-foreground">Parcel Bonus</div>
-                    </div>
-                    <div className="text-center p-4 rounded-lg bg-primary/10 border-primary/20">
-                      <div className="text-xl font-bold text-primary">
-                        £{calculateEstimatedPay()}
-                      </div>
-                      <div className="text-sm text-muted-foreground">Total Estimated</div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* End of Day Form */}
-            {!isAlreadyCompleted && (
-              <Card className="logistics-card">
-                <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <FileText className="h-5 w-5 text-primary mr-2" />
-                    Complete Your Day
-                  </CardTitle>
-                  <CardDescription>
-                    Enter your delivery summary and upload a screenshot
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <form onSubmit={handleSubmit} className="space-y-6">
-                    {/* Parcels Delivered */}
+                  {/* Deliveries and Collections */}
+                  <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="parcelsDelivered">
-                        Parcels Delivered <span className="text-destructive">*</span>
-                      </Label>
+                      <Label htmlFor="deliveries">Successful Deliveries *</Label>
                       <Input
-                        id="parcelsDelivered"
+                        id="deliveries"
                         type="number"
                         min="0"
-                        max={todaySOD?.parcel_count || 999}
-                        value={formData.parcelsDelivered}
-                        onChange={(e) => {
-                          setFormData(prev => ({ ...prev, parcelsDelivered: e.target.value }));
-                          if (errors.parcelsDelivered) setErrors(prev => ({ ...prev, parcelsDelivered: '' }));
-                        }}
-                        placeholder={todaySOD ? `Enter delivered count (started with ${todaySOD.parcel_count})` : "Enter delivered count"}
-                        className={errors.parcelsDelivered ? 'border-destructive' : ''}
+                        value={formData.successful_deliveries}
+                        onChange={(e) => setFormData(prev => ({ ...prev, successful_deliveries: parseInt(e.target.value) || 0 }))}
+                        placeholder="Number of deliveries"
+                        required
                       />
-                      {errors.parcelsDelivered && (
-                        <p className="text-sm text-destructive">{errors.parcelsDelivered}</p>
-                      )}
                     </div>
-
-                    {/* Screenshot Upload */}
-                    <div className="space-y-3">
-                      <Label>
-                        Delivery Summary Screenshot <span className="text-destructive">*</span>
-                      </Label>
-                      <div className="space-y-3">
-                        <input
-                          ref={fileInputRef}
-                          type="file"
-                          accept="image/*"
-                          onChange={handleFileChange}
-                          className="hidden"
-                        />
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => fileInputRef.current?.click()}
-                          className="w-full h-20 border-dashed"
-                        >
-                          <div className="text-center">
-                            {screenshot ? (
-                              <>
-                                <Upload className="h-6 w-6 mx-auto mb-2 text-success" />
-                                <p className="text-sm">{screenshot.name}</p>
-                              </>
-                            ) : (
-                              <>
-                                <Camera className="h-6 w-6 mx-auto mb-2" />
-                                <p className="text-sm">Click to upload screenshot</p>
-                              </>
-                            )}
-                          </div>
-                        </Button>
-                        
-                        {previewUrl && (
-                          <div className="mt-3">
-                            <img 
-                              src={previewUrl} 
-                              alt="Screenshot preview" 
-                              className="max-w-sm rounded-lg border"
-                            />
-                          </div>
-                        )}
-                        
-                        {errors.screenshot && (
-                          <p className="text-sm text-destructive">{errors.screenshot}</p>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Issues */}
                     <div className="space-y-2">
-                      <Label htmlFor="issues">Issues or Notes (Optional)</Label>
-                      <Textarea
-                        id="issues"
-                        value={formData.issues}
-                        onChange={(e) => setFormData(prev => ({ ...prev, issues: e.target.value }))}
-                        placeholder="Report any issues, delays, or observations from today's deliveries..."
-                        rows={4}
+                      <Label htmlFor="collections">Successful Collections *</Label>
+                      <Input
+                        id="collections"
+                        type="number"
+                        min="0"
+                        value={formData.successful_collections}
+                        onChange={(e) => setFormData(prev => ({ ...prev, successful_collections: parseInt(e.target.value) || 0 }))}
+                        placeholder="Number of collections"
+                        required
                       />
                     </div>
+                  </div>
 
+                  {/* Round Timings */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Round Start Time</Label>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            className={cn(
+                              "w-full justify-start text-left font-normal",
+                              !formData.round_start_time && "text-muted-foreground"
+                            )}
+                          >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {formData.round_start_time ? format(formData.round_start_time, "PPP p") : "Pick start time"}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={formData.round_start_time || undefined}
+                            onSelect={(date) => setFormData(prev => ({ ...prev, round_start_time: date || null }))}
+                            initialFocus
+                            className={cn("p-3 pointer-events-auto")}
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Round End Time</Label>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            className={cn(
+                              "w-full justify-start text-left font-normal",
+                              !formData.round_end_time && "text-muted-foreground"
+                            )}
+                          >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {formData.round_end_time ? format(formData.round_end_time, "PPP p") : "Pick end time"}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={formData.round_end_time || undefined}
+                            onSelect={(date) => setFormData(prev => ({ ...prev, round_end_time: date || null }))}
+                            initialFocus
+                            className={cn("p-3 pointer-events-auto")}
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                  </div>
+
+                  {/* Screenshot Upload */}
+                  <div className="space-y-2">
+                    <Label htmlFor="screenshot">App Screenshot</Label>
+                    <div className="flex items-center space-x-2">
+                      <Input
+                        id="screenshot"
+                        type="file"
+                        accept="image/*"
+                        onChange={handleFileChange}
+                        className="file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-sm file:bg-primary file:text-primary-foreground hover:file:bg-primary/90"
+                      />
+                      <Upload className="h-4 w-4 text-muted-foreground" />
+                    </div>
+                    {formData.app_screenshot && (
+                      <p className="text-sm text-muted-foreground">
+                        Selected: {formData.app_screenshot.name}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Total Parcels Display */}
+                  <div className="bg-muted p-4 rounded-lg">
+                    <Label className="text-sm font-medium">Total Parcels (Calculated)</Label>
+                    <p className="text-2xl font-bold">
+                      {formData.successful_deliveries + formData.successful_collections + formData.support_parcels}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Deliveries ({formData.successful_deliveries}) + Collections ({formData.successful_collections}) + Support ({formData.support_parcels})
+                    </p>
+                  </div>
+
+                  {/* Submit Button */}
+                  <div className="flex gap-3 pt-4">
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      onClick={() => navigate('/dashboard')}
+                      className="flex-1"
+                    >
+                      Cancel
+                    </Button>
                     <Button 
                       type="submit" 
-                      className="logistics-button w-full"
-                      disabled={endDayMutation.isPending || isUploading}
-                      size="lg"
+                      className="flex-1"
+                      disabled={submitEODMutation.isPending}
                     >
-                      {endDayMutation.isPending || isUploading ? (
+                      {submitEODMutation.isPending ? (
                         <>
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2"></div>
-                          {isUploading ? 'Uploading...' : 'Completing Day...'}
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Submitting...
                         </>
                       ) : (
-                        <>
-                          <CheckCircle2 className="h-4 w-4 mr-2" />
-                          Complete End of Day
-                        </>
+                        'Submit Report'
                       )}
                     </Button>
-                  </form>
-                </CardContent>
-              </Card>
-            )}
+                  </div>
+                </form>
+              </CardContent>
+            </Card>
           </main>
         </SidebarInset>
       </div>
-
-      {/* Success Dialog */}
-      <AlertDialog open={showSuccess} onOpenChange={setShowSuccess}>
-        <AlertDialogContent className="max-w-md">
-          <AlertDialogHeader>
-            <div className="flex items-center justify-center w-12 h-12 mx-auto mb-4 bg-success/10 rounded-full">
-              <Check className="w-6 h-6 text-success" />
-            </div>
-            <AlertDialogTitle className="text-center">End of Day Complete!</AlertDialogTitle>
-            <AlertDialogDescription className="text-center">
-              Your delivery summary has been recorded. Great work today!
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          
-          {successData && (
-            <div className="space-y-3 my-4">
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div className="text-center p-3 bg-card/50 rounded-lg">
-                  <div className="font-semibold text-lg">{successData.parcels_delivered}</div>
-                  <div className="text-muted-foreground">Delivered</div>
-                </div>
-                <div className="text-center p-3 bg-card/50 rounded-lg">
-                  <div className="font-semibold text-lg">£{successData.estimated_pay}</div>
-                  <div className="text-muted-foreground">Estimated Pay</div>
-                </div>
-              </div>
-              
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <span>Status:</span>
-                  <span className="flex items-center text-success">
-                    <Check className="w-4 h-4 mr-1" />
-                    Submitted
-                  </span>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span>Screenshot:</span>
-                  <span className="flex items-center text-success">
-                    <Check className="w-4 h-4 mr-1" />
-                    Uploaded
-                  </span>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span>Completed at:</span>
-                  <span>{new Date(successData.timestamp).toLocaleTimeString()}</span>
-                </div>
-              </div>
-
-              {successData.issues_reported && (
-                <div className="p-3 bg-muted rounded-lg">
-                  <Label className="text-xs font-medium">Issues Reported:</Label>
-                  <p className="text-sm mt-1">{successData.issues_reported}</p>
-                </div>
-              )}
-            </div>
-          )}
-          
-          <AlertDialogFooter>
-            <AlertDialogAction onClick={() => {
-              setShowSuccess(false);
-              navigate('/dashboard');
-            }}>
-              Back to Dashboard
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </SidebarProvider>
   );
 };
