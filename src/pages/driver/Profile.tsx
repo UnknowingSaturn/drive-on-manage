@@ -123,9 +123,40 @@ const DriverProfile = () => {
     }
   });
 
+  // Password reset mutation
+  const passwordResetMutation = useMutation({
+    mutationFn: async () => {
+      if (!user?.email) throw new Error('No email found');
+      
+      const { error } = await supabase.auth.resetPasswordForEmail(user.email, {
+        redirectTo: `${window.location.origin}/reset-password`
+      });
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({
+        title: "Password reset email sent",
+        description: "Check your email for a password reset link. The link will expire in 1 hour.",
+      });
+      setShowPasswordForm(false);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error sending reset email",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  });
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     updateProfileMutation.mutate(formData);
+  };
+
+  const handlePasswordReset = () => {
+    passwordResetMutation.mutate();
   };
 
   const handlePasswordChange = (e: React.FormEvent) => {
@@ -494,6 +525,19 @@ const DriverProfile = () => {
                                   }}
                                 >
                                   Cancel
+                                </Button>
+                              </div>
+                              
+                              <div className="pt-2 border-t">
+                                <Button
+                                  type="button"
+                                  variant="link"
+                                  size="sm"
+                                  onClick={handlePasswordReset}
+                                  disabled={passwordResetMutation.isPending}
+                                  className="h-auto p-0 text-xs text-muted-foreground hover:text-primary"
+                                >
+                                  {passwordResetMutation.isPending ? 'Sending reset email...' : 'Forgot your current password? Reset via email'}
                                 </Button>
                               </div>
                             </form>
