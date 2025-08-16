@@ -1,93 +1,101 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CalendarIcon, Upload, CheckCircle } from 'lucide-react';
+import { CalendarIcon, Upload, CheckCircle, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
 import { Switch } from '@/components/ui/switch';
-import { SidebarProvider, SidebarTrigger, SidebarInset } from '@/components/ui/sidebar';
-import { AppSidebar } from '@/components/AppSidebar';
+import { Badge } from '@/components/ui/badge';
+
+interface EODModalProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}
 
 interface EndOfDayFormData {
-  name: string;
-  round_1_number: string;
-  round_2_number: string;
-  round_3_number: string;
-  round_4_number: string;
   did_support: boolean;
   support_parcels: number;
   successful_deliveries: number;
   successful_collections: number;
-  has_company_van: boolean;
-  van_registration: string;
   round_start_time: Date | null;
   round_end_time: Date | null;
   app_screenshot: File | null;
 }
 
-const NewEndOfDay = () => {
+const EODModal: React.FC<EODModalProps> = ({ open, onOpenChange }) => {
   const { profile } = useAuth();
   const queryClient = useQueryClient();
   
   const [formData, setFormData] = useState<EndOfDayFormData>({
-    name: '',
-    round_1_number: '',
-    round_2_number: '',
-    round_3_number: '',
-    round_4_number: '',
     did_support: false,
     support_parcels: 0,
     successful_deliveries: 0,
     successful_collections: 0,
-    has_company_van: false,
-    van_registration: '',
     round_start_time: null,
     round_end_time: null,
     app_screenshot: null,
   });
 
-  const [driverProfile, setDriverProfile] = useState<any>(null);
   const [isSubmitted, setIsSubmitted] = useState(false);
 
-  // Fetch driver profile to get driver name
-  useEffect(() => {
-    const fetchDriverProfile = async () => {
-      if (!profile?.user_id) return;
+  // Fetch driver profile with assigned van and schedule info
+  const { data: driverInfo, isLoading: loadingDriverInfo } = useQuery({
+    queryKey: ['driver-eod-info', profile?.user_id],
+    queryFn: async () => {
+      if (!profile?.user_id) return null;
 
-      const { data, error } = await supabase
+      // Get driver profile with van information
+      const { data: driverProfile, error: driverError } = await supabase
         .from('driver_profiles')
         .select(`
           id,
           user_id,
-          profiles!inner(first_name, last_name)
+          assigned_van_id,
+          company_id,
+          profiles!inner(first_name, last_name),
+          vans(registration, make, model)
         `)
         .eq('user_id', profile.user_id)
         .single();
 
-      if (data && !error) {
-        setDriverProfile(data);
-        // Pre-fill name from driver profile
-        setFormData(prev => ({
-          ...prev,
-          name: `${data.profiles.first_name} ${data.profiles.last_name}`.trim()
-        }));
-      }
-    };
+      if (driverError) throw driverError;
 
-    fetchDriverProfile();
-  }, [profile?.user_id]);
+      // Get today's assigned rounds/schedule
+      const today = new Date().toISOString().split('T')[0];
+      const { data: schedules, error: scheduleError } = await supabase
+        .from('schedules')
+        .select(`
+          *,
+          rounds(round_number, description)
+        `)
+        .eq('driver_id', driverProfile.id)
+        .eq('scheduled_date', today);
+
+      if (scheduleError) throw scheduleError;
+
+      return {
+        driverProfile,
+        schedules: schedules || [],
+        driverName: `${driverProfile.profiles.first_name} ${driverProfile.profiles.last_name}`.trim(),
+        assignedVan: driverProfile.vans,
+        hasCompanyVan: !!driverProfile.assigned_van_id,
+        roundNumbers: schedules?.map(s => s.rounds?.round_number).filter(Boolean) || []
+      };
+    },
+    enabled: !!profile?.user_id && open,
+  });
 
   const submitEODMutation = useMutation({
     mutationFn: async (data: EndOfDayFormData) => {
-      if (!driverProfile?.id) {
+      if (!driverInfo?.driverProfile?.id) {
         throw new Error('Driver profile not found');
       }
 
@@ -109,22 +117,22 @@ const NewEndOfDay = () => {
         screenshotUrl = fileName;
       }
 
-      // Insert EOD report
+      // Insert EOD report with auto-filled data
       const { error } = await supabase
         .from('end_of_day_reports')
         .insert({
-          driver_id: driverProfile.id,
-          name: data.name,
-          round_1_number: data.round_1_number || null,
-          round_2_number: data.round_2_number || null,
-          round_3_number: data.round_3_number || null,
-          round_4_number: data.round_4_number || null,
+          driver_id: driverInfo.driverProfile.id,
+          name: driverInfo.driverName,
+          round_1_number: driverInfo.roundNumbers[0] || null,
+          round_2_number: driverInfo.roundNumbers[1] || null,
+          round_3_number: driverInfo.roundNumbers[2] || null,
+          round_4_number: driverInfo.roundNumbers[3] || null,
           did_support: data.did_support,
           support_parcels: data.support_parcels,
           successful_deliveries: data.successful_deliveries,
           successful_collections: data.successful_collections,
-          has_company_van: data.has_company_van,
-          van_registration: data.has_company_van ? data.van_registration : null,
+          has_company_van: driverInfo.hasCompanyVan,
+          van_registration: driverInfo.assignedVan?.registration || null,
           round_start_time: data.round_start_time?.toISOString(),
           round_end_time: data.round_end_time?.toISOString(),
           app_screenshot: screenshotUrl,
@@ -141,6 +149,23 @@ const NewEndOfDay = () => {
       });
       setIsSubmitted(true);
       queryClient.invalidateQueries({ queryKey: ['eod-reports'] });
+      queryClient.invalidateQueries({ queryKey: ['today-eod-report'] });
+      
+      // Close modal after a brief delay
+      setTimeout(() => {
+        onOpenChange(false);
+        setIsSubmitted(false);
+        // Reset form
+        setFormData({
+          did_support: false,
+          support_parcels: 0,
+          successful_deliveries: 0,
+          successful_collections: 0,
+          round_start_time: null,
+          round_end_time: null,
+          app_screenshot: null,
+        });
+      }, 2000);
     },
     onError: (error: any) => {
       toast({
@@ -155,15 +180,6 @@ const NewEndOfDay = () => {
     e.preventDefault();
     
     // Validation
-    if (!formData.name.trim()) {
-      toast({
-        title: "Validation Error",
-        description: "Driver name is required.",
-        variant: "destructive",
-      });
-      return;
-    }
-
     if (formData.successful_deliveries < 0 || formData.successful_collections < 0) {
       toast({
         title: "Validation Error",
@@ -177,15 +193,6 @@ const NewEndOfDay = () => {
       toast({
         title: "Validation Error",
         description: "Support parcels cannot be negative.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (formData.has_company_van && !formData.van_registration.trim()) {
-      toast({
-        title: "Validation Error",
-        description: "Van registration is required when using a company van.",
         variant: "destructive",
       });
       return;
@@ -223,99 +230,63 @@ const NewEndOfDay = () => {
 
   if (isSubmitted) {
     return (
-      <SidebarProvider>
-        <AppSidebar />
-        <SidebarInset>
-          <div className="flex h-16 items-center gap-2 px-4 border-b">
-            <SidebarTrigger />
-            <h1 className="text-2xl font-semibold">End of Day Report</h1>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="sm:max-w-md">
+          <div className="text-center py-6">
+            <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
+            <h2 className="text-2xl font-bold mb-2">Report Submitted!</h2>
+            <p className="text-muted-foreground">
+              Your End of Day report has been submitted successfully.
+            </p>
           </div>
-          <div className="container mx-auto py-8">
-            <Card className="max-w-md mx-auto text-center">
-              <CardContent className="pt-6">
-                <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
-                <h2 className="text-2xl font-bold mb-2">Report Submitted!</h2>
-                <p className="text-muted-foreground mb-4">
-                  Your End of Day report has been submitted successfully.
-                </p>
-                <Button onClick={() => setIsSubmitted(false)}>
-                  Submit Another Report
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
-        </SidebarInset>
-      </SidebarProvider>
+        </DialogContent>
+      </Dialog>
     );
   }
 
   return (
-    <SidebarProvider>
-      <AppSidebar />
-      <SidebarInset>
-        <div className="flex h-16 items-center gap-2 px-4 border-b">
-          <SidebarTrigger />
-          <h1 className="text-2xl font-semibold">End of Day Report</h1>
-        </div>
-        <div className="container mx-auto py-8">
-          <Card className="max-w-2xl mx-auto">
-            <CardHeader>
-              <CardTitle>End of Day Report</CardTitle>
-              <CardDescription>
-                Submit your daily delivery report with round details and performance metrics.
-              </CardDescription>
-            </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Driver Name */}
-            <div className="space-y-2">
-              <Label htmlFor="name">Driver Name *</Label>
-              <Input
-                id="name"
-                value={formData.name}
-                onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                placeholder="Enter driver name"
-                required
-              />
-            </div>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>End of Day Report</DialogTitle>
+          <DialogDescription>
+            Complete your daily delivery report with performance metrics.
+          </DialogDescription>
+        </DialogHeader>
 
-            {/* Round Numbers */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="round1">Round 1 Number</Label>
-                <Input
-                  id="round1"
-                  value={formData.round_1_number}
-                  onChange={(e) => setFormData(prev => ({ ...prev, round_1_number: e.target.value }))}
-                  placeholder="Round 1"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="round2">Round 2 Number</Label>
-                <Input
-                  id="round2"
-                  value={formData.round_2_number}
-                  onChange={(e) => setFormData(prev => ({ ...prev, round_2_number: e.target.value }))}
-                  placeholder="Round 2"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="round3">Round 3 Number</Label>
-                <Input
-                  id="round3"
-                  value={formData.round_3_number}
-                  onChange={(e) => setFormData(prev => ({ ...prev, round_3_number: e.target.value }))}
-                  placeholder="Round 3"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="round4">Round 4 Number</Label>
-                <Input
-                  id="round4"
-                  value={formData.round_4_number}
-                  onChange={(e) => setFormData(prev => ({ ...prev, round_4_number: e.target.value }))}
-                  placeholder="Round 4"
-                />
+        {loadingDriverInfo ? (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="h-8 w-8 animate-spin" />
+            <span className="ml-2">Loading your information...</span>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Auto-filled Information Display */}
+            <div className="bg-muted p-4 rounded-lg space-y-2">
+              <h3 className="font-semibold text-sm">Auto-filled Information</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+                <div>
+                  <span className="text-muted-foreground">Driver:</span>
+                  <span className="ml-2 font-medium">{driverInfo?.driverName}</span>
+                </div>
+                {driverInfo?.hasCompanyVan && driverInfo?.assignedVan && (
+                  <div>
+                    <span className="text-muted-foreground">Van:</span>
+                    <span className="ml-2 font-medium">{driverInfo.assignedVan.registration}</span>
+                  </div>
+                )}
+                {driverInfo?.roundNumbers && driverInfo.roundNumbers.length > 0 && (
+                  <div className="md:col-span-2">
+                    <span className="text-muted-foreground">Assigned Rounds:</span>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {driverInfo.roundNumbers.map((round, index) => (
+                        <Badge key={index} variant="outline" className="text-xs">
+                          {round}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -377,37 +348,8 @@ const NewEndOfDay = () => {
               </div>
             </div>
 
-            {/* Company Van */}
-            <div className="space-y-4">
-              <div className="flex items-center space-x-2">
-                <Switch
-                  id="companyVan"
-                  checked={formData.has_company_van}
-                  onCheckedChange={(checked) => setFormData(prev => ({ 
-                    ...prev, 
-                    has_company_van: checked,
-                    van_registration: checked ? prev.van_registration : ''
-                  }))}
-                />
-                <Label htmlFor="companyVan">Do you have a company van?</Label>
-              </div>
-              
-              {formData.has_company_van && (
-                <div className="space-y-2">
-                  <Label htmlFor="vanReg">Van Registration *</Label>
-                  <Input
-                    id="vanReg"
-                    value={formData.van_registration}
-                    onChange={(e) => setFormData(prev => ({ ...prev, van_registration: e.target.value }))}
-                    placeholder="Van registration number"
-                    required={formData.has_company_van}
-                  />
-                </div>
-              )}
-            </div>
-
             {/* Round Timings */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Round Start Time</Label>
                 <Popover>
@@ -495,20 +437,35 @@ const NewEndOfDay = () => {
             </div>
 
             {/* Submit Button */}
-            <Button 
-              type="submit" 
-              className="w-full" 
-              disabled={submitEODMutation.isPending}
-            >
-              {submitEODMutation.isPending ? 'Submitting...' : 'Submit End of Day Report'}
-            </Button>
+            <div className="flex gap-3 pt-4">
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={() => onOpenChange(false)}
+                className="flex-1"
+              >
+                Cancel
+              </Button>
+              <Button 
+                type="submit" 
+                className="flex-1"
+                disabled={submitEODMutation.isPending}
+              >
+                {submitEODMutation.isPending ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Submitting...
+                  </>
+                ) : (
+                  'Submit Report'
+                )}
+              </Button>
+            </div>
           </form>
-        </CardContent>
-      </Card>
-        </div>
-      </SidebarInset>
-    </SidebarProvider>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 };
 
-export default NewEndOfDay;
+export default EODModal;

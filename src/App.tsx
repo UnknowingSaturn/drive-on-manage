@@ -28,7 +28,7 @@ import ResetPassword from "./pages/ResetPassword";
 
 // Driver pages
 import StartOfDay from "./pages/driver/StartOfDay";
-import NewEndOfDay from "./pages/driver/NewEndOfDay";
+
 import VehicleCheck from "./pages/driver/VehicleCheck";
 import IncidentReport from "./pages/driver/IncidentReport";
 import NewsChat from "./pages/driver/NewsChat";
@@ -153,13 +153,6 @@ const App = () => (
               <ProtectedRoute>
                 <DriverOnboardingGate>
                   <StartOfDay />
-                </DriverOnboardingGate>
-              </ProtectedRoute>
-            } />
-            <Route path="/driver/end-of-day" element={
-              <ProtectedRoute>
-                <DriverOnboardingGate>
-                  <NewEndOfDay />
                 </DriverOnboardingGate>
               </ProtectedRoute>
             } />

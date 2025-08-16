@@ -7,6 +7,7 @@ import EarningsWidget from '@/components/driver/EarningsWidget';
 import LeaderboardWidget from '@/components/driver/LeaderboardWidget';
 import FeedbackWidget from '@/components/driver/FeedbackWidget';
 import ExpenseWidget from '@/components/driver/ExpenseWidget';
+import EODModal from '@/components/driver/EODModal';
 import { SidebarProvider, SidebarTrigger, SidebarInset } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/AppSidebar';
 import { MobileNav } from '@/components/MobileNav';
@@ -17,6 +18,7 @@ import { supabase } from '@/integrations/supabase/client';
 const Dashboard = () => {
   const { user, profile } = useAuth();
   const navigate = useNavigate();
+  const [eodModalOpen, setEodModalOpen] = React.useState(false);
 
   const isAdmin = profile?.user_type === 'admin';
   const isDriver = profile?.user_type === 'driver';
@@ -63,7 +65,7 @@ const Dashboard = () => {
     enabled: !!user?.id && isDriver,
   });
 
-  // Get today's EOD report for drivers
+  // Get today's EOD report for drivers (using new table)
   const { data: todayEOD } = useQuery({
     queryKey: ['today-eod-report', user?.id],
     queryFn: async () => {
@@ -78,10 +80,11 @@ const Dashboard = () => {
       if (driverProfile) {
         const today = new Date().toISOString().split('T')[0];
         const { data } = await supabase
-          .from('eod_reports')
+          .from('end_of_day_reports')
           .select('*')
           .eq('driver_id', driverProfile.id)
-          .eq('log_date', today)
+          .gte('submitted_at', `${today}T00:00:00.000Z`)
+          .lt('submitted_at', `${today}T23:59:59.999Z`)
           .maybeSingle();
         return data;
       }
@@ -164,7 +167,7 @@ const Dashboard = () => {
                   
                   <div className="text-center mobile-card-compact bg-card/50 hover-lift">
                     <div className="text-xl sm:text-2xl font-bold text-success">
-                      {todayEOD?.parcels_delivered || 0}
+                      {todayEOD?.total_parcels || (todayEOD?.successful_deliveries + todayEOD?.successful_collections + todayEOD?.support_parcels) || 0}
                     </div>
                     <div className="text-responsive-sm text-muted-foreground">Delivered</div>
                     <div className="flex items-center justify-center mt-2">
@@ -184,13 +187,13 @@ const Dashboard = () => {
                   
                   <div className="text-center mobile-card-compact bg-card/50 hover-lift">
                     <div className="text-xl sm:text-2xl font-bold text-gradient">
-                      £{todayEOD?.estimated_pay?.toFixed(2) || '0.00'}
+                      £0.00
                     </div>
                     <div className="text-responsive-sm text-muted-foreground">Estimated Pay</div>
                     <div className="flex items-center justify-center mt-2">
                       <div className="w-2 h-2 bg-success rounded-full mr-2 animate-pulse"></div>
                       <span className="text-responsive-xs text-success">
-                        {todayEOD?.status || 'Pending'}
+                        {todayEOD ? 'Completed' : 'Pending'}
                       </span>
                     </div>
                   </div>
@@ -241,7 +244,7 @@ const Dashboard = () => {
                 <CardContent>
                   <Button 
                     className="logistics-button w-full group-hover:shadow-glow mobile-button"
-                    onClick={() => navigate('/driver/end-of-day')}
+                    onClick={() => setEodModalOpen(true)}
                     disabled={!todaySOD || !!todayEOD}
                   >
                     <CheckCircle2 className="h-4 w-4 mr-2" />
@@ -317,6 +320,12 @@ const Dashboard = () => {
           </main>
         </SidebarInset>
       </div>
+
+      {/* EOD Modal */}
+      <EODModal 
+        open={eodModalOpen} 
+        onOpenChange={setEodModalOpen} 
+      />
     </SidebarProvider>
   );
 };

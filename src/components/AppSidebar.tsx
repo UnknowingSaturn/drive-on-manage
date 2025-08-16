@@ -51,7 +51,6 @@ const driverItems = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
   { title: "My Profile", url: "/driver/profile", icon: UserCircle },
   { title: "Start of Day", url: "/driver/start-of-day", icon: Clock },
-  { title: "End of Day", url: "/driver/end-of-day", icon: CheckCircle2 },
   { title: "Vehicle Check", url: "/driver/vehicle-check", icon: Truck },
   { title: "Earnings", url: "/driver/earnings", icon: Calculator },
   { title: "Leaderboard", url: "/driver/leaderboard", icon: Trophy },
