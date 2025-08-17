@@ -306,37 +306,29 @@ export function LiveTrackingMap() {
 
       if (driversError) throw driversError;
 
-      const csvHeaders = 'Driver Name,Latitude,Longitude,Accuracy,Speed,Heading,Battery,Timestamp\n';
-      const csvRows = data.map(row => {
-        const driverProfile = driversWithNames?.find(d => d.id === row.driver_id);
-        const driverName = driverProfile?.profiles 
-          ? `${driverProfile.profiles.first_name} ${driverProfile.profiles.last_name}`
-          : `Driver ${row.driver_id.slice(0, 8)}`;
-        
-        return [
-          `"${driverName}"`,
-          row.latitude,
-          row.longitude,
-          row.accuracy,
-          row.speed || '',
-          row.heading || '',
-          row.battery_level || '',
-          row.timestamp
-        ].join(',')).join('\n');
-        
-        exportData = csvHeaders + csvRows;
-        filename = `driver-locations-${new Date().toISOString().split('T')[0]}.csv`;
-        mimeType = 'text/csv';
-      } else {
-          row.latitude,
-          row.longitude,
-          row.accuracy,
-          row.speed || '',
-          row.heading || '',
-          row.battery_level || '',
-          row.timestamp
-        ].join(',');
-      }).join('\n');
+      let exportData: string;
+      let filename: string;
+      let mimeType: string;
+
+      if (format === 'csv') {
+        const csvHeaders = 'Driver Name,Latitude,Longitude,Accuracy,Speed,Heading,Battery,Timestamp\n';
+        const csvRows = data.map(row => {
+          const driverProfile = driversWithNames?.find(d => d.id === row.driver_id);
+          const driverName = driverProfile?.profiles 
+            ? `${driverProfile.profiles.first_name} ${driverProfile.profiles.last_name}`
+            : `Driver ${row.driver_id.slice(0, 8)}`;
+          
+          return [
+            `"${driverName}"`,
+            row.latitude,
+            row.longitude,
+            row.accuracy,
+            row.speed || '',
+            row.heading || '',
+            row.battery_level || '',
+            row.timestamp
+          ].join(',');
+        }).join('\n');
         
         exportData = csvHeaders + csvRows;
         filename = `driver-locations-${new Date().toISOString().split('T')[0]}.csv`;
