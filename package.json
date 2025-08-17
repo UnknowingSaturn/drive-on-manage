@@ -11,6 +11,11 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@capacitor/android": "^7.4.2",
+    "@capacitor/cli": "^7.4.2",
+    "@capacitor/core": "^7.4.2",
+    "@capacitor/geolocation": "^7.1.5",
+    "@capacitor/ios": "^7.4.2",
     "@hookform/resolvers": "^3.10.0",
     "@radix-ui/react-accordion": "^1.2.11",
     "@radix-ui/react-alert-dialog": "^1.1.14",
@@ -42,6 +47,7 @@
     "@supabase/supabase-js": "^2.53.0",
     "@tanstack/react-query": "^5.84.1",
     "@types/dompurify": "^3.2.0",
+    "@types/mapbox-gl": "^3.4.1",
     "@vitest/ui": "^3.2.4",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -52,6 +58,7 @@
     "input-otp": "^1.4.2",
     "jsdom": "^26.1.0",
     "lucide-react": "^0.462.0",
+    "mapbox-gl": "^3.14.0",
     "next-themes": "^0.3.0",
     "react": "^18.3.1",
     "react-day-picker": "^8.10.1",

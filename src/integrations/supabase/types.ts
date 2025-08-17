@@ -624,6 +624,48 @@ export type Database = {
         }
         Relationships: []
       }
+      driver_shifts: {
+        Row: {
+          company_id: string
+          consent_given: boolean
+          consent_timestamp: string
+          created_at: string
+          driver_id: string
+          end_time: string | null
+          id: string
+          start_time: string
+          status: string
+          total_distance: number | null
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          consent_given?: boolean
+          consent_timestamp?: string
+          created_at?: string
+          driver_id: string
+          end_time?: string | null
+          id?: string
+          start_time?: string
+          status?: string
+          total_distance?: number | null
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          consent_given?: boolean
+          consent_timestamp?: string
+          created_at?: string
+          driver_id?: string
+          end_time?: string | null
+          id?: string
+          start_time?: string
+          status?: string
+          total_distance?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       end_of_day_reports: {
         Row: {
           app_screenshot: string | null
@@ -864,6 +906,138 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      location_access_logs: {
+        Row: {
+          action_type: string
+          company_id: string
+          date_range_end: string | null
+          date_range_start: string | null
+          driver_id: string | null
+          export_format: string | null
+          id: string
+          ip_address: string | null
+          timestamp: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          action_type: string
+          company_id: string
+          date_range_end?: string | null
+          date_range_start?: string | null
+          driver_id?: string | null
+          export_format?: string | null
+          id?: string
+          ip_address?: string | null
+          timestamp?: string
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          action_type?: string
+          company_id?: string
+          date_range_end?: string | null
+          date_range_start?: string | null
+          driver_id?: string | null
+          export_format?: string | null
+          id?: string
+          ip_address?: string | null
+          timestamp?: string
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      location_points: {
+        Row: {
+          accuracy: number | null
+          activity_type: string | null
+          battery_level: number | null
+          company_id: string
+          created_at: string
+          driver_id: string
+          heading: number | null
+          id: string
+          is_offline_sync: boolean | null
+          latitude: number
+          longitude: number
+          shift_id: string | null
+          speed: number | null
+          timestamp: string
+        }
+        Insert: {
+          accuracy?: number | null
+          activity_type?: string | null
+          battery_level?: number | null
+          company_id: string
+          created_at?: string
+          driver_id: string
+          heading?: number | null
+          id?: string
+          is_offline_sync?: boolean | null
+          latitude: number
+          longitude: number
+          shift_id?: string | null
+          speed?: number | null
+          timestamp?: string
+        }
+        Update: {
+          accuracy?: number | null
+          activity_type?: string | null
+          battery_level?: number | null
+          company_id?: string
+          created_at?: string
+          driver_id?: string
+          heading?: number | null
+          id?: string
+          is_offline_sync?: boolean | null
+          latitude?: number
+          longitude?: number
+          shift_id?: string | null
+          speed?: number | null
+          timestamp?: string
+        }
+        Relationships: []
+      }
+      location_stats_daily: {
+        Row: {
+          active_hours: number
+          average_speed: number | null
+          company_id: string
+          created_at: string
+          driver_id: string
+          id: string
+          max_speed: number | null
+          stat_date: string
+          total_distance: number
+          total_points: number
+        }
+        Insert: {
+          active_hours?: number
+          average_speed?: number | null
+          company_id: string
+          created_at?: string
+          driver_id: string
+          id?: string
+          max_speed?: number | null
+          stat_date: string
+          total_distance?: number
+          total_points?: number
+        }
+        Update: {
+          active_hours?: number
+          average_speed?: number | null
+          company_id?: string
+          created_at?: string
+          driver_id?: string
+          id?: string
+          max_speed?: number | null
+          stat_date?: string
+          total_distance?: number
+          total_points?: number
+        }
+        Relationships: []
       }
       messages: {
         Row: {
@@ -1502,6 +1676,10 @@ export type Database = {
           route_id_param: string
         }
         Returns: Json
+      }
+      cleanup_old_location_data: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
       }
       generate_invoice_number: {
         Args: Record<PropertyKey, never>
