@@ -162,7 +162,7 @@ export function LiveTrackingMap() {
         heading: location.heading,
         battery_level: location.battery_level,
         timestamp: location.timestamp,
-        shift_status: location.driver_shifts.status,
+        shift_status: 'active', // Default since we're only fetching active shifts
         last_update_minutes: Math.floor((Date.now() - new Date(location.timestamp).getTime()) / 60000)
       }));
 
@@ -295,14 +295,26 @@ export function LiveTrackingMap() {
 
       if (error) throw error;
 
-      let exportData: string;
-      let filename: string;
-      let mimeType: string;
+      // Get driver names from profiles table
+      const { data: driversWithNames, error: driversError } = await supabase
+        .from('driver_profiles')
+        .select(`
+          id,
+          profiles(first_name, last_name)
+        `)
+        .eq('company_id', profile?.company_id);
 
-      if (format === 'csv') {
-        const csvHeaders = 'Driver Name,Latitude,Longitude,Accuracy,Speed,Heading,Battery,Timestamp\n';
-        const csvRows = data.map(row => [
-          `"${row.driver_profiles.profiles.first_name} ${row.driver_profiles.profiles.last_name}"`,
+      if (driversError) throw driversError;
+
+      const csvHeaders = 'Driver Name,Latitude,Longitude,Accuracy,Speed,Heading,Battery,Timestamp\n';
+      const csvRows = data.map(row => {
+        const driverProfile = driversWithNames?.find(d => d.id === row.driver_id);
+        const driverName = driverProfile?.profiles 
+          ? `${driverProfile.profiles.first_name} ${driverProfile.profiles.last_name}`
+          : `Driver ${row.driver_id.slice(0, 8)}`;
+        
+        return [
+          `"${driverName}"`,
           row.latitude,
           row.longitude,
           row.accuracy,
@@ -316,23 +328,44 @@ export function LiveTrackingMap() {
         filename = `driver-locations-${new Date().toISOString().split('T')[0]}.csv`;
         mimeType = 'text/csv';
       } else {
+          row.latitude,
+          row.longitude,
+          row.accuracy,
+          row.speed || '',
+          row.heading || '',
+          row.battery_level || '',
+          row.timestamp
+        ].join(',');
+      }).join('\n');
+        
+        exportData = csvHeaders + csvRows;
+        filename = `driver-locations-${new Date().toISOString().split('T')[0]}.csv`;
+        mimeType = 'text/csv';
+      } else {
         const geoJson = {
           type: 'FeatureCollection',
-          features: data.map(row => ({
-            type: 'Feature',
-            geometry: {
-              type: 'Point',
-              coordinates: [row.longitude, row.latitude]
-            },
-            properties: {
-              driver_name: `${row.driver_profiles.profiles.first_name} ${row.driver_profiles.profiles.last_name}`,
-              accuracy: row.accuracy,
-              speed: row.speed,
-              heading: row.heading,
-              battery_level: row.battery_level,
-              timestamp: row.timestamp
-            }
-          }))
+          features: data.map(row => {
+            const driverProfile = driversWithNames?.find(d => d.id === row.driver_id);
+            const driverName = driverProfile?.profiles 
+              ? `${driverProfile.profiles.first_name} ${driverProfile.profiles.last_name}`
+              : `Driver ${row.driver_id.slice(0, 8)}`;
+            
+            return {
+              type: 'Feature',
+              geometry: {
+                type: 'Point',
+                coordinates: [row.longitude, row.latitude]
+              },
+              properties: {
+                driver_name: driverName,
+                accuracy: row.accuracy,
+                speed: row.speed,
+                heading: row.heading,
+                battery_level: row.battery_level,
+                timestamp: row.timestamp
+              }
+            };
+          })
         };
         
         exportData = JSON.stringify(geoJson, null, 2);
