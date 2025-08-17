@@ -117,7 +117,9 @@ export function AppSidebar() {
           </div>
           {!collapsed && (
             <div>
-              <h2 className="text-lg font-bold text-gradient">LogiFlow</h2>
+              <h2 className="text-lg font-bold text-gradient">
+                {isManagement ? 'EODrive HQ' : 'EODrive GO+'}
+              </h2>
               <p className="text-sm text-sidebar-foreground/70">
                 {profile?.first_name || 'User'}
               </p>
