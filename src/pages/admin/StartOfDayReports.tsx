@@ -93,7 +93,7 @@ const StartOfDayReports = () => {
             )
           )
         `)
-        .in('driver_profiles.company_id', companyIds)
+        .in('company_id', companyIds)
         .gte('submitted_at', weekStart.toISOString())
         .lte('submitted_at', weekEnd.toISOString())
         .order('submitted_at', { ascending: false });
@@ -103,7 +103,12 @@ const StartOfDayReports = () => {
         query = query.eq('driver_id', selectedDriver);
       }
 
-      const { data } = await query;
+      const { data, error } = await query;
+      
+      if (error) {
+        console.error('Error fetching SOD reports:', error);
+        throw error;
+      }
 
       // Apply search filter on client side
       let filteredData = data || [];
