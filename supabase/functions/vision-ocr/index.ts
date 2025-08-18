@@ -228,102 +228,159 @@ serve(async (req) => {
   }
 });
 
-// Helper function using regex for field extraction
-const extractField = (text: string, label: string): number => {
-  const regex = new RegExp(`${label}\\s*[:\\-]?\\s*(\\d+)`, "i");
-  const match = text.match(regex);
-  return match ? parseInt(match[1], 10) : 0;
-};
+// Enhanced parsing function based on your Google Apps Script
+function parseExtractedText(text: string): VisionResponse {
+  if (!text) {
+    return {
+      extracted_round_number: "",
+      heavy_parcels: 0,
+      standard: 0,
+      hanging_garments: 0,
+      packets: 0,
+      small_packets: 0,
+      postables: 0,
+      raw_text: ""
+    };
+  }
 
-function parseParcelCounts(text: string): VisionResponse {
-  const data: VisionResponse = {
+  // Initialize results object
+  const result: VisionResponse = {
+    extracted_round_number: "",
+    heavy_parcels: 0,
+    standard: 0,
+    hanging_garments: 0,
+    packets: 0,
+    small_packets: 0,
+    postables: 0,
     raw_text: text
   };
 
-  // Convert to lowercase for easier matching
+  // Convert text to lowercase for case-insensitive matching
   const lowerText = text.toLowerCase();
-
-  // Extract round number (looking for patterns like "Round 123", "R123", "Round A1", etc.)
-  const roundPatterns = [
-    /round[\s:]*([a-z0-9-]+)/i,
-    /\br[\s]*([0-9a-z-]+)/i,
-    /route[\s:]*([a-z0-9-]+)/i,
-    /rnd[\s:]*([a-z0-9-]+)/i
-  ];
-  
-  for (const pattern of roundPatterns) {
-    const roundMatch = text.match(pattern);
-    if (roundMatch && roundMatch[1]) {
-      data.extracted_round_number = roundMatch[1].toUpperCase();
-      break;
-    }
-  }
-
-  // Extract parcel counts using improved regex patterns
-  data.heavy_parcels = extractField(lowerText, 'heavy') || 
-                      extractField(lowerText, 'hvy') || 
-                      extractField(lowerText, 'h');
-                      
-  data.standard = extractField(lowerText, 'standard') || 
-                 extractField(lowerText, 'std') || 
-                 extractField(lowerText, 'reg');
-                 
-  data.hanging_garments = extractField(lowerText, 'hanging') || 
-                         extractField(lowerText, 'hanger') || 
-                         extractField(lowerText, 'hang') || 
-                         extractField(lowerText, 'garment');
-                         
-  data.packets = extractField(lowerText, 'packet') || 
-                extractField(lowerText, 'pkt') || 
-                extractField(lowerText, 'pckt');
-                
-  data.small_packets = extractField(lowerText, 'small packet') || 
-                      extractField(lowerText, 'small') || 
-                      extractField(lowerText, 'sm');
-                      
-  data.postables = extractField(lowerText, 'postable') || 
-                  extractField(lowerText, 'post') || 
-                  extractField(lowerText, 'postables');
-
-  // Try to extract numbers from structured table-like data as fallback
   const lines = text.split('\n');
-  for (const line of lines) {
-    const numbers = line.match(/\b\d+\b/g);
-    if (numbers && numbers.length >= 2) {
-      const lineWords = line.toLowerCase().split(/\s+/);
-      
-      // Look for context words and assign numbers accordingly
-      if (lineWords.some(word => ['heavy', 'hvy'].includes(word)) && !data.heavy_parcels) {
-        const num = numbers.find(n => parseInt(n) > 0);
-        if (num) data.heavy_parcels = parseInt(num);
+
+  // Process each line first
+  for (let line of lines) {
+    const lowerLine = line.toLowerCase();
+
+    // Extract Round Number
+    if (lowerLine.includes("round") || lowerLine.includes("rnd")) {
+      const matches = line.match(/(?:round|rnd)(?:\s*number)?[:\s]+(\w+)/i);
+      if (matches && matches[1]) {
+        result.extracted_round_number = matches[1].trim().toUpperCase();
+      } else {
+        // Try for just a number/code after "round"
+        const numMatch = line.match(/(?:round|rnd)[:\s]+(\w+)/i);
+        if (numMatch && numMatch[1]) {
+          result.extracted_round_number = numMatch[1].trim().toUpperCase();
+        }
       }
-      
-      if (lineWords.some(word => ['standard', 'std'].includes(word)) && !data.standard) {
-        const num = numbers.find(n => parseInt(n) > 0);
-        if (num) data.standard = parseInt(num);
+    }
+
+    // Extract Heavy Parcels
+    if (lowerLine.includes("heavy")) {
+      const matches = line.match(/heavy[:\s]+(\d+)/i);
+      if (matches && matches[1]) {
+        result.heavy_parcels = parseInt(matches[1].trim(), 10);
       }
-      
-      if (lineWords.some(word => ['hanging', 'hanger', 'hang'].includes(word)) && !data.hanging_garments) {
-        const num = numbers.find(n => parseInt(n) > 0);
-        if (num) data.hanging_garments = parseInt(num);
+    }
+
+    // Extract Standard Parcels
+    if (lowerLine.includes("standard")) {
+      const matches = line.match(/standard[:\s]+(\d+)/i);
+      if (matches && matches[1]) {
+        result.standard = parseInt(matches[1].trim(), 10);
       }
-      
-      if (lineWords.some(word => ['packet', 'pkt'].includes(word)) && !data.packets) {
-        const num = numbers.find(n => parseInt(n) > 0);
-        if (num) data.packets = parseInt(num);
+    }
+
+    // Extract Hanging Garments
+    if (lowerLine.includes("hanging") && lowerLine.includes("garment")) {
+      const matches = line.match(/hanging\s+garments?[:\s]+(\d+)/i);
+      if (matches && matches[1]) {
+        result.hanging_garments = parseInt(matches[1].trim(), 10);
       }
-      
-      if (lineWords.some(word => ['small'].includes(word)) && !data.small_packets) {
-        const num = numbers.find(n => parseInt(n) > 0);
-        if (num) data.small_packets = parseInt(num);
+    }
+
+    // Extract Packets (but not small packets)
+    if (lowerLine.includes("packet") && !lowerLine.includes("small packet")) {
+      const matches = line.match(/packets?[:\s]+(\d+)/i);
+      if (matches && matches[1]) {
+        result.packets = parseInt(matches[1].trim(), 10);
       }
-      
-      if (lineWords.some(word => ['postable', 'post'].includes(word)) && !data.postables) {
-        const num = numbers.find(n => parseInt(n) > 0);
-        if (num) data.postables = parseInt(num);
+    }
+
+    // Extract Small Packets
+    if (lowerLine.includes("small") && lowerLine.includes("packet")) {
+      const matches = line.match(/small\s+packets?[:\s]+(\d+)/i);
+      if (matches && matches[1]) {
+        result.small_packets = parseInt(matches[1].trim(), 10);
+      }
+    }
+
+    // Extract Postables
+    if (lowerLine.includes("postable")) {
+      const matches = line.match(/postables?[:\s]+(\d+)/i);
+      if (matches && matches[1]) {
+        result.postables = parseInt(matches[1].trim(), 10);
       }
     }
   }
 
-  return data;
+  // If we couldn't find values through line-by-line analysis, try whole text search
+  if (!result.extracted_round_number) {
+    const roundMatch = lowerText.match(/(?:round|rnd)(?:\s*number)?[:\s]+(\w+)/i);
+    if (roundMatch && roundMatch[1]) {
+      result.extracted_round_number = roundMatch[1].trim().toUpperCase();
+    }
+  }
+
+  if (!result.heavy_parcels) {
+    const heavyMatch = lowerText.match(/heavy[:\s]+(\d+)/i);
+    if (heavyMatch && heavyMatch[1]) {
+      result.heavy_parcels = parseInt(heavyMatch[1].trim(), 10);
+    }
+  }
+
+  if (!result.standard) {
+    const standardMatch = lowerText.match(/standard[:\s]+(\d+)/i);
+    if (standardMatch && standardMatch[1]) {
+      result.standard = parseInt(standardMatch[1].trim(), 10);
+    }
+  }
+
+  if (!result.hanging_garments) {
+    const hangingMatch = lowerText.match(/hanging\s+garments?[:\s]+(\d+)/i);
+    if (hangingMatch && hangingMatch[1]) {
+      result.hanging_garments = parseInt(hangingMatch[1].trim(), 10);
+    }
+  }
+
+  if (!result.packets) {
+    const packetsMatch = lowerText.match(/(?<!small\s+)packets?[:\s]+(\d+)/i);
+    if (packetsMatch && packetsMatch[1]) {
+      result.packets = parseInt(packetsMatch[1].trim(), 10);
+    }
+  }
+
+  if (!result.small_packets) {
+    const smallPacketsMatch = lowerText.match(/small\s+packets?[:\s]+(\d+)/i);
+    if (smallPacketsMatch && smallPacketsMatch[1]) {
+      result.small_packets = parseInt(smallPacketsMatch[1].trim(), 10);
+    }
+  }
+
+  if (!result.postables) {
+    const postablesMatch = lowerText.match(/postables?[:\s]+(\d+)/i);
+    if (postablesMatch && postablesMatch[1]) {
+      result.postables = parseInt(postablesMatch[1].trim(), 10);
+    }
+  }
+
+  console.log('Parsed data:', result);
+  return result;
+}
+
+// Wrapper function for backward compatibility
+function parseParcelCounts(text: string): VisionResponse {
+  return parseExtractedText(text);
 }

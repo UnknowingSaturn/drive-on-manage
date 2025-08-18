@@ -75,19 +75,19 @@ const StartOfDayEnhanced = () => {
     enabled: !!user?.id,
   });
 
-  // Check if already submitted today
-  const { data: todayReport } = useQuery({
-    queryKey: ['today-sod-report', driverInfo?.driverProfile?.id, today],
+  // Check if already submitted today - allow multiple submissions for different rounds
+  const { data: todayReports } = useQuery({
+    queryKey: ['today-sod-reports', driverInfo?.driverProfile?.id, today],
     queryFn: async () => {
-      if (!driverInfo?.driverProfile?.id) return null;
+      if (!driverInfo?.driverProfile?.id) return [];
       const { data } = await supabase
         .from('start_of_day_reports')
         .select('*')
         .eq('driver_id', driverInfo.driverProfile.id)
         .gte('submitted_at', `${today}T00:00:00Z`)
         .lt('submitted_at', `${today}T23:59:59Z`)
-        .maybeSingle();
-      return data;
+        .order('submitted_at', { ascending: false });
+      return data || [];
     },
     enabled: !!driverInfo?.driverProfile?.id
   });
@@ -223,16 +223,24 @@ const StartOfDayEnhanced = () => {
     onSuccess: () => {
       toast({
         title: "Start of Day Report Submitted",
-        description: "Your SOD report has been submitted successfully.",
+        description: "Your SOD report has been submitted and is being processed.",
       });
       setIsSubmitted(true);
-      queryClient.invalidateQueries({ queryKey: ['today-sod-report'] });
+      queryClient.invalidateQueries({ queryKey: ['today-sod-reports'] });
       queryClient.invalidateQueries({ queryKey: ['sod-reports'] });
       
-      // Navigate back to dashboard after brief delay
+      // Reset form for next submission
       setTimeout(() => {
-        navigate('/dashboard');
-      }, 2000);
+        setIsSubmitted(false);
+        setFormData({
+          roundNumber: '',
+          screenshot: null
+        });
+        // Reset file input
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
+      }, 3000);
     },
     onError: (error: any) => {
       toast({
@@ -331,61 +339,62 @@ const StartOfDayEnhanced = () => {
 
           <main className="mobile-padding py-4 md:py-6 space-y-4 md:space-y-6 no-overflow overflow-y-auto">
             <div className="max-w-3xl mx-auto">
-              {/* If already completed today */}
-              {todayReport ? (
-                <Card className="logistics-card">
+              {/* Show previous submissions for today if any */}
+              {todayReports && todayReports.length > 0 && (
+                <Card className="logistics-card mb-6">
                   <CardHeader className="pb-4">
                     <CardTitle className="flex items-center text-lg">
                       <Package className="h-5 w-5 text-primary mr-2" />
-                      Start of Day Summary
-                      <Badge variant="default" className="ml-2">
-                        <CheckCircle className="h-3 w-3 mr-1" />
-                        Completed
-                      </Badge>
+                      Today's Submissions
                     </CardTitle>
                     <CardDescription className="text-sm">
-                      {new Date().toLocaleDateString('en-GB', { 
-                        weekday: 'long', 
-                        year: 'numeric', 
-                        month: 'long', 
-                        day: 'numeric' 
-                      })}
+                      {todayReports.length} report{todayReports.length !== 1 ? 's' : ''} submitted today
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="pt-0">
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                      <div className="text-center p-4 rounded-lg bg-card/50">
-                        <div className="text-2xl font-bold text-gradient">
-                          {todayReport.round_number}
+                    <div className="space-y-3">
+                      {todayReports.map((report, index) => (
+                        <div key={report.id} className="flex items-center justify-between p-3 rounded-lg bg-card/50 border">
+                          <div className="flex items-center space-x-4">
+                            <div className="text-sm">
+                              <div className="font-medium">Round {report.round_number}</div>
+                              {report.extracted_round_number && (
+                                <div className="text-muted-foreground">
+                                  Detected: {report.extracted_round_number}
+                                </div>
+                              )}
+                            </div>
+                            <Badge variant={
+                              report.processing_status === 'completed' ? 'default' :
+                              report.processing_status === 'processing' ? 'secondary' :
+                              report.processing_status === 'failed' ? 'destructive' : 'outline'
+                            }>
+                              {report.processing_status === 'completed' ? 'Processed' :
+                               report.processing_status === 'processing' ? 'Processing...' :
+                               report.processing_status === 'failed' ? 'Failed' : 'Pending'}
+                            </Badge>
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {new Date(report.submitted_at).toLocaleTimeString()}
+                          </div>
                         </div>
-                        <div className="text-sm text-muted-foreground">Selected Round</div>
-                      </div>
-                      <div className="text-center p-4 rounded-lg bg-card/50">
-                        <div className="text-2xl font-bold text-gradient">
-                          {todayReport.extracted_round_number || 'Processing...'}
-                        </div>
-                        <div className="text-sm text-muted-foreground">Detected Round</div>
-                      </div>
-                      <div className="text-center p-4 rounded-lg bg-card/50">
-                        <div className="text-sm text-success">
-                          Completed at {new Date(todayReport.submitted_at).toLocaleTimeString()}
-                        </div>
-                        <div className="text-sm text-muted-foreground">Time</div>
-                      </div>
+                      ))}
                     </div>
                   </CardContent>
                 </Card>
-              ) : (
-                <Card className="logistics-card">
-                  <CardHeader className="pb-4">
-                    <CardTitle className="flex items-center text-lg">
-                      <Package className="h-5 w-5 text-primary mr-2" />
-                      Start of Day Report
-                    </CardTitle>
-                    <CardDescription className="text-sm">
-                      Upload your manifest screenshot to begin your shift.
-                    </CardDescription>
-                  </CardHeader>
+              )}
+
+              {/* Main form - always show to allow multiple submissions */}
+              <Card className="logistics-card">
+                <CardHeader className="pb-4">
+                  <CardTitle className="flex items-center text-lg">
+                    <Package className="h-5 w-5 text-primary mr-2" />
+                    Submit Round Report
+                  </CardTitle>
+                  <CardDescription className="text-sm">
+                    Upload manifest screenshot for processing. You can submit multiple rounds throughout the day.
+                  </CardDescription>
+                </CardHeader>
                   <CardContent className="pt-0">
                     <form onSubmit={handleSubmit} className="space-y-6">
                       {/* Auto-filled Information Display */}
@@ -407,16 +416,25 @@ const StartOfDayEnhanced = () => {
                           onValueChange={(value) => setFormData(prev => ({ ...prev, roundNumber: value }))}
                         >
                           <SelectTrigger>
-                            <SelectValue placeholder="Select your round for today" />
+                            <SelectValue placeholder="Select round for this submission" />
                           </SelectTrigger>
                           <SelectContent>
                             {driverInfo?.roundNumbers?.map((round, index) => (
                               <SelectItem key={index} value={round}>
-                                {round}
+                                Round {round}
                               </SelectItem>
                             ))}
+                            {/* Allow custom round input */}
+                            <SelectItem value="custom">Other Round</SelectItem>
                           </SelectContent>
                         </Select>
+                        {formData.roundNumber === 'custom' && (
+                          <Input
+                            placeholder="Enter round number"
+                            value={formData.roundNumber === 'custom' ? '' : formData.roundNumber}
+                            onChange={(e) => setFormData(prev => ({ ...prev, roundNumber: e.target.value }))}
+                          />
+                        )}
                       </div>
 
                       {/* Screenshot Upload */}
@@ -485,7 +503,7 @@ const StartOfDayEnhanced = () => {
                           {submitMutation.isPending ? (
                             <>
                               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                              Submitting...
+                              Processing...
                             </>
                           ) : (
                             <>
@@ -498,7 +516,6 @@ const StartOfDayEnhanced = () => {
                     </form>
                   </CardContent>
                 </Card>
-              )}
             </div>
           </main>
         </SidebarInset>
