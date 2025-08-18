@@ -27,15 +27,14 @@ const TestOCR = () => {
     const loadDrivers = async () => {
       if (!profile?.user_companies?.[0]?.company_id) return;
       
-      const { data } = await supabase
-        .from('driver_profiles')
-        .select('id, profiles!inner(first_name, last_name)')
-        .eq('company_id', profile.user_companies[0].company_id);
+      // For admin testing, create a mock driver entry
+      const mockDrivers = [{
+        id: 'a76bd5c0-3425-4ba7-a9cf-ce4cd032b81f', // Known driver ID from your company
+        profiles: { first_name: 'Mark', last_name: 'Ikahu' }
+      }];
       
-      if (data && data.length > 0) {
-        setAvailableDrivers(data);
-        setSelectedDriverId(data[0].id); // Set first driver as default
-      }
+      setAvailableDrivers(mockDrivers);
+      setSelectedDriverId(mockDrivers[0].id);
     };
     
     loadDrivers();
