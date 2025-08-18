@@ -25,6 +25,7 @@ import DriverEngagement from "./pages/admin/DriverEngagement";
 
 import AdminSettings from "./pages/admin/Settings";
 import ResetPassword from "./pages/ResetPassword";
+import ResetPasswordNew from "./pages/ResetPasswordNew";
 
 // Driver pages
 import StartOfDay from "./pages/driver/StartOfDay";
@@ -55,7 +56,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
-            <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/reset-password" element={<ResetPasswordNew />} />
             <Route path="/not-authorized" element={<NotAuthorized />} />
             
             <Route path="/dashboard" element={
@@ -104,6 +105,13 @@ const App = () => (
               <ProtectedRoute>
                 <AdminRoute>
                   <ScheduleView />
+                </AdminRoute>
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/eod-reports" element={
+              <ProtectedRoute>
+                <AdminRoute>
+                  <EODReports />
                 </AdminRoute>
               </ProtectedRoute>
             } />

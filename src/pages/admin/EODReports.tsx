@@ -10,8 +10,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CalendarIcon, Download, Eye, FileText } from 'lucide-react';
-import { format } from 'date-fns';
+import { CalendarIcon, Download, Eye, FileText, ChevronLeft, ChevronRight } from 'lucide-react';
+import { format, startOfWeek, addDays, addWeeks, subWeeks } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
@@ -43,9 +43,12 @@ interface EODReport {
 
 const EODReports = () => {
   const { profile } = useAuth();
+  const [currentWeek, setCurrentWeek] = useState(new Date());
   const [selectedDriver, setSelectedDriver] = useState<string>('all');
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  
+  const weekStart = startOfWeek(currentWeek, { weekStartsOn: 1 }); // Monday start
+  const weekEnd = addDays(weekStart, 6);
 
   // Fetch user companies
   const { data: userCompanies } = useQuery({
@@ -83,7 +86,7 @@ const EODReports = () => {
 
   // Fetch EOD reports
   const { data: reports, isLoading, error } = useQuery({
-    queryKey: ['eod-reports', companyIds, selectedDriver, selectedDate],
+    queryKey: ['eod-reports', companyIds, selectedDriver, weekStart.toISOString()],
     queryFn: async () => {
       if (companyIds.length === 0) return [];
 
@@ -99,22 +102,13 @@ const EODReports = () => {
           )
         `)
         .in('driver_profiles.company_id', companyIds)
+        .gte('submitted_at', weekStart.toISOString())
+        .lte('submitted_at', weekEnd.toISOString())
         .order('submitted_at', { ascending: false });
 
       // Filter by specific driver
       if (selectedDriver && selectedDriver !== 'all') {
         query = query.eq('driver_id', selectedDriver);
-      }
-
-      // Filter by date
-      if (selectedDate) {
-        const startOfDay = new Date(selectedDate);
-        startOfDay.setHours(0, 0, 0, 0);
-        const endOfDay = new Date(selectedDate);
-        endOfDay.setHours(23, 59, 59, 999);
-
-        query = query.gte('submitted_at', startOfDay.toISOString())
-                     .lte('submitted_at', endOfDay.toISOString());
       }
 
       const { data, error } = await query;
@@ -207,6 +201,10 @@ const EODReports = () => {
     });
   };
 
+  const navigateWeek = (direction: 'prev' | 'next') => {
+    setCurrentWeek(prev => direction === 'prev' ? subWeeks(prev, 1) : addWeeks(prev, 1));
+  };
+
   const viewScreenshot = async (screenshotPath: string) => {
     try {
       const { data } = await supabase.storage
@@ -266,9 +264,25 @@ const EODReports = () => {
     <SidebarProvider>
       <AppSidebar />
       <SidebarInset>
-        <div className="flex h-16 items-center gap-2 px-4 border-b">
-          <SidebarTrigger />
-          <h1 className="text-2xl font-semibold">End of Day Reports</h1>
+        <div className="flex h-16 items-center justify-between px-4 border-b">
+          <div className="flex items-center gap-2">
+            <SidebarTrigger />
+            <div>
+              <h1 className="text-2xl font-semibold">End of Day Reports</h1>
+              <p className="text-sm text-muted-foreground">Weekly view of driver EOD submissions</p>
+            </div>
+          </div>
+          <div className="flex items-center space-x-4">
+            <Button variant="outline" onClick={() => navigateWeek('prev')}>
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <div className="text-sm font-semibold min-w-[120px] text-center">
+              Week of {format(weekStart, 'MMM dd')}
+            </div>
+            <Button variant="outline" onClick={() => navigateWeek('next')}>
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
         
         <div className="container mx-auto py-8 space-y-6">
@@ -291,7 +305,7 @@ const EODReports = () => {
               <CardDescription>Filter reports by driver, date, or search term</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {/* Driver Filter */}
                 <div className="space-y-2">
                   <Label>Driver</Label>
@@ -308,34 +322,6 @@ const EODReports = () => {
                       ))}
                     </SelectContent>
                   </Select>
-                </div>
-
-                {/* Date Filter */}
-                <div className="space-y-2">
-                  <Label>Date</Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className={cn(
-                          "w-full justify-start text-left font-normal",
-                          !selectedDate && "text-muted-foreground"
-                        )}
-                      >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {selectedDate ? format(selectedDate, "PPP") : "Pick a date"}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={selectedDate || undefined}
-                        onSelect={(date) => setSelectedDate(date || null)}
-                        initialFocus
-                        className={cn("p-3 pointer-events-auto")}
-                      />
-                    </PopoverContent>
-                  </Popover>
                 </div>
 
                 {/* Search */}
@@ -356,7 +342,6 @@ const EODReports = () => {
                     variant="outline" 
                     onClick={() => {
                       setSelectedDriver('all');
-                      setSelectedDate(null);
                       setSearchTerm('');
                     }}
                     className="w-full"
@@ -471,7 +456,7 @@ const EODReports = () => {
                   <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                   <h3 className="text-lg font-medium mb-2">No Reports Found</h3>
                   <p className="text-muted-foreground">
-                    {searchTerm || selectedDriver !== 'all' || selectedDate
+                    {searchTerm || selectedDriver !== 'all'
                       ? "No reports match your current filters."
                       : "No EOD reports have been submitted yet."}
                   </p>

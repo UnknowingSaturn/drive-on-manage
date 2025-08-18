@@ -10,17 +10,20 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Package, Eye, Search, Filter, Download, Calendar } from 'lucide-react';
+import { Package, Eye, Search, Filter, Download, Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { format } from 'date-fns';
+import { format, startOfWeek, addDays, addWeeks, subWeeks } from 'date-fns';
 
 const StartOfDayReports = () => {
   const { profile } = useAuth();
-  const [selectedDate, setSelectedDate] = useState('');
+  const [currentWeek, setCurrentWeek] = useState(new Date());
   const [selectedDriver, setSelectedDriver] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [previewImage, setPreviewImage] = useState<string>('');
+  
+  const weekStart = startOfWeek(currentWeek, { weekStartsOn: 1 }); // Monday start
+  const weekEnd = addDays(weekStart, 6);
 
   // Get user companies first
   const { data: userCompanies } = useQuery({
@@ -58,7 +61,7 @@ const StartOfDayReports = () => {
 
   // Get SOD reports with filters
   const { data: reports, isLoading } = useQuery({
-    queryKey: ['sod-reports', companyIds, selectedDate, selectedDriver, searchQuery],
+    queryKey: ['sod-reports', companyIds, weekStart.toISOString(), selectedDriver, searchQuery],
     queryFn: async () => {
       if (companyIds.length === 0) return [];
 
@@ -77,18 +80,9 @@ const StartOfDayReports = () => {
           )
         `)
         .in('driver_profiles.company_id', companyIds)
+        .gte('submitted_at', weekStart.toISOString())
+        .lte('submitted_at', weekEnd.toISOString())
         .order('submitted_at', { ascending: false });
-
-      // Apply date filter
-      if (selectedDate) {
-        const startOfDay = new Date(selectedDate);
-        startOfDay.setHours(0, 0, 0, 0);
-        const endOfDay = new Date(selectedDate);
-        endOfDay.setHours(23, 59, 59, 999);
-
-        query = query.gte('submitted_at', startOfDay.toISOString())
-                    .lte('submitted_at', endOfDay.toISOString());
-      }
 
       // Apply driver filter
       if (selectedDriver) {
@@ -139,6 +133,10 @@ const StartOfDayReports = () => {
     setPreviewImage(url);
   };
 
+  const navigateWeek = (direction: 'prev' | 'next') => {
+    setCurrentWeek(prev => direction === 'prev' ? subWeeks(prev, 1) : addWeeks(prev, 1));
+  };
+
   const exportToCSV = () => {
     if (!reports || reports.length === 0) return;
 
@@ -166,7 +164,7 @@ const StartOfDayReports = () => {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `sod-reports-${format(new Date(), 'yyyy-MM-dd')}.csv`;
+    link.download = `sod-reports-week-${format(weekStart, 'yyyy-MM-dd')}.csv`;
     link.click();
     URL.revokeObjectURL(url);
   };
@@ -183,13 +181,24 @@ const StartOfDayReports = () => {
                 <SidebarTrigger className="mr-2" />
                 <div>
                   <h1 className="mobile-heading font-semibold text-foreground">Start of Day Reports</h1>
-                  <p className="text-xs md:text-sm text-muted-foreground">View and manage driver manifest uploads</p>
+                  <p className="text-xs md:text-sm text-muted-foreground">Weekly view of driver manifest uploads</p>
                 </div>
               </div>
-              <Button onClick={exportToCSV} variant="outline" size="sm">
-                <Download className="h-4 w-4 mr-2" />
-                Export CSV
-              </Button>
+              <div className="flex items-center space-x-4">
+                <Button variant="outline" onClick={() => navigateWeek('prev')}>
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <div className="text-sm font-semibold min-w-[120px] text-center">
+                  Week of {format(weekStart, 'MMM dd')}
+                </div>
+                <Button variant="outline" onClick={() => navigateWeek('next')}>
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+                <Button onClick={exportToCSV} variant="outline" size="sm">
+                  <Download className="h-4 w-4 mr-2" />
+                  Export CSV
+                </Button>
+              </div>
             </div>
           </header>
 
@@ -203,16 +212,7 @@ const StartOfDayReports = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="date">Date</Label>
-                    <Input
-                      id="date"
-                      type="date"
-                      value={selectedDate}
-                      onChange={(e) => setSelectedDate(e.target.value)}
-                    />
-                  </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="space-y-2">
                     <Label>Driver</Label>
                     <Select value={selectedDriver} onValueChange={setSelectedDriver}>
@@ -246,7 +246,6 @@ const StartOfDayReports = () => {
                     <Button 
                       variant="outline" 
                       onClick={() => {
-                        setSelectedDate('');
                         setSelectedDriver('');
                         setSearchQuery('');
                       }}
