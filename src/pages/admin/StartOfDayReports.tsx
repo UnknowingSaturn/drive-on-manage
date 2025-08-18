@@ -22,22 +22,7 @@ const StartOfDayReports = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [previewImage, setPreviewImage] = useState<string>('');
 
-  // Get company drivers
-  const { data: drivers } = useQuery({
-    queryKey: ['company-drivers', companyIds],
-    queryFn: async () => {
-      if (companyIds.length === 0) return [];
-      
-      const { data, error } = await supabase
-        .rpc('get_drivers_with_profiles', { company_ids: companyIds });
-
-      if (error) throw error;
-      return data;
-    },
-    enabled: companyIds.length > 0
-  });
-
-  // Get user companies
+  // Get user companies first
   const { data: userCompanies } = useQuery({
     queryKey: ['user-companies', profile?.user_id],
     queryFn: async () => {
@@ -55,6 +40,21 @@ const StartOfDayReports = () => {
   });
 
   const companyIds = userCompanies?.map(uc => uc.company_id) || [];
+
+  // Get company drivers
+  const { data: drivers } = useQuery({
+    queryKey: ['company-drivers', companyIds],
+    queryFn: async () => {
+      if (companyIds.length === 0) return [];
+      
+      const { data, error } = await supabase
+        .rpc('get_drivers_with_profiles', { company_ids: companyIds });
+
+      if (error) throw error;
+      return data;
+    },
+    enabled: companyIds.length > 0
+  });
 
   // Get SOD reports with filters
   const { data: reports, isLoading } = useQuery({
