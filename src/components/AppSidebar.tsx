@@ -16,7 +16,8 @@ import {
   Calculator,
   Trophy,
   Receipt,
-  Package
+  Package,
+  TestTube
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -70,6 +71,7 @@ const driverItems = [
   { title: "Expenses", url: "/driver/expenses", icon: Receipt },
   { title: "Incident Report", url: "/driver/incident-report", icon: AlertTriangle },
   { title: "News & Chat", url: "/driver/news-chat", icon: MessageCircle },
+  { title: "Test OCR", url: "/driver/test-ocr", icon: TestTube },
 ];
 
 export function AppSidebar() {

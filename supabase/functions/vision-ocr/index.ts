@@ -49,34 +49,40 @@ serve(async (req) => {
 
     console.log('Processing OCR for report:', reportId, 'with screenshot:', screenshotPath);
 
-    // Create public URL for the image since bucket is now public
-    const supabaseUrl = Deno.env.get('SUPABASE_URL');
-    const imageUrl = `${supabaseUrl}/storage/v1/object/public/sod-screenshots/${screenshotPath}`;
-    
-    console.log('Using public image URL:', imageUrl);
+    // Download the file from Supabase Storage into a buffer
+    const { data: fileData, error: downloadError } = await supabase.storage
+      .from('sod-screenshots')
+      .download(screenshotPath);
 
-    // Verify the image is accessible
-    const imageResponse = await fetch(imageUrl);
-    if (!imageResponse.ok) {
-      console.error('Image not accessible at URL:', imageUrl, 'Status:', imageResponse.status);
-      await updateReportStatus(supabase, reportId, 'failed', { 
-        error: 'Image not accessible',
-        imageUrl,
-        status: imageResponse.status 
-      });
-      return new Response(JSON.stringify({ error: 'Image not accessible' }), {
+    if (downloadError) {
+      console.error('Failed to download screenshot:', downloadError);
+      await updateReportStatus(supabase, reportId, 'failed', { error: downloadError.message });
+      return new Response(JSON.stringify({ error: 'Failed to download screenshot' }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
 
-    // Call Google Vision API with image URL (more reliable than base64)
+    if (!fileData) {
+      console.error('No file data returned from storage');
+      await updateReportStatus(supabase, reportId, 'failed', { error: 'No file data' });
+      return new Response(JSON.stringify({ error: 'No file data' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    // Resize image to optimize for Vision API
+    const resizedBuffer = await resizeImage(fileData);
+    
+    // Convert to base64
+    const base64Image = btoa(String.fromCharCode(...new Uint8Array(resizedBuffer)));
+
+    // Call Google Vision API with base64 content
     const visionPayload = {
       requests: [{
         image: {
-          source: {
-            imageUri: imageUrl
-          }
+          content: base64Image
         },
         features: [{
           type: "TEXT_DETECTION",
@@ -88,7 +94,8 @@ serve(async (req) => {
       }]
     };
 
-    console.log('Calling Google Vision API with public URL...');
+    console.log('Calling Google Vision API with base64 content...');
+    console.log('Image content length:', base64Image.length);
     
     const visionResponse = await fetch(
       `https://vision.googleapis.com/v1/images:annotate?key=${apiKey}`,
