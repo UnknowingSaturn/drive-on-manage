@@ -77,7 +77,8 @@ const AdminReports = () => {
           *,
           driver_profiles!inner(
             id,
-            profiles!inner(first_name, last_name)
+            profiles!inner(first_name, last_name),
+            company_id
           )
         `)
         .eq('driver_profiles.company_id', profile.company_id)
@@ -90,7 +91,10 @@ const AdminReports = () => {
       }
 
       const { data, error } = await query;
-      if (error) throw error;
+      if (error) {
+        console.error('EOD Reports query error:', error);
+        throw error;
+      }
       return data || [];
     },
     enabled: !!profile?.company_id
@@ -108,7 +112,8 @@ const AdminReports = () => {
           *,
           driver_profiles!inner(
             id,
-            profiles!inner(first_name, last_name)
+            profiles!inner(first_name, last_name),
+            company_id
           )
         `)
         .eq('company_id', profile.company_id)
@@ -121,7 +126,10 @@ const AdminReports = () => {
       }
 
       const { data, error } = await query;
-      if (error) throw error;
+      if (error) {
+        console.error('SOD Reports query error:', error);
+        throw error;
+      }
       return data || [];
     },
     enabled: !!profile?.company_id
@@ -428,6 +436,7 @@ const AdminReports = () => {
                               <TableHead>Deliveries</TableHead>
                               <TableHead>Collections</TableHead>
                               <TableHead>Parcels</TableHead>
+                              <TableHead>Validation</TableHead>
                               <TableHead>Status</TableHead>
                             </TableRow>
                           </TableHeader>
@@ -463,6 +472,19 @@ const AdminReports = () => {
                                       <div>Std: {report.standard || 0}</div>
                                       <div>Pkts: {report.packets || 0}</div>
                                     </div>
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  <div className="text-center">
+                                    {report.vision_api_response ? (
+                                      <Badge variant="default" className="bg-green-100 text-green-800">
+                                        Valid
+                                      </Badge>
+                                    ) : (
+                                      <Badge variant="destructive">
+                                        No OCR Data
+                                      </Badge>
+                                    )}
                                   </div>
                                 </TableCell>
                                 <TableCell>
