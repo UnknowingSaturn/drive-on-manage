@@ -326,12 +326,30 @@ function parseExtractedText(text: string): VisionResponse {
     if (lowerLine.includes("manifest") && lowerLine.includes("date")) {
       const matches = line.match(/manifest\s+date[:\s-]+(\d{1,2}\/\d{1,2}\/\d{4})/i);
       if (matches && matches[1]) {
-        result.manifest_date = matches[1].trim();
+        // Convert DD/MM/YYYY to YYYY-MM-DD format for PostgreSQL
+        const dateParts = matches[1].trim().split('/');
+        if (dateParts.length === 3) {
+          const day = dateParts[0].padStart(2, '0');
+          const month = dateParts[1].padStart(2, '0');
+          const year = dateParts[2];
+          result.manifest_date = `${year}-${month}-${day}`;
+        } else {
+          result.manifest_date = matches[1].trim();
+        }
       }
     } else if (lowerLine.includes("date")) {
       const matches = line.match(/date[:\s-]+(\d{1,2}\/\d{1,2}\/\d{4})/i);
       if (matches && matches[1]) {
-        result.manifest_date = matches[1].trim();
+        // Convert DD/MM/YYYY to YYYY-MM-DD format for PostgreSQL
+        const dateParts = matches[1].trim().split('/');
+        if (dateParts.length === 3) {
+          const day = dateParts[0].padStart(2, '0');
+          const month = dateParts[1].padStart(2, '0');
+          const year = dateParts[2];
+          result.manifest_date = `${year}-${month}-${day}`;
+        } else {
+          result.manifest_date = matches[1].trim();
+        }
       }
     }
 
@@ -421,7 +439,16 @@ function parseExtractedText(text: string): VisionResponse {
     for (const pattern of datePatterns) {
       const dateMatch = lowerText.match(pattern);
       if (dateMatch && dateMatch[1]) {
-        result.manifest_date = dateMatch[1];
+        // Convert DD/MM/YYYY to YYYY-MM-DD format for PostgreSQL
+        const dateParts = dateMatch[1].split('/');
+        if (dateParts.length === 3) {
+          const day = dateParts[0].padStart(2, '0');
+          const month = dateParts[1].padStart(2, '0');
+          const year = dateParts[2];
+          result.manifest_date = `${year}-${month}-${day}`;
+        } else {
+          result.manifest_date = dateMatch[1];
+        }
         break;
       }
     }
