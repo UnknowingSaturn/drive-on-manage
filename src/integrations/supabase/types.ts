@@ -1490,6 +1490,7 @@ export type Database = {
           hanging_garments: number | null
           heavy_parcels: number | null
           id: string
+          manifest_date: string | null
           name: string
           packets: number | null
           postables: number | null
@@ -1499,6 +1500,8 @@ export type Database = {
           small_packets: number | null
           standard: number | null
           submitted_at: string
+          total_collections: number | null
+          total_deliveries: number | null
           updated_at: string
           vision_api_response: Json | null
         }
@@ -1510,6 +1513,7 @@ export type Database = {
           hanging_garments?: number | null
           heavy_parcels?: number | null
           id?: string
+          manifest_date?: string | null
           name: string
           packets?: number | null
           postables?: number | null
@@ -1519,6 +1523,8 @@ export type Database = {
           small_packets?: number | null
           standard?: number | null
           submitted_at?: string
+          total_collections?: number | null
+          total_deliveries?: number | null
           updated_at?: string
           vision_api_response?: Json | null
         }
@@ -1530,6 +1536,7 @@ export type Database = {
           hanging_garments?: number | null
           heavy_parcels?: number | null
           id?: string
+          manifest_date?: string | null
           name?: string
           packets?: number | null
           postables?: number | null
@@ -1539,6 +1546,8 @@ export type Database = {
           small_packets?: number | null
           standard?: number | null
           submitted_at?: string
+          total_collections?: number | null
+          total_deliveries?: number | null
           updated_at?: string
           vision_api_response?: Json | null
         }

@@ -14,6 +14,9 @@ interface VisionResponse {
   packets?: number;
   small_packets?: number;
   postables?: number;
+  manifest_date?: string | null;
+  total_collections?: number;
+  total_deliveries?: number;
   raw_text?: string;
 }
 
@@ -145,6 +148,9 @@ serve(async (req) => {
         packets: parsedData.packets,
         small_packets: parsedData.small_packets,
         postables: parsedData.postables,
+        manifest_date: parsedData.manifest_date,
+        total_collections: parsedData.total_collections,
+        total_deliveries: parsedData.total_deliveries,
         vision_api_response: visionData,
         processing_status: 'completed',
         updated_at: new Date().toISOString()
@@ -216,6 +222,9 @@ function parseExtractedText(text: string): VisionResponse {
       packets: 0,
       small_packets: 0,
       postables: 0,
+      manifest_date: null,
+      total_collections: 0,
+      total_deliveries: 0,
       raw_text: ""
     };
   }
@@ -229,6 +238,9 @@ function parseExtractedText(text: string): VisionResponse {
     packets: 0,
     small_packets: 0,
     postables: 0,
+    manifest_date: null as string | null,
+    total_collections: 0,
+    total_deliveries: 0,
     raw_text: text
   };
 
@@ -301,6 +313,35 @@ function parseExtractedText(text: string): VisionResponse {
         result.postables = parseInt(matches[1].trim(), 10);
       }
     }
+
+    // Extract Manifest Date
+    if (lowerLine.includes("manifest") && lowerLine.includes("date")) {
+      const matches = line.match(/manifest\s+date[:\s-]+(\d{1,2}\/\d{1,2}\/\d{4})/i);
+      if (matches && matches[1]) {
+        result.manifest_date = matches[1].trim();
+      }
+    } else if (lowerLine.includes("date")) {
+      const matches = line.match(/date[:\s-]+(\d{1,2}\/\d{1,2}\/\d{4})/i);
+      if (matches && matches[1]) {
+        result.manifest_date = matches[1].trim();
+      }
+    }
+
+    // Extract Total Collections
+    if (lowerLine.includes("total") && lowerLine.includes("collection")) {
+      const matches = line.match(/total\s+collections?[:\s-]+(\d+)/i);
+      if (matches && matches[1]) {
+        result.total_collections = parseInt(matches[1].trim(), 10);
+      }
+    }
+
+    // Extract Total Deliveries
+    if (lowerLine.includes("total") && lowerLine.includes("deliver")) {
+      const matches = line.match(/total\s+deliver(?:ies|y)[:\s-]+(\d+)/i);
+      if (matches && matches[1]) {
+        result.total_deliveries = parseInt(matches[1].trim(), 10);
+      }
+    }
   }
 
   // If we couldn't find values through line-by-line analysis, try whole text search
@@ -358,6 +399,39 @@ function parseExtractedText(text: string): VisionResponse {
     const postablesMatch = lowerText.match(/postables?[:\s-]+(\d+)/i);
     if (postablesMatch && postablesMatch[1]) {
       result.postables = parseInt(postablesMatch[1].trim(), 10);
+    }
+  }
+
+  // Extract manifest date from full text if not found line by line
+  if (!result.manifest_date) {
+    const datePatterns = [
+      /manifest\s+date[:\s-]+(\d{1,2}\/\d{1,2}\/\d{4})/i,
+      /date[:\s-]+(\d{1,2}\/\d{1,2}\/\d{4})/i,
+      /(\d{1,2}\/\d{1,2}\/\d{4})/
+    ];
+    
+    for (const pattern of datePatterns) {
+      const dateMatch = lowerText.match(pattern);
+      if (dateMatch && dateMatch[1]) {
+        result.manifest_date = dateMatch[1];
+        break;
+      }
+    }
+  }
+
+  // Extract total collections from full text if not found
+  if (result.total_collections === 0) {
+    const collectionsMatch = lowerText.match(/total\s+collections?[:\s-]+(\d+)/i);
+    if (collectionsMatch && collectionsMatch[1]) {
+      result.total_collections = parseInt(collectionsMatch[1].trim(), 10);
+    }
+  }
+
+  // Extract total deliveries from full text if not found
+  if (result.total_deliveries === 0) {
+    const deliveriesMatch = lowerText.match(/total\s+deliver(?:ies|y)[:\s-]+(\d+)/i);
+    if (deliveriesMatch && deliveriesMatch[1]) {
+      result.total_deliveries = parseInt(deliveriesMatch[1].trim(), 10);
     }
   }
 

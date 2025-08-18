@@ -13,17 +13,17 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Package, Eye, Search, Filter, Download, Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { format, startOfWeek, addDays, addWeeks, subWeeks } from 'date-fns';
+import { format, startOfDay, endOfDay, addDays, subDays } from 'date-fns';
 
 const StartOfDayReports = () => {
   const { profile } = useAuth();
-  const [currentWeek, setCurrentWeek] = useState(new Date());
+  const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDriver, setSelectedDriver] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [previewImage, setPreviewImage] = useState<string>('');
   
-  const weekStart = startOfWeek(currentWeek, { weekStartsOn: 1 }); // Monday start
-  const weekEnd = addDays(weekStart, 6);
+  const dayStart = startOfDay(currentDate);
+  const dayEnd = endOfDay(currentDate);
 
   // Get user companies first
   const { data: userCompanies } = useQuery({
@@ -75,7 +75,7 @@ const StartOfDayReports = () => {
 
   // Get SOD reports with filters
   const { data: reports, isLoading } = useQuery({
-    queryKey: ['sod-reports', companyIds, weekStart.toISOString(), selectedDriver, searchQuery],
+    queryKey: ['sod-reports', companyIds, dayStart.toISOString(), selectedDriver, searchQuery],
     queryFn: async () => {
       if (companyIds.length === 0) return [];
 
@@ -84,8 +84,8 @@ const StartOfDayReports = () => {
         .from('start_of_day_reports')
         .select('*')
         .in('company_id', companyIds)
-        .gte('submitted_at', weekStart.toISOString())
-        .lte('submitted_at', weekEnd.toISOString())
+        .gte('submitted_at', dayStart.toISOString())
+        .lte('submitted_at', dayEnd.toISOString())
         .order('submitted_at', { ascending: false });
 
       // Apply driver filter
@@ -180,8 +180,8 @@ const StartOfDayReports = () => {
     setPreviewImage(url);
   };
 
-  const navigateWeek = (direction: 'prev' | 'next') => {
-    setCurrentWeek(prev => direction === 'prev' ? subWeeks(prev, 1) : addWeeks(prev, 1));
+  const navigateDay = (direction: 'prev' | 'next') => {
+    setCurrentDate(prev => direction === 'prev' ? subDays(prev, 1) : addDays(prev, 1));
   };
 
   const exportToCSV = () => {
@@ -211,7 +211,7 @@ const StartOfDayReports = () => {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `sod-reports-week-${format(weekStart, 'yyyy-MM-dd')}.csv`;
+    link.download = `sod-reports-${format(currentDate, 'yyyy-MM-dd')}.csv`;
     link.click();
     URL.revokeObjectURL(url);
   };
@@ -228,17 +228,17 @@ const StartOfDayReports = () => {
                 <SidebarTrigger className="mr-2" />
                 <div>
                   <h1 className="mobile-heading font-semibold text-foreground">Start of Day Reports</h1>
-                  <p className="text-xs md:text-sm text-muted-foreground">Weekly view of driver manifest uploads</p>
+                  <p className="text-xs md:text-sm text-muted-foreground">Daily view of driver manifest uploads</p>
                 </div>
               </div>
               <div className="flex items-center space-x-4">
-                <Button variant="outline" onClick={() => navigateWeek('prev')}>
+                <Button variant="outline" onClick={() => navigateDay('prev')}>
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
                 <div className="text-sm font-semibold min-w-[120px] text-center">
-                  Week of {format(weekStart, 'MMM dd')}
+                  {format(currentDate, 'MMM dd, yyyy')}
                 </div>
-                <Button variant="outline" onClick={() => navigateWeek('next')}>
+                <Button variant="outline" onClick={() => navigateDay('next')}>
                   <ChevronRight className="h-4 w-4" />
                 </Button>
                 <Button onClick={exportToCSV} variant="outline" size="sm">
@@ -330,6 +330,9 @@ const StartOfDayReports = () => {
                           <TableHead>Driver</TableHead>
                           <TableHead>Selected Round</TableHead>
                           <TableHead>Detected Round</TableHead>
+                          <TableHead>Manifest Date</TableHead>
+                          <TableHead>Collections</TableHead>
+                          <TableHead>Deliveries</TableHead>
                           <TableHead>Heavy</TableHead>
                           <TableHead>Standard</TableHead>
                           <TableHead>Hanging</TableHead>
@@ -367,6 +370,11 @@ const StartOfDayReports = () => {
                                 <span className="text-muted-foreground">-</span>
                               )}
                             </TableCell>
+                            <TableCell className="text-center">
+                              {report.manifest_date || <span className="text-muted-foreground">-</span>}
+                            </TableCell>
+                            <TableCell className="text-center">{report.total_collections || 0}</TableCell>
+                            <TableCell className="text-center">{report.total_deliveries || 0}</TableCell>
                             <TableCell className="text-center">{report.heavy_parcels || 0}</TableCell>
                             <TableCell className="text-center">{report.standard || 0}</TableCell>
                             <TableCell className="text-center">{report.hanging_garments || 0}</TableCell>

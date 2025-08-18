@@ -71,7 +71,7 @@ const driverItems = [
   { title: "Expenses", url: "/driver/expenses", icon: Receipt },
   { title: "Incident Report", url: "/driver/incident-report", icon: AlertTriangle },
   { title: "News & Chat", url: "/driver/news-chat", icon: MessageCircle },
-  { title: "Test OCR", url: "/driver/test-ocr", icon: TestTube },
+  
 ];
 
 export function AppSidebar() {

@@ -8,10 +8,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Calendar } from '@/components/ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { CalendarIcon, Download, Eye, FileText, ChevronLeft, ChevronRight } from 'lucide-react';
-import { format, startOfWeek, addDays, addWeeks, subWeeks } from 'date-fns';
+import { format, startOfDay, endOfDay, addDays, subDays } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
@@ -43,12 +41,12 @@ interface EODReport {
 
 const EODReports = () => {
   const { profile } = useAuth();
-  const [currentWeek, setCurrentWeek] = useState(new Date());
+  const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDriver, setSelectedDriver] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
   
-  const weekStart = startOfWeek(currentWeek, { weekStartsOn: 1 }); // Monday start
-  const weekEnd = addDays(weekStart, 6);
+  const dayStart = startOfDay(currentDate);
+  const dayEnd = endOfDay(currentDate);
 
   // Fetch user companies
   const { data: userCompanies } = useQuery({
@@ -86,7 +84,7 @@ const EODReports = () => {
 
   // Fetch EOD reports
   const { data: reports, isLoading, error } = useQuery({
-    queryKey: ['eod-reports', companyIds, selectedDriver, weekStart.toISOString()],
+    queryKey: ['eod-reports', companyIds, selectedDriver, dayStart.toISOString()],
     queryFn: async () => {
       if (companyIds.length === 0) return [];
 
@@ -102,8 +100,8 @@ const EODReports = () => {
           )
         `)
         .in('driver_profiles.company_id', companyIds)
-        .gte('submitted_at', weekStart.toISOString())
-        .lte('submitted_at', weekEnd.toISOString())
+        .gte('submitted_at', dayStart.toISOString())
+        .lte('submitted_at', dayEnd.toISOString())
         .order('submitted_at', { ascending: false });
 
       // Filter by specific driver
@@ -201,8 +199,8 @@ const EODReports = () => {
     });
   };
 
-  const navigateWeek = (direction: 'prev' | 'next') => {
-    setCurrentWeek(prev => direction === 'prev' ? subWeeks(prev, 1) : addWeeks(prev, 1));
+  const navigateDay = (direction: 'prev' | 'next') => {
+    setCurrentDate(prev => direction === 'prev' ? subDays(prev, 1) : addDays(prev, 1));
   };
 
   const viewScreenshot = async (screenshotPath: string) => {
@@ -269,17 +267,17 @@ const EODReports = () => {
             <SidebarTrigger />
             <div>
               <h1 className="text-2xl font-semibold">End of Day Reports</h1>
-              <p className="text-sm text-muted-foreground">Weekly view of driver EOD submissions</p>
+              <p className="text-sm text-muted-foreground">Daily view of driver EOD submissions</p>
             </div>
           </div>
           <div className="flex items-center space-x-4">
-            <Button variant="outline" onClick={() => navigateWeek('prev')}>
+            <Button variant="outline" onClick={() => navigateDay('prev')}>
               <ChevronLeft className="h-4 w-4" />
             </Button>
             <div className="text-sm font-semibold min-w-[120px] text-center">
-              Week of {format(weekStart, 'MMM dd')}
+              {format(currentDate, 'MMM dd, yyyy')}
             </div>
-            <Button variant="outline" onClick={() => navigateWeek('next')}>
+            <Button variant="outline" onClick={() => navigateDay('next')}>
               <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
