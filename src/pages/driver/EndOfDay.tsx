@@ -159,7 +159,8 @@ const EndOfDay = () => {
 
       // Call Vision API to process screenshot
       try {
-        const { error: visionError } = await supabase.functions.invoke('eod-vision-ocr', {
+        console.log('Calling EOD Vision API with:', { screenshotPath: fileName, reportId: reportData.id });
+        const { data: visionData, error: visionError } = await supabase.functions.invoke('eod-vision-ocr', {
           body: {
             screenshotPath: fileName,
             reportId: reportData.id
@@ -169,6 +170,8 @@ const EndOfDay = () => {
         if (visionError) {
           console.error('Vision API processing failed:', visionError);
           // Don't throw error here, let the report exist but mark as processing failed
+        } else {
+          console.log('Vision API response:', visionData);
         }
       } catch (visionApiError) {
         console.error('Vision API call failed:', visionApiError);

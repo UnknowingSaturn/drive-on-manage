@@ -68,7 +68,57 @@ const handler = async (req: Request): Promise<Response> => {
       if (existingDriver) {
         throw new Error('A driver with this email already exists in this company');
       } else {
-        throw new Error('A user with this email already exists');
+        // User exists but not a driver for this company, create driver profile only
+        console.log('User exists, creating driver profile only...');
+        
+        // Create user-company association
+        const { error: userCompanyError } = await supabaseAdmin
+          .from('user_companies')
+          .insert({
+            user_id: existingProfile.user_id,
+            company_id: companyId,
+            role: 'member'
+          });
+
+        if (userCompanyError && userCompanyError.code !== '23505') {
+          console.error('User-company association failed:', userCompanyError);
+          throw new Error(`Failed to associate user with company: ${userCompanyError.message}`);
+        }
+
+        // Create driver profile
+        const { data: driverProfile, error: driverProfileError } = await supabaseAdmin
+          .from('driver_profiles')
+          .insert({
+            user_id: existingProfile.user_id,
+            company_id: companyId,
+            parcel_rate: parcelRate,
+            cover_rate: coverRate,
+            status: 'pending_onboarding',
+            requires_onboarding: true,
+            first_login_completed: false
+          })
+          .select()
+          .single();
+
+        if (driverProfileError) {
+          console.error('Driver profile creation failed:', driverProfileError);
+          throw new Error(`Failed to create driver profile: ${driverProfileError.message}`);
+        }
+
+        console.log('Driver profile created for existing user:', driverProfile);
+
+        return new Response(
+          JSON.stringify({
+            success: true,
+            userId: existingProfile.user_id,
+            driverProfileId: driverProfile.id,
+            message: 'Driver profile created for existing user'
+          }),
+          {
+            status: 200,
+            headers: { 'Content-Type': 'application/json', ...corsHeaders },
+          }
+        );
       }
     }
 
