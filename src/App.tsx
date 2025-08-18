@@ -43,6 +43,7 @@ import Leaderboard from "./pages/driver/Leaderboard";
 import ExpenseTracker from "./pages/driver/ExpenseTracker";
 import DriverOnboarding from "./pages/driver/Onboarding";
 import EndOfDay from "./pages/driver/EndOfDay";
+import DriverTestOCR from "./pages/driver/TestOCR";
 
 const queryClient = new QueryClient();
 
@@ -235,6 +236,13 @@ const App = () => (
               <ProtectedRoute>
                 <DriverOnboardingGate>
                   <ExpenseTracker />
+                </DriverOnboardingGate>
+              </ProtectedRoute>
+            } />
+            <Route path="/driver/test-ocr" element={
+              <ProtectedRoute>
+                <DriverOnboardingGate>
+                  <DriverTestOCR />
                 </DriverOnboardingGate>
               </ProtectedRoute>
             } />
