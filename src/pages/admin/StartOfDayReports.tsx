@@ -8,19 +8,35 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Package, Eye, Search, Filter, Download, Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
+import { Package, Eye, Search, Filter, Download, Calendar, ChevronLeft, ChevronRight, AlertTriangle, CheckCircle, X, Edit } from 'lucide-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { format, startOfDay, endOfDay, addDays, subDays } from 'date-fns';
+import { format, startOfDay, endOfDay, addDays, subDays, parseISO, isToday, differenceInDays } from 'date-fns';
+import { useToast } from '@/hooks/use-toast';
+
+interface ValidationIssue {
+  type: 'round_mismatch' | 'date_mismatch';
+  severity: 'warning' | 'error';
+  message: string;
+}
+
+interface ValidationResult {
+  isValid: boolean;
+  issues: ValidationIssue[];
+}
 
 const StartOfDayReports = () => {
   const { profile } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDriver, setSelectedDriver] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [previewImage, setPreviewImage] = useState<string>('');
+  const [validationDialogOpen, setValidationDialogOpen] = useState(false);
+  const [selectedReportValidation, setSelectedReportValidation] = useState<any>(null);
   
   const dayStart = startOfDay(currentDate);
   const dayEnd = endOfDay(currentDate);
@@ -154,6 +170,83 @@ const StartOfDayReports = () => {
     enabled: companyIds.length > 0
   });
 
+  // Validation logic
+  const validateReport = (report: any): ValidationResult => {
+    const issues: ValidationIssue[] = [];
+    
+    // Check round similarity
+    if (report.round_number && report.extracted_round_number) {
+      const selected = report.round_number.toLowerCase().trim();
+      const detected = report.extracted_round_number.toLowerCase().trim();
+      
+      // Simple similarity check - exact match or substring match
+      const isExactMatch = selected === detected;
+      const isSubstringMatch = selected.includes(detected) || detected.includes(selected);
+      
+      if (!isExactMatch && !isSubstringMatch) {
+        issues.push({
+          type: 'round_mismatch',
+          severity: 'warning',
+          message: `Selected round "${report.round_number}" doesn't match detected round "${report.extracted_round_number}"`
+        });
+      }
+    }
+    
+    // Check manifest date vs today
+    if (report.manifest_date) {
+      try {
+        const manifestDate = parseISO(report.manifest_date);
+        const daysDiff = Math.abs(differenceInDays(manifestDate, new Date()));
+        
+        if (daysDiff > 1) {
+          issues.push({
+            type: 'date_mismatch',
+            severity: daysDiff > 7 ? 'error' : 'warning',
+            message: `Manifest date (${format(manifestDate, 'dd/MM/yyyy')}) is ${daysDiff} days from today`
+          });
+        }
+      } catch (error) {
+        issues.push({
+          type: 'date_mismatch',
+          severity: 'error',
+          message: 'Invalid manifest date format'
+        });
+      }
+    }
+    
+    return {
+      isValid: issues.length === 0,
+      issues
+    };
+  };
+
+  // Mark report as valid mutation
+  const markAsValidMutation = useMutation({
+    mutationFn: async (reportId: string) => {
+      const { error } = await supabase
+        .from('start_of_day_reports')
+        .update({ 
+          processing_status: 'completed',
+          vision_api_response: {
+            ...selectedReportValidation?.vision_api_response,
+            validation_override: true,
+            validation_override_date: new Date().toISOString()
+          }
+        })
+        .eq('id', reportId);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({
+        title: "Report marked as valid",
+        description: "The validation issues have been ignored and the report is now marked as valid.",
+      });
+      queryClient.invalidateQueries({ queryKey: ['sod-reports'] });
+      setValidationDialogOpen(false);
+    }
+  });
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'completed':
@@ -165,6 +258,36 @@ const StartOfDayReports = () => {
       default:
         return <Badge variant="outline">Pending</Badge>;
     }
+  };
+
+  const getValidationBadge = (report: any) => {
+    const validation = validateReport(report);
+    
+    if (validation.isValid) {
+      return (
+        <Button variant="ghost" size="sm" className="text-green-600">
+          <CheckCircle className="h-4 w-4 mr-1" />
+          Valid
+        </Button>
+      );
+    }
+    
+    const hasErrors = validation.issues.some(issue => issue.severity === 'error');
+    
+    return (
+      <Button 
+        variant="ghost" 
+        size="sm" 
+        className={hasErrors ? "text-red-600" : "text-yellow-600"}
+        onClick={() => {
+          setSelectedReportValidation(report);
+          setValidationDialogOpen(true);
+        }}
+      >
+        <AlertTriangle className="h-4 w-4 mr-1" />
+        {hasErrors ? 'Invalid' : 'Warning'}
+      </Button>
+    );
   };
 
   const getImageUrl = async (path: string) => {
@@ -323,43 +446,35 @@ const StartOfDayReports = () => {
                   </div>
                 ) : reports && reports.length > 0 ? (
                   <div className="overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Date/Time</TableHead>
-                          <TableHead>Driver</TableHead>
-                          <TableHead>Selected Round</TableHead>
-                          <TableHead>Detected Round</TableHead>
-                          <TableHead>Manifest Date</TableHead>
-                          <TableHead>Collections</TableHead>
-                          <TableHead>Deliveries</TableHead>
-                          <TableHead>Heavy</TableHead>
-                          <TableHead>Standard</TableHead>
-                          <TableHead>Hanging</TableHead>
-                          <TableHead>Packets</TableHead>
-                          <TableHead>Small</TableHead>
-                          <TableHead>Postables</TableHead>
-                          <TableHead>Status</TableHead>
-                          <TableHead>Actions</TableHead>
-                        </TableRow>
-                      </TableHeader>
+                     <Table>
+                       <TableHeader>
+                         <TableRow>
+                           <TableHead>Driver</TableHead>
+                           <TableHead>Selected Round</TableHead>
+                           <TableHead>Detected Round</TableHead>
+                           <TableHead>Manifest Date</TableHead>
+                           <TableHead>Collections</TableHead>
+                           <TableHead>Deliveries</TableHead>
+                           <TableHead>Heavy</TableHead>
+                           <TableHead>Standard</TableHead>
+                           <TableHead>Hanging</TableHead>
+                           <TableHead>Packets</TableHead>
+                           <TableHead>Small</TableHead>
+                           <TableHead>Postables</TableHead>
+                           <TableHead>Status</TableHead>
+                           <TableHead>Validation</TableHead>
+                           <TableHead>Actions</TableHead>
+                         </TableRow>
+                       </TableHeader>
                       <TableBody>
-                        {reports.map((report) => (
-                          <TableRow key={report.id}>
-                            <TableCell>
-                              <div className="font-medium">
-                                {format(new Date(report.submitted_at), 'dd/MM/yyyy')}
-                              </div>
-                              <div className="text-sm text-muted-foreground">
-                                {format(new Date(report.submitted_at), 'HH:mm')}
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <div className="font-medium">{report.name}</div>
-                              <div className="text-sm text-muted-foreground">
-                                {report.driver_profiles.profiles.email}
-                              </div>
-                            </TableCell>
+                         {reports.map((report) => (
+                           <TableRow key={report.id}>
+                             <TableCell>
+                               <div className="font-medium">{report.name}</div>
+                               <div className="text-sm text-muted-foreground">
+                                 {report.driver_profiles.profiles.email}
+                               </div>
+                             </TableCell>
                             <TableCell>
                               <Badge variant="outline">{report.round_number}</Badge>
                             </TableCell>
@@ -380,9 +495,10 @@ const StartOfDayReports = () => {
                             <TableCell className="text-center">{report.hanging_garments || 0}</TableCell>
                             <TableCell className="text-center">{report.packets || 0}</TableCell>
                             <TableCell className="text-center">{report.small_packets || 0}</TableCell>
-                            <TableCell className="text-center">{report.postables || 0}</TableCell>
-                            <TableCell>{getStatusBadge(report.processing_status)}</TableCell>
-                            <TableCell>
+                             <TableCell className="text-center">{report.postables || 0}</TableCell>
+                             <TableCell>{getStatusBadge(report.processing_status)}</TableCell>
+                             <TableCell>{getValidationBadge(report)}</TableCell>
+                             <TableCell>
                               {report.screenshot_url && (
                                 <Dialog>
                                   <DialogTrigger asChild>
@@ -446,10 +562,111 @@ const StartOfDayReports = () => {
               />
             )}
           </div>
-        </DialogContent>
-      </Dialog>
-    </SidebarProvider>
-  );
-};
+         </DialogContent>
+       </Dialog>
 
-export default StartOfDayReports;
+       {/* Validation Details Dialog */}
+       <Dialog open={validationDialogOpen} onOpenChange={setValidationDialogOpen}>
+         <DialogContent className="max-w-2xl">
+           <DialogHeader>
+             <DialogTitle className="flex items-center">
+               <AlertTriangle className="h-5 w-5 text-yellow-600 mr-2" />
+               Validation Issues - {selectedReportValidation?.name}
+             </DialogTitle>
+           </DialogHeader>
+           
+           {selectedReportValidation && (
+             <div className="space-y-6">
+               {/* Report Summary */}
+               <div className="bg-muted/50 p-4 rounded-lg">
+                 <h4 className="font-semibold mb-2">Report Details</h4>
+                 <div className="grid grid-cols-2 gap-4 text-sm">
+                   <div>
+                     <span className="text-muted-foreground">Selected Round:</span>
+                     <Badge variant="outline" className="ml-2">{selectedReportValidation.round_number}</Badge>
+                   </div>
+                   <div>
+                     <span className="text-muted-foreground">Detected Round:</span>
+                     {selectedReportValidation.extracted_round_number ? (
+                       <Badge variant="secondary" className="ml-2">{selectedReportValidation.extracted_round_number}</Badge>
+                     ) : (
+                       <span className="text-muted-foreground ml-2">Not detected</span>
+                     )}
+                   </div>
+                   <div>
+                     <span className="text-muted-foreground">Manifest Date:</span>
+                     <span className="ml-2">{selectedReportValidation.manifest_date || 'Not detected'}</span>
+                   </div>
+                   <div>
+                     <span className="text-muted-foreground">Submission Date:</span>
+                     <span className="ml-2">{format(new Date(selectedReportValidation.submitted_at), 'dd/MM/yyyy')}</span>
+                   </div>
+                 </div>
+               </div>
+
+               {/* Validation Issues */}
+               <div>
+                 <h4 className="font-semibold mb-3">Validation Issues</h4>
+                 <div className="space-y-3">
+                   {validateReport(selectedReportValidation).issues.map((issue, index) => (
+                     <div key={index} className={`p-3 rounded-lg border ${
+                       issue.severity === 'error' 
+                         ? 'border-red-200 bg-red-50' 
+                         : 'border-yellow-200 bg-yellow-50'
+                     }`}>
+                       <div className="flex items-center mb-1">
+                         <AlertTriangle className={`h-4 w-4 mr-2 ${
+                           issue.severity === 'error' ? 'text-red-600' : 'text-yellow-600'
+                         }`} />
+                         <span className={`font-medium ${
+                           issue.severity === 'error' ? 'text-red-800' : 'text-yellow-800'
+                         }`}>
+                           {issue.severity === 'error' ? 'Error' : 'Warning'}
+                         </span>
+                       </div>
+                       <p className={`text-sm ${
+                         issue.severity === 'error' ? 'text-red-700' : 'text-yellow-700'
+                       }`}>
+                         {issue.message}
+                       </p>
+                     </div>
+                   ))}
+                 </div>
+               </div>
+             </div>
+           )}
+
+           <DialogFooter className="flex justify-between">
+             <Button variant="outline" onClick={() => setValidationDialogOpen(false)}>
+               Cancel
+             </Button>
+             <div className="space-x-2">
+               <Button 
+                 variant="outline"
+                 onClick={() => {
+                   // TODO: Implement edit functionality
+                   toast({
+                     title: "Edit functionality",
+                     description: "Edit functionality will be implemented in a future update.",
+                   });
+                 }}
+               >
+                 <Edit className="h-4 w-4 mr-2" />
+                 Edit Details
+               </Button>
+               <Button 
+                 onClick={() => markAsValidMutation.mutate(selectedReportValidation?.id)}
+                 disabled={markAsValidMutation.isPending}
+               >
+                 <CheckCircle className="h-4 w-4 mr-2" />
+                 {markAsValidMutation.isPending ? 'Ignoring...' : 'Ignore & Mark Valid'}
+               </Button>
+             </div>
+           </DialogFooter>
+         </DialogContent>
+       </Dialog>
+     </SidebarProvider>
+   );
+ };
+ 
+ export default StartOfDayReports;
