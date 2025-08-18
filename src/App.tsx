@@ -19,7 +19,7 @@ import CompanyManagement from "./pages/admin/CompanyManagement";
 import VanManagement from "./pages/admin/VanManagement";
 import RoundManagement from "./pages/admin/RoundManagement";
 import ScheduleView from "./pages/admin/ScheduleView";
-import EODReports from "./pages/admin/EODReports";
+
 import Finance from "./pages/admin/Finance";
 import DriverEngagement from "./pages/admin/DriverEngagement";
 
@@ -108,13 +108,6 @@ const App = () => (
               <ProtectedRoute>
                 <AdminRoute>
                   <ScheduleView />
-                </AdminRoute>
-              </ProtectedRoute>
-            } />
-            <Route path="/admin/eod-reports" element={
-              <ProtectedRoute>
-                <AdminRoute>
-                  <EODReports />
                 </AdminRoute>
               </ProtectedRoute>
             } />
