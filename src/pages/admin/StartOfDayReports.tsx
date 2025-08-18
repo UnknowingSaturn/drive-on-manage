@@ -24,34 +24,43 @@ const StartOfDayReports = () => {
 
   // Get company drivers
   const { data: drivers } = useQuery({
-    queryKey: ['company-drivers', profile?.company_id],
+    queryKey: ['company-drivers', companyIds],
     queryFn: async () => {
-      if (!profile?.company_id) return [];
+      if (companyIds.length === 0) return [];
       
-      const { data } = await supabase
-        .from('driver_profiles')
-        .select(`
-          id,
-          user_id,
-          profiles!inner(
-            first_name,
-            last_name,
-            email
-          )
-        `)
-        .eq('company_id', profile.company_id)
-        .eq('status', 'active');
+      const { data, error } = await supabase
+        .rpc('get_drivers_with_profiles', { company_ids: companyIds });
 
-      return data || [];
+      if (error) throw error;
+      return data;
     },
-    enabled: !!profile?.company_id
+    enabled: companyIds.length > 0
   });
+
+  // Get user companies
+  const { data: userCompanies } = useQuery({
+    queryKey: ['user-companies', profile?.user_id],
+    queryFn: async () => {
+      if (!profile?.user_id) return [];
+
+      const { data, error } = await supabase
+        .from('user_companies')
+        .select('company_id, role, companies(id, name)')
+        .eq('user_id', profile.user_id);
+
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!profile?.user_id,
+  });
+
+  const companyIds = userCompanies?.map(uc => uc.company_id) || [];
 
   // Get SOD reports with filters
   const { data: reports, isLoading } = useQuery({
-    queryKey: ['sod-reports', profile?.company_id, selectedDate, selectedDriver, searchQuery],
+    queryKey: ['sod-reports', companyIds, selectedDate, selectedDriver, searchQuery],
     queryFn: async () => {
-      if (!profile?.company_id) return [];
+      if (companyIds.length === 0) return [];
 
       let query = supabase
         .from('start_of_day_reports')
@@ -59,6 +68,7 @@ const StartOfDayReports = () => {
           *,
           driver_profiles!inner(
             user_id,
+            company_id,
             profiles!inner(
               first_name,
               last_name,
@@ -66,7 +76,7 @@ const StartOfDayReports = () => {
             )
           )
         `)
-        .eq('company_id', profile.company_id)
+        .in('driver_profiles.company_id', companyIds)
         .order('submitted_at', { ascending: false });
 
       // Apply date filter
@@ -100,7 +110,7 @@ const StartOfDayReports = () => {
 
       return filteredData;
     },
-    enabled: !!profile?.company_id
+    enabled: companyIds.length > 0
   });
 
   const getStatusBadge = (status: string) => {
@@ -213,7 +223,7 @@ const StartOfDayReports = () => {
                         <SelectItem value="">All drivers</SelectItem>
                         {drivers?.map((driver) => (
                           <SelectItem key={driver.id} value={driver.id}>
-                            {driver.profiles.first_name} {driver.profiles.last_name}
+                            {driver.first_name} {driver.last_name}
                           </SelectItem>
                         ))}
                       </SelectContent>
