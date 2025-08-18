@@ -88,20 +88,21 @@ const EndOfDay = () => {
     enabled: !!profile?.user_id,
   });
 
-  // Check if today's EOD already exists
-  const { data: todayEOD } = useQuery({
-    queryKey: ['today-eod-check', driverInfo?.driverProfile?.id],
+  const today = new Date().toISOString().split('T')[0];
+
+  // Get previous submissions for today
+  const { data: todaySubmissions } = useQuery({
+    queryKey: ['today-eod-submissions', driverInfo?.driverProfile?.id, today],
     queryFn: async () => {
-      if (!driverInfo?.driverProfile?.id) return null;
-      const today = new Date().toISOString().split('T')[0];
+      if (!driverInfo?.driverProfile?.id) return [];
       const { data } = await supabase
         .from('end_of_day_reports')
         .select('*')
         .eq('driver_id', driverInfo.driverProfile.id)
         .gte('submitted_at', `${today}T00:00:00.000Z`)
-        .lt('submitted_at', `${today}T23:59:59.999Z`)
-        .maybeSingle();
-      return data;
+        .lte('submitted_at', `${today}T23:59:59.999Z`)
+        .order('submitted_at', { ascending: false });
+      return data || [];
     },
     enabled: !!driverInfo?.driverProfile?.id
   });
@@ -183,12 +184,18 @@ const EndOfDay = () => {
       setIsSubmitted(true);
       queryClient.invalidateQueries({ queryKey: ['eod-reports'] });
       queryClient.invalidateQueries({ queryKey: ['today-eod-report'] });
-      queryClient.invalidateQueries({ queryKey: ['today-eod-check'] });
+      queryClient.invalidateQueries({ queryKey: ['today-eod-submissions'] });
       
-      // Navigate back to dashboard after brief delay
+      // Reset form for next submission and hide success after delay
+      setFormData({
+        did_support: false,
+        support_parcels: 0,
+        app_screenshot: null,
+      });
+      
       setTimeout(() => {
-        navigate('/dashboard');
-      }, 2000);
+        setIsSubmitted(false);
+      }, 3000);
     },
     onError: (error: any) => {
       setProcessing(false);
@@ -294,77 +301,6 @@ const EndOfDay = () => {
     );
   }
 
-  // If already completed today
-  if (todayEOD) {
-    return (
-      <SidebarProvider>
-        <div className="min-h-screen flex w-full bg-background no-overflow">
-          <AppSidebar />
-          
-          <SidebarInset className="flex-1 no-overflow">
-            <header className="border-b bg-card sticky top-0 z-10">
-              <div className="flex items-center justify-between mobile-padding py-3 md:py-4">
-                <div className="flex items-center space-x-3">
-                  <SidebarTrigger className="mr-2 hidden md:flex" />
-                  <MobileNav className="md:hidden" />
-                  <div>
-                    <h1 className="mobile-heading font-semibold text-foreground">End of Day</h1>
-                    <p className="text-xs md:text-sm text-muted-foreground">Already completed for today</p>
-                  </div>
-                </div>
-              </div>
-            </header>
-
-            <main className="mobile-padding py-4 md:py-6">
-              <Card className="logistics-card">
-                <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <Package className="h-5 w-5 text-primary mr-2" />
-                    End of Day Summary
-                    <Badge variant="default" className="ml-2">
-                      <CheckCircle className="h-3 w-3 mr-1" />
-                      Completed
-                    </Badge>
-                  </CardTitle>
-                  <CardDescription>
-                    {new Date().toLocaleDateString('en-GB', { 
-                      weekday: 'long', 
-                      year: 'numeric', 
-                      month: 'long', 
-                      day: 'numeric' 
-                    })}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                     <div className="text-center p-4 rounded-lg bg-card/50">
-                       <div className="text-2xl font-bold text-gradient">
-                         {todayEOD.successful_deliveries || 0}
-                       </div>
-                       <div className="text-sm text-muted-foreground">Deliveries</div>
-                     </div>
-                     <div className="text-center p-4 rounded-lg bg-card/50">
-                       <div className="text-2xl font-bold text-gradient">
-                         {todayEOD.successful_collections || 0}
-                       </div>
-                       <div className="text-sm text-muted-foreground">Collections</div>
-                     </div>
-                     <div className="text-center p-4 rounded-lg bg-card/50">
-                       <div className="text-sm text-success">
-                         {todayEOD.processing_status === 'completed' ? 'Processed' : 'Processing...'}
-                       </div>
-                       <div className="text-sm text-muted-foreground">Status</div>
-                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </main>
-          </SidebarInset>
-        </div>
-      </SidebarProvider>
-    );
-  }
-
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full bg-background no-overflow">
@@ -386,11 +322,61 @@ const EndOfDay = () => {
 
           <main className="mobile-padding py-4 md:py-6 space-y-4 md:space-y-6 no-overflow overflow-y-auto">
             <div className="max-w-3xl mx-auto">
+              {/* Previous Submissions */}
+              {todaySubmissions && todaySubmissions.length > 0 && (
+                <Card className="logistics-card mb-6">
+                  <CardHeader>
+                    <CardTitle className="flex items-center">
+                      <Clock className="h-5 w-5 text-primary mr-2" />
+                      Previous Submissions Today
+                    </CardTitle>
+                    <CardDescription>
+                      Your submissions for {new Date().toLocaleDateString()}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {todaySubmissions.map((submission, index) => (
+                        <div key={submission.id} className="p-3 bg-muted rounded-lg">
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <p className="text-sm font-medium">
+                                Submission #{todaySubmissions.length - index}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {format(new Date(submission.submitted_at), 'HH:mm:ss')}
+                              </p>
+                            </div>
+                            <div className="text-right">
+                              <div className="grid grid-cols-2 gap-2 text-xs">
+                                <div>
+                                  <span className="text-muted-foreground">Deliveries:</span>
+                                  <div className="font-medium text-lg">{submission.successful_deliveries || 0}</div>
+                                </div>
+                                <div>
+                                  <span className="text-muted-foreground">Collections:</span>
+                                  <div className="font-medium text-lg">{submission.successful_collections || 0}</div>
+                                </div>
+                              </div>
+                              <div className="mt-2">
+                                <Badge variant={submission.processing_status === 'completed' ? 'default' : 'secondary'} className="text-xs">
+                                  {submission.processing_status === 'completed' ? 'Processed' : 'Processing...'}
+                                </Badge>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
               <Card className="logistics-card">
                 <CardHeader className="pb-4">
                   <CardTitle className="flex items-center text-lg">
                     <Package className="h-5 w-5 text-primary mr-2" />
-                    End of Day Report
+                    {todaySubmissions && todaySubmissions.length > 0 ? 'New End of Day Report' : 'End of Day Report'}
                   </CardTitle>
                   <CardDescription className="text-sm">
                     Complete your daily delivery report with performance metrics.
