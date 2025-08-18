@@ -19,7 +19,7 @@ import CompanyManagement from "./pages/admin/CompanyManagement";
 import VanManagement from "./pages/admin/VanManagement";
 import RoundManagement from "./pages/admin/RoundManagement";
 import ScheduleView from "./pages/admin/ScheduleView";
-
+import EODReports from "./pages/admin/EODReports";
 import Finance from "./pages/admin/Finance";
 import DriverEngagement from "./pages/admin/DriverEngagement";
 
@@ -43,7 +43,6 @@ import Leaderboard from "./pages/driver/Leaderboard";
 import ExpenseTracker from "./pages/driver/ExpenseTracker";
 import DriverOnboarding from "./pages/driver/Onboarding";
 import EndOfDay from "./pages/driver/EndOfDay";
-import AdminReports from "./pages/admin/Reports";
 
 
 const queryClient = new QueryClient();
@@ -111,10 +110,17 @@ const App = () => (
                 </AdminRoute>
               </ProtectedRoute>
             } />
+            <Route path="/admin/eod-reports" element={
+              <ProtectedRoute>
+                <AdminRoute>
+                  <EODReports />
+                </AdminRoute>
+              </ProtectedRoute>
+            } />
             <Route path="/admin/reports" element={
               <ProtectedRoute>
                 <AdminRoute>
-                  <AdminReports />
+                  <EODReports />
                 </AdminRoute>
               </ProtectedRoute>
             } />
