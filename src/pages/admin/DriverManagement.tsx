@@ -18,7 +18,7 @@ import { ConfirmDelete } from '@/components/ConfirmDelete';
 import { DriverDetailsModal } from '@/components/DriverDetailsModal';
 import { SmartSearch } from '@/components/SmartSearch';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { resendDriverCredentials } from '@/lib/resend-credentials';
+
 import { Progress } from '@/components/ui/progress';
 import { validateForm, sanitizeInput, emailSchema, nameSchema, phoneSchema, parcelRateSchema } from '@/lib/security';
 import { format } from 'date-fns';
@@ -74,12 +74,12 @@ const DriverManagement = () => {
     queryKey: ['drivers', profile?.user_companies],
     queryFn: async () => {
       if (!profile?.user_companies?.length) {
-        console.log('No user_companies in profile:', profile);
+        
         return [];
       }
       
       const companyIds = profile.user_companies.map(uc => uc.company_id);
-      console.log('Fetching drivers for company_ids:', companyIds);
+      
       
       // Use the new database function to get drivers with their profile information
       const { data: driversWithProfiles, error: driversError } = await supabase
@@ -88,11 +88,11 @@ const DriverManagement = () => {
         });
 
       if (driversError) {
-        console.error('Error fetching drivers:', driversError);
+        
         return [];
       }
 
-      console.log('Drivers with profiles:', driversWithProfiles);
+      
 
       // Fetch van information for assigned vans
       const vanIds = driversWithProfiles
@@ -107,7 +107,7 @@ const DriverManagement = () => {
           .in('id', vanIds);
 
         if (vansError) {
-          console.error('Error fetching vans:', vansError);
+          
         } else {
           vansData = vans || [];
         }
@@ -191,7 +191,7 @@ const DriverManagement = () => {
           table: 'driver_profiles'
         },
         (payload) => {
-          console.log('Driver profile changed:', payload);
+          
           queryClient.invalidateQueries({ queryKey: ['drivers'] });
         }
       )
@@ -203,7 +203,7 @@ const DriverManagement = () => {
           table: 'vans'
         },
         (payload) => {
-          console.log('Van data changed:', payload);
+          
           queryClient.invalidateQueries({ queryKey: ['drivers'] });
         }
       )
@@ -240,7 +240,7 @@ const DriverManagement = () => {
   // Simplified create driver mutation
   const createDriverMutation = useMutation({
     mutationFn: async (driverData: typeof formData) => {
-      console.log('Creating driver with simplified approach:', driverData);
+      
       
       // Basic validation
       if (!driverData.email || !driverData.firstName || !driverData.lastName || !driverData.companyId) {
@@ -248,7 +248,7 @@ const DriverManagement = () => {
       }
 
       const companyId = driverData.companyId;
-      console.log('Using company_id for driver creation:', companyId);
+      
       if (!companyId) {
         throw new Error('Please select a company for the driver');
       }
@@ -265,7 +265,7 @@ const DriverManagement = () => {
       }
 
       // Step 1: Create everything via comprehensive edge function
-      console.log('Invoking comprehensive-create-driver function...');
+      
       const { data: createResult, error: createError } = await supabase.functions.invoke('comprehensive-create-driver', {
         body: {
           email: driverData.email.trim(),
@@ -278,13 +278,13 @@ const DriverManagement = () => {
         }
       });
 
-      console.log('Edge function response:', { createResult, createError });
+      
 
       if (createError || !createResult?.success) {
         throw new Error(createError?.message || 'Failed to create driver account');
       }
 
-      console.log('Driver created successfully:', createResult);
+      
 
       // Step 2: Send credentials email
       const { error: emailError } = await supabase.functions.invoke('send-driver-credentials', {
@@ -298,7 +298,7 @@ const DriverManagement = () => {
       });
 
       if (emailError) {
-        console.warn('Failed to send credentials email:', emailError);
+        
         // Don't fail the whole operation for email issues
       }
 
@@ -309,7 +309,7 @@ const DriverManagement = () => {
       };
     },
     onSuccess: (data) => {
-      console.log('Driver created successfully:', data);
+      
       toast({
         title: "Driver Created Successfully",
         description: `${formData.firstName} ${formData.lastName} has been added as a driver. Login credentials have been sent to ${formData.email}.`,
@@ -331,7 +331,7 @@ const DriverManagement = () => {
       queryClient.invalidateQueries({ queryKey: ['drivers'] });
     },
     onError: (error: any) => {
-      console.error('Driver creation error:', error);
+      
       
       // Parse error response for better user feedback
       let errorMessage = error.message || 'Failed to create driver';
@@ -373,12 +373,12 @@ const DriverManagement = () => {
       });
 
       if (error) {
-        console.error('Edge function error:', error);
+        
         throw new Error(`Failed to remove driver: ${error.message || 'Unknown error'}`);
       }
 
       if (!data?.success) {
-        console.error('Edge function returned failure:', data);
+        
         throw new Error(data?.error || 'Failed to remove driver');
       }
 
@@ -450,25 +450,6 @@ const DriverManagement = () => {
     },
   });
 
-  // Resend credentials mutation
-  const resendCredentialsMutation = useMutation({
-    mutationFn: async (email: string) => {
-      return await resendDriverCredentials(email);
-    },
-    onSuccess: (data) => {
-      toast({
-        title: "Credentials sent",
-        description: `New login credentials have been sent to the driver's email. New password: ${data.newPassword}`,
-      });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error sending credentials",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -887,15 +868,6 @@ const DriverManagement = () => {
                                      onClick={() => openEditDialog(driver)}
                                    >
                                      <Edit className="h-3 w-3" />
-                                   </Button>
-                                   <Button
-                                     variant="outline"
-                                     size="sm"
-                                     onClick={() => resendCredentialsMutation.mutate(driver.email)}
-                                     disabled={resendCredentialsMutation.isPending}
-                                   >
-                                     <Mail className="h-3 w-3 mr-1" />
-                                     Resend
                                    </Button>
                                    {driver.driving_license_document && (
                                      <Button

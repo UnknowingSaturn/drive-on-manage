@@ -94,14 +94,6 @@ export function AppSidebar() {
   const items = getMenuItems();
   const collapsed = state === "collapsed";
 
-  console.log('AppSidebar render:', { 
-    userType: profile?.user_type, 
-    isAdmin, 
-    isSupervisor,
-    isManagement,
-    itemsCount: items.length,
-    profile: profile 
-  });
 
   const isActive = (path: string) => currentPath === path;
 

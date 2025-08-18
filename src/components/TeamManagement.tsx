@@ -119,7 +119,7 @@ const TeamManagement = () => {
       });
 
       if (emailError) {
-        console.warn('Failed to send credentials email:', emailError);
+        
         // Don't throw here as the user was still created successfully
       }
 
