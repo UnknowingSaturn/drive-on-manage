@@ -49,40 +49,34 @@ serve(async (req) => {
 
     console.log('Processing OCR for report:', reportId, 'with screenshot:', screenshotPath);
 
-    // Download the file from Supabase Storage into a buffer
-    const { data: fileData, error: downloadError } = await supabase.storage
-      .from('sod-screenshots')
-      .download(screenshotPath);
-
-    if (downloadError) {
-      console.error('Failed to download screenshot:', downloadError);
-      await updateReportStatus(supabase, reportId, 'failed', { error: downloadError.message });
-      return new Response(JSON.stringify({ error: 'Failed to download screenshot' }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
-    }
-
-    if (!fileData) {
-      console.error('No file data returned from storage');
-      await updateReportStatus(supabase, reportId, 'failed', { error: 'No file data' });
-      return new Response(JSON.stringify({ error: 'No file data' }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
-    }
-
-    // Resize image to optimize for Vision API
-    const resizedBuffer = await resizeImage(fileData);
+    // Create public URL for the image since bucket is now public
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const imageUrl = `${supabaseUrl}/storage/v1/object/public/sod-screenshots/${screenshotPath}`;
     
-    // Convert to base64
-    const base64Image = btoa(String.fromCharCode(...new Uint8Array(resizedBuffer)));
+    console.log('Using public image URL:', imageUrl);
 
-    // Call Google Vision API with correct payload structure
+    // Verify the image is accessible
+    const imageResponse = await fetch(imageUrl);
+    if (!imageResponse.ok) {
+      console.error('Image not accessible at URL:', imageUrl, 'Status:', imageResponse.status);
+      await updateReportStatus(supabase, reportId, 'failed', { 
+        error: 'Image not accessible',
+        imageUrl,
+        status: imageResponse.status 
+      });
+      return new Response(JSON.stringify({ error: 'Image not accessible' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    // Call Google Vision API with image URL (more reliable than base64)
     const visionPayload = {
       requests: [{
         image: {
-          content: base64Image
+          source: {
+            imageUri: imageUrl
+          }
         },
         features: [{
           type: "TEXT_DETECTION",
@@ -94,8 +88,7 @@ serve(async (req) => {
       }]
     };
 
-    console.log('Calling Google Vision API with payload structure...');
-    console.log('Image content length:', base64Image.length);
+    console.log('Calling Google Vision API with public URL...');
     
     const visionResponse = await fetch(
       `https://vision.googleapis.com/v1/images:annotate?key=${apiKey}`,
