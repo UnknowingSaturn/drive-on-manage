@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Upload, Eye, Loader2 } from 'lucide-react';
@@ -18,6 +19,27 @@ const TestOCR = () => {
   const [result, setResult] = useState<any>(null);
   const [roundNumber, setRoundNumber] = useState('R001');
   const [driverName, setDriverName] = useState('Test Driver');
+  const [availableDrivers, setAvailableDrivers] = useState<any[]>([]);
+  const [selectedDriverId, setSelectedDriverId] = useState<string>('');
+
+  // Load available drivers when component mounts
+  React.useEffect(() => {
+    const loadDrivers = async () => {
+      if (!profile?.user_companies?.[0]?.company_id) return;
+      
+      const { data } = await supabase
+        .from('driver_profiles')
+        .select('id, profiles!inner(first_name, last_name)')
+        .eq('company_id', profile.user_companies[0].company_id);
+      
+      if (data && data.length > 0) {
+        setAvailableDrivers(data);
+        setSelectedDriverId(data[0].id); // Set first driver as default
+      }
+    };
+    
+    loadDrivers();
+  }, [profile]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
@@ -29,8 +51,8 @@ const TestOCR = () => {
   };
 
   const processScreenshot = async () => {
-    if (!file || !profile) {
-      toast.error('Please select a file and ensure you are logged in');
+    if (!file || !profile || !selectedDriverId) {
+      toast.error('Please select a file, driver, and ensure you are logged in');
       return;
     }
 
@@ -53,8 +75,8 @@ const TestOCR = () => {
       const { data: reportData, error: reportError } = await supabase
         .from('start_of_day_reports')
         .insert({
-          driver_id: profile.id, // Using profile ID as test driver ID
-          company_id: profile.company_id,
+          driver_id: selectedDriverId, // Use selected driver ID
+          company_id: profile.user_companies[0].company_id,
           name: driverName,
           round_number: roundNumber,
           screenshot_url: filePath,
@@ -104,14 +126,29 @@ const TestOCR = () => {
           <CardTitle>Test OCR Processing</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="driverName">Driver Name</Label>
+              <Label htmlFor="driver">Test Driver</Label>
+              <Select value={selectedDriverId} onValueChange={setSelectedDriverId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a driver" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableDrivers.map((driver) => (
+                    <SelectItem key={driver.id} value={driver.id}>
+                      {driver.profiles.first_name} {driver.profiles.last_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="driverName">Display Name</Label>
               <Input
                 id="driverName"
                 value={driverName}
                 onChange={(e) => setDriverName(e.target.value)}
-                placeholder="Enter driver name"
+                placeholder="Enter display name"
               />
             </div>
             <div className="space-y-2">
@@ -158,7 +195,7 @@ const TestOCR = () => {
 
           <Button 
             onClick={processScreenshot} 
-            disabled={!file || processing}
+            disabled={!file || !selectedDriverId || processing}
             className="w-full"
           >
             {processing ? (
