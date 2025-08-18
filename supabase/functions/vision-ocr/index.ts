@@ -78,19 +78,25 @@ serve(async (req) => {
     // Convert to base64
     const base64Image = btoa(String.fromCharCode(...new Uint8Array(resizedBuffer)));
 
-    // Call Google Vision API
+    // Call Google Vision API with correct payload structure
     const visionPayload = {
       requests: [{
         image: {
           content: base64Image
         },
         features: [{
-          type: "TEXT_DETECTION"
-        }]
+          type: "TEXT_DETECTION",
+          maxResults: 50
+        }],
+        imageContext: {
+          languageHints: ["en"]
+        }
       }]
     };
 
-    console.log('Calling Google Vision API...');
+    console.log('Calling Google Vision API with payload structure...');
+    console.log('Image content length:', base64Image.length);
+    
     const visionResponse = await fetch(
       `https://vision.googleapis.com/v1/images:annotate?key=${apiKey}`,
       {
