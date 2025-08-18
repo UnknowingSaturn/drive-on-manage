@@ -1,9 +1,10 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
 interface CreateDriverRequest {
@@ -234,23 +235,8 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log('Driver profile created successfully:', driverProfile);
 
-    // Send credentials email
-    try {
-      console.log('Sending credentials email...');
-      const emailResponse = await supabaseAdmin.functions.invoke('send-driver-credentials', {
-        body: {
-          email: email,
-          firstName: firstName,
-          lastName: lastName,
-          tempPassword: tempPassword,
-          companyId: companyId
-        }
-      });
-      console.log('Email response:', emailResponse);
-    } catch (emailError) {
-      console.error('Email sending failed:', emailError);
-      // Don't fail the whole operation if email fails
-    }
+    // Note: Email sending is handled separately by the frontend to avoid double calls
+    console.log('Driver creation completed successfully');
 
     return new Response(
       JSON.stringify({
@@ -267,10 +253,21 @@ const handler = async (req: Request): Promise<Response> => {
 
   } catch (error: any) {
     console.error('Edge function error:', error);
+    
+    // Provide more detailed error information for debugging
+    const errorResponse = {
+      error: error.message,
+      type: error.constructor.name,
+      stack: error.stack?.split('\n').slice(0, 5), // First 5 lines of stack
+      timestamp: new Date().toISOString()
+    };
+    
+    console.error('Detailed error response:', errorResponse);
+    
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify(errorResponse),
       {
-        status: 400,
+        status: 500,
         headers: { 'Content-Type': 'application/json', ...corsHeaders },
       }
     );

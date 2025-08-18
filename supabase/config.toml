@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.server-validation]
 verify_jwt = false
+
+[functions.test-driver-creation]
+verify_jwt = false

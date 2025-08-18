@@ -265,17 +265,20 @@ const DriverManagement = () => {
       }
 
       // Step 1: Create everything via comprehensive edge function
+      console.log('Invoking comprehensive-create-driver function...');
       const { data: createResult, error: createError } = await supabase.functions.invoke('comprehensive-create-driver', {
         body: {
-          email: driverData.email,
-          firstName: driverData.firstName,
-          lastName: driverData.lastName,
-          phone: driverData.phone,
+          email: driverData.email.trim(),
+          firstName: driverData.firstName.trim(),
+          lastName: driverData.lastName.trim(),
+          phone: driverData.phone?.trim() || null,
           companyId: companyId,
           parcelRate: parseFloat(driverData.parcelRate) || 0.75,
           coverRate: parseFloat(driverData.coverRate) || 1.0
         }
       });
+
+      console.log('Edge function response:', { createResult, createError });
 
       if (createError || !createResult?.success) {
         throw new Error(createError?.message || 'Failed to create driver account');
