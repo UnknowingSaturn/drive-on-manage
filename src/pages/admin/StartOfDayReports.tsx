@@ -18,7 +18,7 @@ import { format, startOfWeek, addDays, addWeeks, subWeeks } from 'date-fns';
 const StartOfDayReports = () => {
   const { profile } = useAuth();
   const [currentWeek, setCurrentWeek] = useState(new Date());
-  const [selectedDriver, setSelectedDriver] = useState('');
+  const [selectedDriver, setSelectedDriver] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [previewImage, setPreviewImage] = useState<string>('');
   
@@ -85,7 +85,7 @@ const StartOfDayReports = () => {
         .order('submitted_at', { ascending: false });
 
       // Apply driver filter
-      if (selectedDriver) {
+      if (selectedDriver && selectedDriver !== 'all') {
         query = query.eq('driver_id', selectedDriver);
       }
 
@@ -220,7 +220,7 @@ const StartOfDayReports = () => {
                         <SelectValue placeholder="All drivers" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">All drivers</SelectItem>
+                        <SelectItem value="all">All drivers</SelectItem>
                         {drivers?.map((driver) => (
                           <SelectItem key={driver.id} value={driver.id}>
                             {driver.first_name} {driver.last_name}
@@ -246,7 +246,7 @@ const StartOfDayReports = () => {
                     <Button 
                       variant="outline" 
                       onClick={() => {
-                        setSelectedDriver('');
+                        setSelectedDriver('all');
                         setSearchQuery('');
                       }}
                     >
