@@ -28,6 +28,8 @@ import ResetPassword from "./pages/ResetPassword";
 
 // Driver pages
 import StartOfDay from "./pages/driver/StartOfDay";
+import StartOfDayEnhanced from "./pages/driver/StartOfDayEnhanced";
+import StartOfDayReports from "./pages/admin/StartOfDayReports";
 
 import VehicleCheck from "./pages/driver/VehicleCheck";
 import IncidentReport from "./pages/driver/IncidentReport";
@@ -153,8 +155,15 @@ const App = () => (
             <Route path="/driver/start-of-day" element={
               <ProtectedRoute>
                 <DriverOnboardingGate>
-                  <StartOfDay />
+                  <StartOfDayEnhanced />
                 </DriverOnboardingGate>
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/start-of-day-reports" element={
+              <ProtectedRoute>
+                <AdminRoute>
+                  <StartOfDayReports />
+                </AdminRoute>
               </ProtectedRoute>
             } />
             <Route path="/driver/end-of-day" element={

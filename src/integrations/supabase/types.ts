@@ -1481,6 +1481,84 @@ export type Database = {
         }
         Relationships: []
       }
+      start_of_day_reports: {
+        Row: {
+          company_id: string
+          created_at: string
+          driver_id: string
+          extracted_round_number: string | null
+          hanging_garments: number | null
+          heavy_parcels: number | null
+          id: string
+          name: string
+          packets: number | null
+          postables: number | null
+          processing_status: string | null
+          round_number: string
+          screenshot_url: string | null
+          small_packets: number | null
+          standard: number | null
+          submitted_at: string
+          updated_at: string
+          vision_api_response: Json | null
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          driver_id: string
+          extracted_round_number?: string | null
+          hanging_garments?: number | null
+          heavy_parcels?: number | null
+          id?: string
+          name: string
+          packets?: number | null
+          postables?: number | null
+          processing_status?: string | null
+          round_number: string
+          screenshot_url?: string | null
+          small_packets?: number | null
+          standard?: number | null
+          submitted_at?: string
+          updated_at?: string
+          vision_api_response?: Json | null
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          driver_id?: string
+          extracted_round_number?: string | null
+          hanging_garments?: number | null
+          heavy_parcels?: number | null
+          id?: string
+          name?: string
+          packets?: number | null
+          postables?: number | null
+          processing_status?: string | null
+          round_number?: string
+          screenshot_url?: string | null
+          small_packets?: number | null
+          standard?: number | null
+          submitted_at?: string
+          updated_at?: string
+          vision_api_response?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "start_of_day_reports_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "start_of_day_reports_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "driver_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_companies: {
         Row: {
           company_id: string
