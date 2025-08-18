@@ -127,44 +127,97 @@ const StartOfDayEnhanced = () => {
       }
 
       let screenshotUrl = null;
+      let reportId = null;
 
-      // Upload screenshot if provided
-      if (data.screenshot) {
-        const fileExt = data.screenshot.name.split('.').pop();
-        const fileName = `${user?.id}/sod-${Date.now()}.${fileExt}`;
-        
-        const { error: uploadError } = await supabase.storage
-          .from('sod-screenshots')
-          .upload(fileName, data.screenshot);
+      try {
+        // Upload screenshot if provided
+        if (data.screenshot) {
+          const fileExt = data.screenshot.name.split('.').pop();
+          const fileName = `${user?.id}/sod-${Date.now()}.${fileExt}`;
+          
+          const { error: uploadError } = await supabase.storage
+            .from('sod-screenshots')
+            .upload(fileName, data.screenshot);
 
-        if (uploadError) {
-          throw new Error(`Failed to upload screenshot: ${uploadError.message}`);
+          if (uploadError) {
+            throw new Error(`Failed to upload screenshot: ${uploadError.message}`);
+          }
+
+          screenshotUrl = fileName;
         }
 
-        screenshotUrl = fileName;
-      }
+        // Insert SOD report with initial data
+        const { data: reportData, error: insertError } = await supabase
+          .from('start_of_day_reports')
+          .insert({
+            driver_id: driverInfo.driverProfile.id,
+            company_id: driverInfo.driverProfile.company_id,
+            name: driverInfo.driverName,
+            round_number: data.roundNumber,
+            screenshot_url: screenshotUrl,
+            processing_status: 'processing'
+          })
+          .select()
+          .single();
 
-      // Insert SOD report with auto-filled data
-      const { error } = await supabase
-        .from('start_of_day_reports')
-        .insert({
-          driver_id: driverInfo.driverProfile.id,
-          company_id: driverInfo.driverProfile.company_id,
-          name: driverInfo.driverName,
-          round_number: data.roundNumber,
-          screenshot_url: screenshotUrl,
-        });
+        if (insertError) {
+          // If DB insert fails, clean up uploaded file
+          if (screenshotUrl) {
+            try {
+              await supabase.storage
+                .from('sod-screenshots')
+                .remove([screenshotUrl]);
+            } catch (cleanupError) {
+              console.error('Failed to cleanup file after DB error:', cleanupError);
+            }
+          }
+          throw insertError;
+        }
 
-      if (error) {
+        reportId = reportData.id;
+
+        // Process with Vision OCR if screenshot was uploaded
+        if (screenshotUrl) {
+          try {
+            const { error: visionError } = await supabase.functions.invoke('vision-ocr', {
+              body: { 
+                screenshotPath: screenshotUrl,
+                reportId: reportId
+              }
+            });
+
+            if (visionError) {
+              console.error('Vision processing error:', visionError);
+              // Don't fail the submission if Vision fails, just log it
+            }
+          } catch (visionError) {
+            console.error('Failed to invoke vision processing:', visionError);
+            // Don't fail the submission if Vision fails
+          }
+        }
+
+        // Start location tracking
+        try {
+          await startShift();
+        } catch (trackingError) {
+          console.error('Failed to start location tracking:', trackingError);
+          // Don't fail the submission if tracking fails
+        }
+
+        return reportData;
+
+      } catch (error) {
+        // If anything fails after file upload, clean up
+        if (screenshotUrl) {
+          try {
+            await supabase.storage
+              .from('sod-screenshots')
+              .remove([screenshotUrl]);
+          } catch (cleanupError) {
+            console.error('Failed to cleanup file after error:', cleanupError);
+          }
+        }
         throw error;
-      }
-
-      // Start location tracking
-      try {
-        await startShift();
-      } catch (trackingError) {
-        console.error('Failed to start location tracking:', trackingError);
-        // Don't fail the submission if tracking fails
       }
     },
     onSuccess: () => {
