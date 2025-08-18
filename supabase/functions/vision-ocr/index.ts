@@ -31,6 +31,7 @@ serve(async (req) => {
     const { screenshotPath, reportId } = await req.json();
     
     if (!screenshotPath || !reportId) {
+      console.error('Missing required parameters:', { screenshotPath, reportId });
       return new Response(JSON.stringify({ error: 'Missing screenshotPath or reportId' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -39,7 +40,11 @@ serve(async (req) => {
 
     const apiKey = Deno.env.get('GOOGLE_VISION_API_KEY');
     if (!apiKey) {
-      throw new Error('Google Vision API key not configured');
+      console.error('Google Vision API key not configured');
+      return new Response(JSON.stringify({ error: 'Google Vision API key not configured' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
     }
 
     console.log('Processing OCR for report:', reportId, 'with screenshot:', screenshotPath);
@@ -49,178 +54,128 @@ serve(async (req) => {
       .from('sod-screenshots')
       .download(screenshotPath);
 
-    if (downloadError || !fileData) {
-      console.error('Error downloading file:', downloadError);
-      throw new Error(`Failed to download screenshot: ${downloadError?.message || 'File not found'}`);
+    if (downloadError) {
+      console.error('Failed to download screenshot:', downloadError);
+      await updateReportStatus(supabase, reportId, 'failed', { error: downloadError.message });
+      return new Response(JSON.stringify({ error: 'Failed to download screenshot' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
     }
 
-    console.log('File downloaded successfully, size:', fileData.size);
+    if (!fileData) {
+      console.error('No file data returned from storage');
+      await updateReportStatus(supabase, reportId, 'failed', { error: 'No file data' });
+      return new Response(JSON.stringify({ error: 'No file data' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
 
-    // Convert file to base64 for Vision API
-    const arrayBuffer = await fileData.arrayBuffer();
-    const uint8Array = new Uint8Array(arrayBuffer);
+    // Resize image to optimize for Vision API
+    const resizedBuffer = await resizeImage(fileData);
     
-    // Resize image if too large (max width 1200px for cost optimization)
-    let base64Image = btoa(String.fromCharCode(...uint8Array));
-    
-    console.log('Converted to base64, calling Vision API...');
+    // Convert to base64
+    const base64Image = btoa(String.fromCharCode(...new Uint8Array(resizedBuffer)));
 
     // Call Google Vision API
-    const visionResponse = await fetch(`https://vision.googleapis.com/v1/images:annotate?key=${apiKey}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        requests: [
-          {
-            image: {
-              content: base64Image
-            },
-            features: [
-              {
-                type: 'TEXT_DETECTION',
-                maxResults: 1
-              }
-            ]
-          }
-        ]
-      })
-    });
+    const visionPayload = {
+      requests: [{
+        image: {
+          content: base64Image
+        },
+        features: [{
+          type: "TEXT_DETECTION"
+        }]
+      }]
+    };
+
+    console.log('Calling Google Vision API...');
+    const visionResponse = await fetch(
+      `https://vision.googleapis.com/v1/images:annotate?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(visionPayload)
+      }
+    );
+
+    if (!visionResponse.ok) {
+      const errorText = await visionResponse.text();
+      console.error('Vision API error:', visionResponse.status, errorText);
+      await updateReportStatus(supabase, reportId, 'failed', { 
+        error: `Vision API error: ${visionResponse.status}`,
+        details: errorText 
+      });
+      return new Response(JSON.stringify({ error: 'Vision API failed' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
 
     const visionData = await visionResponse.json();
     console.log('Vision API response received');
 
-    if (!visionData.responses || !visionData.responses[0]) {
-      throw new Error('No response from Vision API');
-    }
-
-    const textAnnotations = visionData.responses[0].textAnnotations;
-    if (!textAnnotations || textAnnotations.length === 0) {
+    // Extract text from Vision response
+    let extractedText = '';
+    if (visionData.responses && 
+        visionData.responses[0] && 
+        visionData.responses[0].textAnnotations && 
+        visionData.responses[0].textAnnotations[0]) {
+      extractedText = visionData.responses[0].textAnnotations[0].description;
+      console.log('Extracted text length:', extractedText.length);
+    } else {
       console.log('No text detected in image');
-      
-      // Update report with no data found
-      const { error: updateError } = await supabase
-        .from('start_of_day_reports')
-        .update({
-          processing_status: 'completed',
-          vision_api_response: visionData,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', reportId);
+      extractedText = '';
+    }
 
-      if (updateError) {
-        console.error('Error updating report with no data:', updateError);
-      }
+    // Parse the extracted text
+    const parsedData = parseExtractedText(extractedText);
+    console.log('Parsed data:', parsedData);
 
-      return new Response(JSON.stringify({ 
-        extracted_data: {},
-        raw_text: '',
-        processing_status: 'completed'
-      }), {
+    // Update the database with parsed data
+    const { error: updateError } = await supabase
+      .from('start_of_day_reports')
+      .update({
+        extracted_round_number: parsedData.extracted_round_number,
+        heavy_parcels: parsedData.heavy_parcels,
+        standard: parsedData.standard,
+        hanging_garments: parsedData.hanging_garments,
+        packets: parsedData.packets,
+        small_packets: parsedData.small_packets,
+        postables: parsedData.postables,
+        vision_api_response: visionData,
+        processing_status: 'completed',
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', reportId);
+
+    if (updateError) {
+      console.error('Failed to update report:', updateError);
+      await updateReportStatus(supabase, reportId, 'failed', { error: updateError.message });
+      return new Response(JSON.stringify({ error: 'Failed to update report' }), {
+        status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
 
-    const fullText = textAnnotations[0].description;
-    console.log('Extracted text:', fullText.substring(0, 200) + '...');
-
-    // Parse the extracted text to find parcel counts
-    const extractedData = parseParcelCounts(fullText);
-    console.log('Parsed data:', extractedData);
-
-    // Update the report with extracted data - wrap in try/catch for DB errors
-    try {
-      const { error: updateError } = await supabase
-        .from('start_of_day_reports')
-        .update({
-          extracted_round_number: extractedData.extracted_round_number,
-          heavy_parcels: extractedData.heavy_parcels || 0,
-          standard: extractedData.standard || 0,
-          hanging_garments: extractedData.hanging_garments || 0,
-          packets: extractedData.packets || 0,
-          small_packets: extractedData.small_packets || 0,
-          postables: extractedData.postables || 0,
-          vision_api_response: visionData,
-          processing_status: 'completed',
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', reportId);
-
-      if (updateError) {
-        console.error('Database update error:', updateError);
-        
-        // If DB insert fails, try to delete the uploaded screenshot file to avoid clutter
-        try {
-          await supabase.storage
-            .from('sod-screenshots')
-            .remove([screenshotPath]);
-          console.log('Cleaned up uploaded file after DB error');
-        } catch (cleanupError) {
-          console.error('Failed to cleanup file after DB error:', cleanupError);
-        }
-        
-        throw updateError;
-      }
-
-      console.log('Report updated successfully with extracted data');
-
-      return new Response(JSON.stringify({
-        extracted_data: extractedData,
-        raw_text: fullText,
-        processing_status: 'completed'
-      }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
-
-    } catch (dbError) {
-      console.error('Database operation failed:', dbError);
-      throw new Error(`Database update failed: ${dbError.message}`);
-    }
-
-  } catch (error) {
-    console.error('Error in vision-ocr function:', error);
-    
-    // Try to update the report status to failed and extract request data
-    try {
-      const requestBody = await req.json().catch(() => ({}));
-      const { reportId, screenshotPath } = requestBody;
-      
-      if (reportId) {
-        const supabase = createClient(
-          Deno.env.get('SUPABASE_URL') ?? '',
-          Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-        );
-        
-        // Update report status to failed
-        await supabase
-          .from('start_of_day_reports')
-          .update({
-            processing_status: 'failed',
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', reportId);
-
-        // Clean up uploaded file on error to avoid clutter
-        if (screenshotPath) {
-          try {
-            await supabase.storage
-              .from('sod-screenshots')
-              .remove([screenshotPath]);
-            console.log('Cleaned up uploaded file after processing error');
-          } catch (cleanupError) {
-            console.error('Failed to cleanup file after error:', cleanupError);
-          }
-        }
-      }
-    } catch (updateError) {
-      console.error('Error updating failed status:', updateError);
-    }
+    console.log('Successfully processed OCR for report:', reportId);
 
     return new Response(JSON.stringify({ 
-      error: 'OCR processing failed', 
-      details: error.message,
-      processing_status: 'failed'
+      success: true, 
+      parsedData,
+      extractedText: extractedText.substring(0, 500) // First 500 chars for debugging
+    }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
+
+  } catch (error) {
+    console.error('Vision OCR error:', error);
+    return new Response(JSON.stringify({ 
+      error: 'Internal server error', 
+      details: error.message 
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -228,7 +183,30 @@ serve(async (req) => {
   }
 });
 
-// Enhanced parsing function based on your Google Apps Script
+async function updateReportStatus(supabase: any, reportId: string, status: string, errorData?: any) {
+  try {
+    await supabase
+      .from('start_of_day_reports')
+      .update({
+        processing_status: status,
+        vision_api_response: errorData,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', reportId);
+  } catch (error) {
+    console.error('Failed to update report status:', error);
+  }
+}
+
+async function resizeImage(imageBuffer: ArrayBuffer): Promise<ArrayBuffer> {
+  // For now, return the original buffer
+  // In a production environment, you might want to implement actual image resizing
+  return imageBuffer;
+}
+
+/**
+ * Parse specific data points from extracted text using Google Apps Script logic
+ */
 function parseExtractedText(text: string): VisionResponse {
   if (!text) {
     return {
@@ -244,7 +222,7 @@ function parseExtractedText(text: string): VisionResponse {
   }
 
   // Initialize results object
-  const result: VisionResponse = {
+  const result = {
     extracted_round_number: "",
     heavy_parcels: 0,
     standard: 0,
@@ -259,27 +237,27 @@ function parseExtractedText(text: string): VisionResponse {
   const lowerText = text.toLowerCase();
   const lines = text.split('\n');
 
-  // Process each line first
-  for (let line of lines) {
+  // Process each line
+  for (const line of lines) {
     const lowerLine = line.toLowerCase();
 
-    // Extract Round Number
+    // Extract Round Number - look for patterns like "Round: 123", "RND 123", etc.
     if (lowerLine.includes("round") || lowerLine.includes("rnd")) {
-      const matches = line.match(/(?:round|rnd)(?:\s*number)?[:\s]+(\w+)/i);
+      const matches = line.match(/(?:round|rnd)(?:\s*number)?[:\s-]+(\w+)/i);
       if (matches && matches[1]) {
-        result.extracted_round_number = matches[1].trim().toUpperCase();
+        result.extracted_round_number = matches[1].trim();
       } else {
         // Try for just a number/code after "round"
-        const numMatch = line.match(/(?:round|rnd)[:\s]+(\w+)/i);
+        const numMatch = line.match(/(?:round|rnd)[:\s-]+(\w+)/i);
         if (numMatch && numMatch[1]) {
-          result.extracted_round_number = numMatch[1].trim().toUpperCase();
+          result.extracted_round_number = numMatch[1].trim();
         }
       }
     }
 
     // Extract Heavy Parcels
     if (lowerLine.includes("heavy")) {
-      const matches = line.match(/heavy[:\s]+(\d+)/i);
+      const matches = line.match(/heavy[:\s-]+(\d+)/i);
       if (matches && matches[1]) {
         result.heavy_parcels = parseInt(matches[1].trim(), 10);
       }
@@ -287,7 +265,7 @@ function parseExtractedText(text: string): VisionResponse {
 
     // Extract Standard Parcels
     if (lowerLine.includes("standard")) {
-      const matches = line.match(/standard[:\s]+(\d+)/i);
+      const matches = line.match(/standard[:\s-]+(\d+)/i);
       if (matches && matches[1]) {
         result.standard = parseInt(matches[1].trim(), 10);
       }
@@ -295,15 +273,15 @@ function parseExtractedText(text: string): VisionResponse {
 
     // Extract Hanging Garments
     if (lowerLine.includes("hanging") && lowerLine.includes("garment")) {
-      const matches = line.match(/hanging\s+garments?[:\s]+(\d+)/i);
+      const matches = line.match(/hanging\s+garments?[:\s-]+(\d+)/i);
       if (matches && matches[1]) {
         result.hanging_garments = parseInt(matches[1].trim(), 10);
       }
     }
 
     // Extract Packets (but not small packets)
-    if (lowerLine.includes("packet") && !lowerLine.includes("small packet")) {
-      const matches = line.match(/packets?[:\s]+(\d+)/i);
+    if (lowerLine.includes("packet") && !lowerLine.includes("small")) {
+      const matches = line.match(/packets?[:\s-]+(\d+)/i);
       if (matches && matches[1]) {
         result.packets = parseInt(matches[1].trim(), 10);
       }
@@ -311,7 +289,7 @@ function parseExtractedText(text: string): VisionResponse {
 
     // Extract Small Packets
     if (lowerLine.includes("small") && lowerLine.includes("packet")) {
-      const matches = line.match(/small\s+packets?[:\s]+(\d+)/i);
+      const matches = line.match(/small\s+packets?[:\s-]+(\d+)/i);
       if (matches && matches[1]) {
         result.small_packets = parseInt(matches[1].trim(), 10);
       }
@@ -319,7 +297,7 @@ function parseExtractedText(text: string): VisionResponse {
 
     // Extract Postables
     if (lowerLine.includes("postable")) {
-      const matches = line.match(/postables?[:\s]+(\d+)/i);
+      const matches = line.match(/postables?[:\s-]+(\d+)/i);
       if (matches && matches[1]) {
         result.postables = parseInt(matches[1].trim(), 10);
       }
@@ -328,59 +306,61 @@ function parseExtractedText(text: string): VisionResponse {
 
   // If we couldn't find values through line-by-line analysis, try whole text search
   if (!result.extracted_round_number) {
-    const roundMatch = lowerText.match(/(?:round|rnd)(?:\s*number)?[:\s]+(\w+)/i);
+    const roundMatch = lowerText.match(/(?:round|rnd)(?:\s*number)?[:\s-]+(\w+)/i);
     if (roundMatch && roundMatch[1]) {
-      result.extracted_round_number = roundMatch[1].trim().toUpperCase();
+      result.extracted_round_number = roundMatch[1].trim();
     }
   }
 
-  if (!result.heavy_parcels) {
-    const heavyMatch = lowerText.match(/heavy[:\s]+(\d+)/i);
+  if (result.heavy_parcels === 0) {
+    const heavyMatch = lowerText.match(/heavy[:\s-]+(\d+)/i);
     if (heavyMatch && heavyMatch[1]) {
       result.heavy_parcels = parseInt(heavyMatch[1].trim(), 10);
     }
   }
 
-  if (!result.standard) {
-    const standardMatch = lowerText.match(/standard[:\s]+(\d+)/i);
+  if (result.standard === 0) {
+    const standardMatch = lowerText.match(/standard[:\s-]+(\d+)/i);
     if (standardMatch && standardMatch[1]) {
       result.standard = parseInt(standardMatch[1].trim(), 10);
     }
   }
 
-  if (!result.hanging_garments) {
-    const hangingMatch = lowerText.match(/hanging\s+garments?[:\s]+(\d+)/i);
+  if (result.hanging_garments === 0) {
+    const hangingMatch = lowerText.match(/hanging\s+garments?[:\s-]+(\d+)/i);
     if (hangingMatch && hangingMatch[1]) {
       result.hanging_garments = parseInt(hangingMatch[1].trim(), 10);
     }
   }
 
-  if (!result.packets) {
-    const packetsMatch = lowerText.match(/(?<!small\s+)packets?[:\s]+(\d+)/i);
-    if (packetsMatch && packetsMatch[1]) {
-      result.packets = parseInt(packetsMatch[1].trim(), 10);
+  if (result.packets === 0) {
+    // Look for "packets" that aren't preceded by "small"
+    const packetsLines = lines.filter(line => 
+      line.toLowerCase().includes("packet") && 
+      !line.toLowerCase().includes("small")
+    );
+    for (const line of packetsLines) {
+      const matches = line.match(/packets?[:\s-]+(\d+)/i);
+      if (matches && matches[1]) {
+        result.packets = parseInt(matches[1].trim(), 10);
+        break;
+      }
     }
   }
 
-  if (!result.small_packets) {
-    const smallPacketsMatch = lowerText.match(/small\s+packets?[:\s]+(\d+)/i);
+  if (result.small_packets === 0) {
+    const smallPacketsMatch = lowerText.match(/small\s+packets?[:\s-]+(\d+)/i);
     if (smallPacketsMatch && smallPacketsMatch[1]) {
       result.small_packets = parseInt(smallPacketsMatch[1].trim(), 10);
     }
   }
 
-  if (!result.postables) {
-    const postablesMatch = lowerText.match(/postables?[:\s]+(\d+)/i);
+  if (result.postables === 0) {
+    const postablesMatch = lowerText.match(/postables?[:\s-]+(\d+)/i);
     if (postablesMatch && postablesMatch[1]) {
       result.postables = parseInt(postablesMatch[1].trim(), 10);
     }
   }
 
-  console.log('Parsed data:', result);
   return result;
-}
-
-// Wrapper function for backward compatibility
-function parseParcelCounts(text: string): VisionResponse {
-  return parseExtractedText(text);
 }
