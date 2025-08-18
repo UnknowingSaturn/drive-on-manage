@@ -120,27 +120,42 @@ export function useGeolocation() {
     if (!profile?.id || !shift.id) return;
 
     try {
-      const { error } = await supabase.from('location_points').insert({
-        driver_id: profile.id,
-        company_id: profile.company_id,
-        shift_id: shift.id,
-        latitude: locationPoint.latitude,
-        longitude: locationPoint.longitude,
-        accuracy: locationPoint.accuracy,
-        speed: locationPoint.speed,
-        heading: locationPoint.heading,
-        battery_level: locationPoint.batteryLevel,
-        timestamp: new Date(locationPoint.timestamp).toISOString(),
-        is_offline_sync: false
+      // Use edge function for secure location ingestion
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        console.error('No authentication session');
+        offlineQueue.current.push(locationPoint);
+        return;
+      }
+
+      const { data, error } = await supabase.functions.invoke('location-ingest', {
+        body: {
+          driver_id: profile.id,
+          latitude: locationPoint.latitude,
+          longitude: locationPoint.longitude,
+          accuracy: locationPoint.accuracy,
+          speed: locationPoint.speed,
+          heading: locationPoint.heading,
+          battery_level: locationPoint.batteryLevel,
+          activity_type: 'automotive',
+          shift_id: shift.id,
+          is_offline_sync: false
+        },
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
       });
 
-      if (error) throw error;
-      
-      lastUpdateTime.current = Date.now();
-      lastPosition.current = locationPoint;
+      if (error) {
+        console.error('Failed to send location via edge function:', error);
+        offlineQueue.current.push(locationPoint);
+      } else {
+        console.log('Location sent successfully:', data);
+        lastUpdateTime.current = Date.now();
+        lastPosition.current = locationPoint;
+      }
     } catch (error) {
       console.error('Failed to send location update:', error);
-      // Add to offline queue
       offlineQueue.current.push(locationPoint);
     }
   };
@@ -151,30 +166,44 @@ export function useGeolocation() {
     const queue = [...offlineQueue.current];
     offlineQueue.current = [];
 
-    for (const locationPoint of queue) {
-      try {
-        const { error } = await supabase.from('location_points').insert({
-          driver_id: profile.id,
-          company_id: profile.company_id,
-          shift_id: shift.id,
-          latitude: locationPoint.latitude,
-          longitude: locationPoint.longitude,
-          accuracy: locationPoint.accuracy,
-          speed: locationPoint.speed,
-          heading: locationPoint.heading,
-          battery_level: locationPoint.batteryLevel,
-          timestamp: new Date(locationPoint.timestamp).toISOString(),
-          is_offline_sync: true
-        });
-
-        if (error) {
-          // Re-add to queue if still failing
-          offlineQueue.current.push(locationPoint);
-        }
-      } catch (error) {
-        console.error('Failed to process offline location:', error);
-        offlineQueue.current.push(locationPoint);
+    try {
+      // Use edge function for batch processing
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        console.error('No authentication session for offline sync');
+        offlineQueue.current.push(...queue);
+        return;
       }
+
+      const locationBatch = queue.map(locationPoint => ({
+        driver_id: profile.id,
+        latitude: locationPoint.latitude,
+        longitude: locationPoint.longitude,
+        accuracy: locationPoint.accuracy,
+        speed: locationPoint.speed,
+        heading: locationPoint.heading,
+        battery_level: locationPoint.batteryLevel,
+        activity_type: 'automotive',
+        shift_id: shift.id,
+        is_offline_sync: true
+      }));
+
+      const { data, error } = await supabase.functions.invoke('location-ingest', {
+        body: locationBatch,
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (error) {
+        console.error('Failed to process offline queue:', error);
+        offlineQueue.current.push(...queue);
+      } else {
+        console.log(`Successfully synced ${queue.length} offline locations:`, data);
+      }
+    } catch (error) {
+      console.error('Failed to process offline locations:', error);
+      offlineQueue.current.push(...queue);
     }
   };
 

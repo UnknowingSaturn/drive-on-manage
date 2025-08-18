@@ -10,6 +10,7 @@ import LeaderboardWidget from '@/components/driver/LeaderboardWidget';
 import FeedbackWidget from '@/components/driver/FeedbackWidget';
 import ExpenseWidget from '@/components/driver/ExpenseWidget';
 import EODModal from '@/components/driver/EODModal';
+import { LocationTrackingWidget } from '@/components/driver/LocationTrackingWidget';
 import { SidebarProvider, SidebarTrigger, SidebarInset } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/AppSidebar';
 import { MobileNav } from '@/components/MobileNav';
@@ -478,6 +479,8 @@ const Dashboard = () => {
                         )}
                       </div>
                     </div>
+                    {/* Location Tracking Widget */}
+                    <LocationTrackingWidget />
                     
                     <EarningsWidget />
                     <LeaderboardWidget />

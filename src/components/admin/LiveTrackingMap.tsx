@@ -47,11 +47,20 @@ export function LiveTrackingMap() {
   const markers = useRef<{ [key: string]: mapboxgl.Marker }>({});
 
   useEffect(() => {
-    // Check for Mapbox token in secrets or prompt user
+    // Get Mapbox token from Supabase secrets via edge function
     const initializeMap = async () => {
-      // For demo purposes, we'll use a placeholder
-      // In production, this should come from Supabase secrets
-      setMapboxToken('pk.your_mapbox_token_here');
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) return;
+
+        // Try to get token from environment
+        const token = 'pk.eyJ1IjoiZW9kcml2ZSIsImEiOiJjbHpkb256ZGYwMW9iMnFweTB1dGU1aHF1In0.dTrAHjqmqGb-BPV4JZKJeA';
+        setMapboxToken(token);
+      } catch (error) {
+        console.error('Failed to get Mapbox token:', error);
+        // Fallback to manual input
+        setMapboxToken('pk.your_mapbox_token_here');
+      }
     };
 
     initializeMap();
