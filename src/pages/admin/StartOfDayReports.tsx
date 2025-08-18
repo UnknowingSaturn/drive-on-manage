@@ -79,20 +79,10 @@ const StartOfDayReports = () => {
     queryFn: async () => {
       if (companyIds.length === 0) return [];
 
+      // First get the reports
       let query = supabase
         .from('start_of_day_reports')
-        .select(`
-          *,
-          driver_profiles!inner(
-            user_id,
-            company_id,
-            profiles!inner(
-              first_name,
-              last_name,
-              email
-            )
-          )
-        `)
+        .select('*')
         .in('company_id', companyIds)
         .gte('submitted_at', weekStart.toISOString())
         .lte('submitted_at', weekEnd.toISOString())
@@ -103,15 +93,53 @@ const StartOfDayReports = () => {
         query = query.eq('driver_id', selectedDriver);
       }
 
-      const { data, error } = await query;
+      const { data: reportsData, error: reportsError } = await query;
       
-      if (error) {
-        console.error('Error fetching SOD reports:', error);
-        throw error;
+      if (reportsError) {
+        console.error('Error fetching SOD reports:', reportsError);
+        throw reportsError;
       }
 
+      if (!reportsData || reportsData.length === 0) {
+        return [];
+      }
+
+      // Get driver profiles for the reports
+      const driverIds = [...new Set(reportsData.map(report => report.driver_id))];
+      const { data: driverData, error: driverError } = await supabase
+        .from('driver_profiles')
+        .select(`
+          id,
+          user_id,
+          profiles!inner(
+            first_name,
+            last_name,
+            email
+          )
+        `)
+        .in('id', driverIds);
+
+      if (driverError) {
+        console.error('Error fetching driver profiles:', driverError);
+        throw driverError;
+      }
+
+      // Create a map of driver data
+      const driverMap = driverData?.reduce((acc, driver) => {
+        acc[driver.id] = driver;
+        return acc;
+      }, {} as Record<string, any>) || {};
+
+      // Merge the data
+      const enrichedReports = reportsData.map(report => ({
+        ...report,
+        driver_profiles: driverMap[report.driver_id] || {
+          profiles: { first_name: 'Unknown', last_name: 'Driver', email: '' }
+        }
+      }));
+
       // Apply search filter on client side
-      let filteredData = data || [];
+      let filteredData = enrichedReports;
       if (searchQuery) {
         const searchLower = searchQuery.toLowerCase();
         filteredData = filteredData.filter(report => 

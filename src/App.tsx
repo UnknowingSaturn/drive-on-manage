@@ -22,6 +22,7 @@ import ScheduleView from "./pages/admin/ScheduleView";
 import EODReports from "./pages/admin/EODReports";
 import Finance from "./pages/admin/Finance";
 import DriverEngagement from "./pages/admin/DriverEngagement";
+import TestOCR from "./pages/admin/TestOCR";
 
 import AdminSettings from "./pages/admin/Settings";
 import ResetPassword from "./pages/ResetPassword";
@@ -171,6 +172,13 @@ const App = () => (
               <ProtectedRoute>
                 <AdminRoute>
                   <StartOfDayReports />
+                </AdminRoute>
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/test-ocr" element={
+              <ProtectedRoute>
+                <AdminRoute>
+                  <TestOCR />
                 </AdminRoute>
               </ProtectedRoute>
             } />
