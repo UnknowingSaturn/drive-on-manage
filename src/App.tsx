@@ -43,6 +43,7 @@ import Leaderboard from "./pages/driver/Leaderboard";
 import ExpenseTracker from "./pages/driver/ExpenseTracker";
 import DriverOnboarding from "./pages/driver/Onboarding";
 import EndOfDay from "./pages/driver/EndOfDay";
+import AdminReports from "./pages/admin/Reports";
 
 
 const queryClient = new QueryClient();
@@ -120,7 +121,7 @@ const App = () => (
             <Route path="/admin/reports" element={
               <ProtectedRoute>
                 <AdminRoute>
-                  <EODReports />
+                  <AdminReports />
                 </AdminRoute>
               </ProtectedRoute>
             } />

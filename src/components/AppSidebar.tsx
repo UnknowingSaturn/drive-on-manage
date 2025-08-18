@@ -56,7 +56,7 @@ const supervisorItems = [
   { title: "Van Management", url: "/admin/vans", icon: Truck },
   { title: "Round Management", url: "/admin/rounds", icon: MapPin },
   { title: "Schedule View", url: "/admin/schedule", icon: Calendar },
-  { title: "EOD Reports", url: "/admin/reports", icon: FileText },
+  { title: "Reports", url: "/admin/reports", icon: FileText },
   { title: "SOD Reports", url: "/admin/start-of-day-reports", icon: Package },
 ];
 
