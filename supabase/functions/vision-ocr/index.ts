@@ -138,6 +138,8 @@ serve(async (req) => {
     console.log('Parsed data:', parsedData);
 
     // Update the database with parsed data
+    console.log('Updating database with parsed data:', parsedData);
+    
     const { error: updateError } = await supabase
       .from('start_of_day_reports')
       .update({
@@ -159,7 +161,13 @@ serve(async (req) => {
 
     if (updateError) {
       console.error('Failed to update report:', updateError);
-      await updateReportStatus(supabase, reportId, 'failed', { error: updateError.message });
+      console.error('Update error details:', JSON.stringify(updateError, null, 2));
+      await updateReportStatus(supabase, reportId, 'failed', { 
+        error: updateError.message,
+        code: updateError.code,
+        details: updateError.details,
+        hint: updateError.hint
+      });
       return new Response(JSON.stringify({ error: 'Failed to update report' }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
