@@ -73,13 +73,20 @@ serve(async (req) => {
       });
     }
 
-    // Call Google Vision API with image URL (more reliable than base64)
+    // Download the image and convert to base64
+    const imageBuffer = await imageResponse.arrayBuffer();
+    const base64Image = btoa(
+      new Uint8Array(imageBuffer)
+        .reduce((data, byte) => data + String.fromCharCode(byte), '')
+    );
+
+    console.log('Image downloaded and converted to base64, size:', imageBuffer.byteLength);
+
+    // Call Google Vision API with base64 image data
     const visionPayload = {
       requests: [{
         image: {
-          source: {
-            imageUri: imageUrl
-          }
+          content: base64Image
         },
         features: [{
           type: "TEXT_DETECTION",
@@ -91,7 +98,7 @@ serve(async (req) => {
       }]
     };
 
-    console.log('Calling Google Vision API with public URL...');
+    console.log('Calling Google Vision API with base64 image data...');
     
     const visionResponse = await fetch(
       `https://vision.googleapis.com/v1/images:annotate?key=${apiKey}`,
