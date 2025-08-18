@@ -85,6 +85,8 @@ const DriverTestOCR = () => {
       if (reportError) throw reportError;
 
       // Call Vision OCR function
+      console.log('Calling vision-ocr function with:', { screenshotPath: filePath, reportId: reportData.id });
+      
       const { data: ocrResult, error: ocrError } = await supabase.functions
         .invoke('vision-ocr', {
           body: {
@@ -93,14 +95,29 @@ const DriverTestOCR = () => {
           }
         });
 
-      if (ocrError) throw ocrError;
+      console.log('Vision OCR response:', { ocrResult, ocrError });
+
+      if (ocrError) {
+        console.error('OCR Error:', ocrError);
+        throw new Error(`OCR Error: ${ocrError.message || JSON.stringify(ocrError)}`);
+      }
+
+      // Wait a moment for the database to be updated
+      await new Promise(resolve => setTimeout(resolve, 2000));
 
       // Get the updated report data
-      const { data: updatedReport } = await supabase
+      const { data: updatedReport, error: fetchError } = await supabase
         .from('start_of_day_reports')
         .select('*')
         .eq('id', reportData.id)
         .single();
+
+      if (fetchError) {
+        console.error('Fetch Error:', fetchError);
+        throw new Error(`Failed to fetch updated report: ${fetchError.message}`);
+      }
+
+      console.log('Updated report data:', updatedReport);
 
       setResult({
         ocrResult,
@@ -110,7 +127,17 @@ const DriverTestOCR = () => {
       toast.success('Screenshot processed successfully!');
     } catch (error: any) {
       console.error('OCR processing error:', error);
-      toast.error(`Processing failed: ${error.message}`);
+      
+      // More detailed error handling
+      if (error.message?.includes('JWT')) {
+        toast.error('Authentication error. Please try logging out and back in.');
+      } else if (error.message?.includes('storage')) {
+        toast.error('File upload failed. Please try a smaller image.');
+      } else if (error.message?.includes('vision-ocr')) {
+        toast.error('OCR processing failed. Please check the image quality and try again.');
+      } else {
+        toast.error(`Processing failed: ${error.message || 'Unknown error'}`);
+      }
     } finally {
       setProcessing(false);
     }

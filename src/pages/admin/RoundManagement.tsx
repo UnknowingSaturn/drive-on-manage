@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Plus, MapPin, DollarSign, Settings, X, Route, Edit, Trash2 } from 'lucide-react';
@@ -24,11 +25,27 @@ const RoundManagement = () => {
   const [formData, setFormData] = useState({
     roundNumber: '',
     locations: '',
+    selectedCompanyId: '',
     parcelRate: '',
     routeRate: '',
     roadLists: ['']
   });
   const [newRoad, setNewRoad] = useState('');
+
+  // Fetch companies for location dropdown
+  const { data: companies } = useQuery({
+    queryKey: ['companies'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('companies')
+        .select('id, name, address')
+        .eq('is_active', true)
+        .order('name');
+
+      if (error) throw error;
+      return data;
+    }
+  });
 
   // Fetch rounds for the company
   const { data: rounds, isLoading } = useQuery({
@@ -101,6 +118,7 @@ const RoundManagement = () => {
       setFormData({
         roundNumber: '',
         locations: '',
+        selectedCompanyId: '',
         parcelRate: '',
         routeRate: '',
         roadLists: ['']
@@ -142,6 +160,7 @@ const RoundManagement = () => {
       setFormData({
         roundNumber: '',
         locations: '',
+        selectedCompanyId: '',
         parcelRate: '',
         routeRate: '',
         roadLists: ['']
@@ -197,9 +216,14 @@ const RoundManagement = () => {
 
   const handleEditRound = (round: any) => {
     setEditingRound(round);
+    
+    // Find the company for this round location
+    const selectedCompany = companies?.find(c => round.description?.includes(c.name) || round.description?.includes(c.address));
+    
     setFormData({
       roundNumber: round.round_number || '',
       locations: round.description || '',
+      selectedCompanyId: selectedCompany?.id || '',
       parcelRate: round.parcel_rate?.toString() || '',
       routeRate: round.rate?.toString() || '',
       roadLists: round.road_lists?.length ? round.road_lists : ['']
@@ -216,6 +240,7 @@ const RoundManagement = () => {
     setFormData({
       roundNumber: '',
       locations: '',
+      selectedCompanyId: '',
       parcelRate: '',
       routeRate: '',
       roadLists: ['']
@@ -303,7 +328,36 @@ const RoundManagement = () => {
               </div>
               
               <div>
-                <Label htmlFor="locations">Locations</Label>
+                <Label htmlFor="selectedCompanyId">Location</Label>
+                <Select 
+                  value={formData.selectedCompanyId} 
+                  onValueChange={(value) => {
+                    handleInputChange('selectedCompanyId', value);
+                    // Auto-fill location description when company is selected
+                    const selectedCompany = companies?.find(c => c.id === value);
+                    if (selectedCompany) {
+                      handleInputChange('locations', `${selectedCompany.name}${selectedCompany.address ? ` - ${selectedCompany.address}` : ''}`);
+                    }
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a location" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {companies?.map((company) => (
+                      <SelectItem key={company.id} value={company.id}>
+                        {company.name}
+                        {company.address && (
+                          <span className="text-muted-foreground"> - {company.address}</span>
+                        )}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div>
+                <Label htmlFor="locations">Location Details</Label>
                 <Textarea
                   id="locations"
                   value={formData.locations}
