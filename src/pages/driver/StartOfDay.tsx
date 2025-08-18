@@ -11,7 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { Package, Clock, CheckCircle2, Truck, MapPin, AlertTriangle, Check } from 'lucide-react';
+import { Package, Clock, CheckCircle2, Truck, MapPin, AlertTriangle, Check, Upload } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -28,7 +28,8 @@ const StartOfDay = () => {
     parcelCount: '',
     mileage: '',
     notes: '',
-    vanConfirmed: false
+    vanConfirmed: false,
+    screenshot: null as File | null
   });
 
   const [vehicleCheck, setVehicleCheck] = useState({
@@ -128,6 +129,23 @@ const StartOfDay = () => {
         throw new Error('Driver profile not found');
       }
 
+      let screenshotUrl = null;
+
+      // Upload screenshot if provided
+      if (data.screenshot) {
+        const fileExt = data.screenshot.name.split('.').pop();
+        const fileName = `${profile?.user_id}/sod-${Date.now()}.${fileExt}`;
+        
+        const { error: uploadError } = await supabase.storage
+          .from('sod-screenshots')
+          .upload(fileName, data.screenshot);
+
+        if (uploadError) {
+          throw new Error(`Failed to upload screenshot: ${uploadError.message}`);
+        }
+        screenshotUrl = fileName;
+      }
+
       const logData = {
         driver_id: driverProfile.id,
         company_id: profile.company_id,
@@ -149,6 +167,38 @@ const StartOfDay = () => {
         .single();
 
       if (error) throw error;
+
+      // If screenshot was uploaded, also create a SOD report for processing
+      if (screenshotUrl) {
+        const { data: reportData, error: reportError } = await supabase
+          .from('start_of_day_reports')
+          .insert({
+            driver_id: driverProfile.id,
+            company_id: profile.company_id,
+            name: `${profile.first_name} ${profile.last_name}`.trim(),
+            round_number: 'TBD', // Will be extracted by Vision API
+            screenshot_url: screenshotUrl,
+            processing_status: 'pending',
+            manifest_date: today
+          })
+          .select()
+          .single();
+
+        if (!reportError && reportData) {
+          // Call Vision API to process screenshot
+          try {
+            await supabase.functions.invoke('sod-vision-ocr', {
+              body: {
+                screenshotPath: screenshotUrl,
+                reportId: reportData.id
+              }
+            });
+          } catch (visionError) {
+            console.error('Vision API processing failed:', visionError);
+          }
+        }
+      }
+
       return result;
     },
     onSuccess: (data) => {
@@ -182,6 +232,33 @@ const StartOfDay = () => {
     setVehicleCheck(prev => ({ ...prev, [item]: checked }));
     if (errors.vehicleCheck) {
       setErrors(prev => ({ ...prev, vehicleCheck: '' }));
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        toast({
+          title: "Invalid File",
+          description: "Please select an image file.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        toast({
+          title: "File Too Large",
+          description: "Please select an image smaller than 5MB.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      setFormData(prev => ({ ...prev, screenshot: file }));
     }
   };
 
@@ -484,14 +561,38 @@ const StartOfDay = () => {
                       )}
                     </div>
                     
+                    {/* Optional Screenshot Upload */}
                     <div className="space-y-2">
-                      <Label htmlFor="notes">Additional Notes (Optional)</Label>
+                      <Label htmlFor="screenshot">Manifest Screenshot (Optional)</Label>
+                      <div className="flex items-center space-x-2">
+                        <Input
+                          id="screenshot"
+                          type="file"
+                          accept="image/*"
+                          onChange={handleFileChange}
+                          className="file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-sm file:bg-primary file:text-primary-foreground hover:file:bg-primary/90"
+                        />
+                        <Upload className="h-4 w-4 text-muted-foreground" />
+                      </div>
+                      {formData.screenshot && (
+                        <p className="text-sm text-success">
+                          ✓ Selected: {formData.screenshot.name}
+                        </p>
+                      )}
+                      <p className="text-xs text-muted-foreground">
+                        Upload a manifest screenshot for automatic parcel type extraction (optional).
+                      </p>
+                    </div>
+
+                    {/* Notes */}
+                    <div className="space-y-2">
+                      <Label htmlFor="notes">Notes (Optional)</Label>
                       <Textarea
                         id="notes"
+                        placeholder="Any additional notes or observations..."
                         value={formData.notes}
                         onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
-                        placeholder="Any notes or observations about your van or route..."
-                        rows={3}
+                        className="min-h-[80px]"
                       />
                     </div>
 
