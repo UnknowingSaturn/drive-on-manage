@@ -51,10 +51,24 @@ const StartOfDayReports = () => {
       if (companyIds.length === 0) return [];
       
       const { data, error } = await supabase
-        .rpc('get_drivers_with_profiles', { company_ids: companyIds });
+        .from('driver_profiles')
+        .select(`
+          id,
+          profiles!inner(
+            first_name,
+            last_name,
+            email
+          )
+        `)
+        .in('company_id', companyIds);
 
       if (error) throw error;
-      return data;
+      return data?.map(driver => ({
+        id: driver.id,
+        first_name: driver.profiles.first_name,
+        last_name: driver.profiles.last_name,
+        email: driver.profiles.email
+      })) || [];
     },
     enabled: companyIds.length > 0
   });
