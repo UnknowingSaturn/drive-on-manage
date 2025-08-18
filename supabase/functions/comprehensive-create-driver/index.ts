@@ -78,7 +78,7 @@ const handler = async (req: Request): Promise<Response> => {
           .insert({
             user_id: existingProfile.user_id,
             company_id: companyId,
-            role: 'member'
+            role: 'driver'
           });
 
         if (userCompanyError && userCompanyError.code !== '23505') {
@@ -202,7 +202,7 @@ const handler = async (req: Request): Promise<Response> => {
       .insert({
         user_id: userId,
         company_id: companyId,
-        role: 'member'
+        role: 'driver'
       });
 
     if (userCompanyError) {
