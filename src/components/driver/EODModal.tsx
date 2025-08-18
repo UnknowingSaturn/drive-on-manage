@@ -23,10 +23,6 @@ interface EODModalProps {
 interface EndOfDayFormData {
   did_support: boolean;
   support_parcels: number;
-  successful_deliveries: number;
-  successful_collections: number;
-  round_start_time: Date | null;
-  round_end_time: Date | null;
   app_screenshot: File | null;
 }
 
@@ -37,12 +33,10 @@ const EODModal: React.FC<EODModalProps> = ({ open, onOpenChange }) => {
   const [formData, setFormData] = useState<EndOfDayFormData>({
     did_support: false,
     support_parcels: 0,
-    successful_deliveries: 0,
-    successful_collections: 0,
-    round_start_time: null,
-    round_end_time: null,
     app_screenshot: null,
   });
+
+  const [processing, setProcessing] = useState(false);
 
   const [isSubmitted, setIsSubmitted] = useState(false);
 
@@ -99,26 +93,26 @@ const EODModal: React.FC<EODModalProps> = ({ open, onOpenChange }) => {
         throw new Error('Driver profile not found');
       }
 
-      let screenshotUrl = null;
-
-      // Upload screenshot if provided
-      if (data.app_screenshot) {
-        const fileExt = data.app_screenshot.name.split('.').pop();
-        const fileName = `${profile?.user_id}/eod-${Date.now()}.${fileExt}`;
-        
-        const { error: uploadError } = await supabase.storage
-          .from('eod-screenshots')
-          .upload(fileName, data.app_screenshot);
-
-        if (uploadError) {
-          throw new Error(`Failed to upload screenshot: ${uploadError.message}`);
-        }
-
-        screenshotUrl = fileName;
+      if (!data.app_screenshot) {
+        throw new Error('Screenshot is required for processing');
       }
 
-      // Insert EOD report with auto-filled data
-      const { error } = await supabase
+      setProcessing(true);
+
+      // Upload screenshot
+      const fileExt = data.app_screenshot.name.split('.').pop();
+      const fileName = `${profile?.user_id}/eod-${Date.now()}.${fileExt}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from('eod-screenshots')
+        .upload(fileName, data.app_screenshot);
+
+      if (uploadError) {
+        throw new Error(`Failed to upload screenshot: ${uploadError.message}`);
+      }
+
+      // Insert EOD report with auto-filled data and processing status
+      const { data: reportData, error: insertError } = await supabase
         .from('end_of_day_reports')
         .insert({
           driver_id: driverInfo.driverProfile.id,
@@ -129,23 +123,41 @@ const EODModal: React.FC<EODModalProps> = ({ open, onOpenChange }) => {
           round_4_number: driverInfo.roundNumbers[3] || null,
           did_support: data.did_support,
           support_parcels: data.support_parcels,
-          successful_deliveries: data.successful_deliveries,
-          successful_collections: data.successful_collections,
+          successful_deliveries: 0, // Will be updated by Vision API
+          successful_collections: 0, // Will be updated by Vision API
           has_company_van: driverInfo.hasCompanyVan,
           van_registration: driverInfo.assignedVan?.registration || null,
-          round_start_time: data.round_start_time?.toISOString(),
-          round_end_time: data.round_end_time?.toISOString(),
-          app_screenshot: screenshotUrl,
+          app_screenshot: fileName,
+          processing_status: 'pending'
+        })
+        .select()
+        .single();
+
+      if (insertError) {
+        throw insertError;
+      }
+
+      // Call Vision API to process screenshot
+      try {
+        const { error: visionError } = await supabase.functions.invoke('eod-vision-ocr', {
+          body: {
+            screenshotPath: fileName,
+            reportId: reportData.id
+          }
         });
 
-      if (error) {
-        throw error;
+        if (visionError) {
+          console.error('Vision API processing failed:', visionError);
+        }
+      } catch (visionApiError) {
+        console.error('Vision API call failed:', visionApiError);
       }
     },
     onSuccess: () => {
+      setProcessing(false);
       toast({
         title: "End of Day Report Submitted",
-        description: "Your EOD report has been submitted successfully.",
+        description: "Your EOD report has been submitted and screenshot is being processed.",
       });
       setIsSubmitted(true);
       queryClient.invalidateQueries({ queryKey: ['eod-reports'] });
@@ -159,15 +171,12 @@ const EODModal: React.FC<EODModalProps> = ({ open, onOpenChange }) => {
         setFormData({
           did_support: false,
           support_parcels: 0,
-          successful_deliveries: 0,
-          successful_collections: 0,
-          round_start_time: null,
-          round_end_time: null,
           app_screenshot: null,
         });
       }, 2000);
     },
     onError: (error: any) => {
+      setProcessing(false);
       toast({
         title: "Submission Failed",
         description: error.message,
@@ -180,10 +189,10 @@ const EODModal: React.FC<EODModalProps> = ({ open, onOpenChange }) => {
     e.preventDefault();
     
     // Validation
-    if (formData.successful_deliveries < 0 || formData.successful_collections < 0) {
+    if (!formData.app_screenshot) {
       toast({
         title: "Validation Error",
-        description: "Deliveries and collections cannot be negative.",
+        description: "Please upload a screenshot of your delivery app.",
         variant: "destructive",
       });
       return;
@@ -320,94 +329,22 @@ const EODModal: React.FC<EODModalProps> = ({ open, onOpenChange }) => {
               )}
             </div>
 
-            {/* Deliveries and Collections */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="deliveries">Successful Deliveries *</Label>
-                <Input
-                  id="deliveries"
-                  type="number"
-                  min="0"
-                  value={formData.successful_deliveries}
-                  onChange={(e) => setFormData(prev => ({ ...prev, successful_deliveries: parseInt(e.target.value) || 0 }))}
-                  placeholder="Number of deliveries"
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="collections">Successful Collections *</Label>
-                <Input
-                  id="collections"
-                  type="number"
-                  min="0"
-                  value={formData.successful_collections}
-                  onChange={(e) => setFormData(prev => ({ ...prev, successful_collections: parseInt(e.target.value) || 0 }))}
-                  placeholder="Number of collections"
-                  required
-                />
-              </div>
-            </div>
-
-            {/* Round Timings */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Round Start Time</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className={cn(
-                        "w-full justify-start text-left font-normal",
-                        !formData.round_start_time && "text-muted-foreground"
-                      )}
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {formData.round_start_time ? format(formData.round_start_time, "PPP p") : "Pick start time"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={formData.round_start_time || undefined}
-                      onSelect={(date) => setFormData(prev => ({ ...prev, round_start_time: date || null }))}
-                      initialFocus
-                      className={cn("p-3 pointer-events-auto")}
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Round End Time</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className={cn(
-                        "w-full justify-start text-left font-normal",
-                        !formData.round_end_time && "text-muted-foreground"
-                      )}
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {formData.round_end_time ? format(formData.round_end_time, "PPP p") : "Pick end time"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={formData.round_end_time || undefined}
-                      onSelect={(date) => setFormData(prev => ({ ...prev, round_end_time: date || null }))}
-                      initialFocus
-                      className={cn("p-3 pointer-events-auto")}
-                    />
-                  </PopoverContent>
-                </Popover>
+            {/* Processing Notice */}
+            <div className="bg-blue-50 dark:bg-blue-950 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
+              <div className="flex items-start space-x-3">
+                <Upload className="h-5 w-5 text-blue-600 mt-0.5" />
+                <div>
+                  <h4 className="font-medium text-blue-900 dark:text-blue-100">Automatic Processing</h4>
+                  <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
+                    Upload a screenshot of your delivery app. Our system will automatically extract successful deliveries and collections from the image.
+                  </p>
+                </div>
               </div>
             </div>
 
             {/* Screenshot Upload */}
             <div className="space-y-2">
-              <Label htmlFor="screenshot">App Screenshot</Label>
+              <Label htmlFor="screenshot">App Screenshot *</Label>
               <div className="flex items-center space-x-2">
                 <Input
                   id="screenshot"
@@ -415,24 +352,17 @@ const EODModal: React.FC<EODModalProps> = ({ open, onOpenChange }) => {
                   accept="image/*"
                   onChange={handleFileChange}
                   className="file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-sm file:bg-primary file:text-primary-foreground hover:file:bg-primary/90"
+                  required
                 />
                 <Upload className="h-4 w-4 text-muted-foreground" />
               </div>
               {formData.app_screenshot && (
-                <p className="text-sm text-muted-foreground">
-                  Selected: {formData.app_screenshot.name}
+                <p className="text-sm text-success">
+                  ✓ Selected: {formData.app_screenshot.name}
                 </p>
               )}
-            </div>
-
-            {/* Total Parcels Display */}
-            <div className="bg-muted p-4 rounded-lg">
-              <Label className="text-sm font-medium">Total Parcels (Calculated)</Label>
-              <p className="text-2xl font-bold">
-                {formData.successful_deliveries + formData.successful_collections + formData.support_parcels}
-              </p>
               <p className="text-xs text-muted-foreground">
-                Deliveries ({formData.successful_deliveries}) + Collections ({formData.successful_collections}) + Support ({formData.support_parcels})
+                Please upload a clear screenshot showing successful deliveries and collections from your delivery app.
               </p>
             </div>
 
@@ -449,12 +379,12 @@ const EODModal: React.FC<EODModalProps> = ({ open, onOpenChange }) => {
               <Button 
                 type="submit" 
                 className="flex-1"
-                disabled={submitEODMutation.isPending}
+                disabled={submitEODMutation.isPending || processing}
               >
-                {submitEODMutation.isPending ? (
+                {submitEODMutation.isPending || processing ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Submitting...
+                    {processing ? 'Processing...' : 'Submitting...'}
                   </>
                 ) : (
                   'Submit Report'

@@ -675,12 +675,11 @@ export type Database = {
           has_company_van: boolean
           id: string
           name: string
+          processing_status: string | null
           round_1_number: string | null
           round_2_number: string | null
           round_3_number: string | null
           round_4_number: string | null
-          round_end_time: string | null
-          round_start_time: string | null
           submitted_at: string
           successful_collections: number
           successful_deliveries: number
@@ -688,6 +687,7 @@ export type Database = {
           total_parcels: number | null
           updated_at: string
           van_registration: string | null
+          vision_api_response: Json | null
         }
         Insert: {
           app_screenshot?: string | null
@@ -697,12 +697,11 @@ export type Database = {
           has_company_van?: boolean
           id?: string
           name: string
+          processing_status?: string | null
           round_1_number?: string | null
           round_2_number?: string | null
           round_3_number?: string | null
           round_4_number?: string | null
-          round_end_time?: string | null
-          round_start_time?: string | null
           submitted_at?: string
           successful_collections?: number
           successful_deliveries?: number
@@ -710,6 +709,7 @@ export type Database = {
           total_parcels?: number | null
           updated_at?: string
           van_registration?: string | null
+          vision_api_response?: Json | null
         }
         Update: {
           app_screenshot?: string | null
@@ -719,12 +719,11 @@ export type Database = {
           has_company_van?: boolean
           id?: string
           name?: string
+          processing_status?: string | null
           round_1_number?: string | null
           round_2_number?: string | null
           round_3_number?: string | null
           round_4_number?: string | null
-          round_end_time?: string | null
-          round_start_time?: string | null
           submitted_at?: string
           successful_collections?: number
           successful_deliveries?: number
@@ -732,6 +731,7 @@ export type Database = {
           total_parcels?: number | null
           updated_at?: string
           van_registration?: string | null
+          vision_api_response?: Json | null
         }
         Relationships: [
           {
