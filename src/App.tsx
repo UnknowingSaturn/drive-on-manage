@@ -25,7 +25,6 @@ import DriverEngagement from "./pages/admin/DriverEngagement";
 
 
 import AdminSettings from "./pages/admin/Settings";
-import AdminReports from "./pages/admin/Reports";
 import ResetPassword from "./pages/ResetPassword";
 import ResetPasswordNew from "./pages/ResetPasswordNew";
 
@@ -121,7 +120,7 @@ const App = () => (
             <Route path="/admin/reports" element={
               <ProtectedRoute>
                 <AdminRoute>
-                  <AdminReports />
+                  <EODReports />
                 </AdminRoute>
               </ProtectedRoute>
             } />
