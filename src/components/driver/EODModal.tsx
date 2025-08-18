@@ -37,8 +37,41 @@ const EODModal: React.FC<EODModalProps> = ({ open, onOpenChange }) => {
   });
 
   const [processing, setProcessing] = useState(false);
-
   const [isSubmitted, setIsSubmitted] = useState(false);
+
+  // Get driver profile
+  const { data: driverProfile } = useQuery({
+    queryKey: ['driver-profile', profile?.user_id],
+    queryFn: async () => {
+      if (!profile?.user_id) return null;
+      const { data } = await supabase
+        .from('driver_profiles')
+        .select('*')
+        .eq('user_id', profile.user_id)
+        .single();
+      return data;
+    },
+    enabled: !!profile?.user_id
+  });
+
+  const today = new Date().toISOString().split('T')[0];
+
+  // Get previous submissions for today
+  const { data: todaySubmissions } = useQuery({
+    queryKey: ['today-eod-submissions', driverProfile?.id, today],
+    queryFn: async () => {
+      if (!driverProfile?.id) return [];
+      const { data } = await supabase
+        .from('end_of_day_reports')
+        .select('*')
+        .eq('driver_id', driverProfile.id)
+        .gte('submitted_at', `${today}T00:00:00.000Z`)
+        .lte('submitted_at', `${today}T23:59:59.999Z`)
+        .order('submitted_at', { ascending: false });
+      return data || [];
+    },
+    enabled: !!driverProfile?.id
+  });
 
   // Fetch driver profile with assigned van and schedule info
   const { data: driverInfo, isLoading: loadingDriverInfo } = useQuery({
@@ -162,17 +195,18 @@ const EODModal: React.FC<EODModalProps> = ({ open, onOpenChange }) => {
       setIsSubmitted(true);
       queryClient.invalidateQueries({ queryKey: ['eod-reports'] });
       queryClient.invalidateQueries({ queryKey: ['today-eod-report'] });
+      queryClient.invalidateQueries({ queryKey: ['today-eod-submissions'] });
+      
+      // Reset form for next submission
+      setFormData({
+        did_support: false,
+        support_parcels: 0,
+        app_screenshot: null,
+      });
       
       // Close modal after a brief delay
       setTimeout(() => {
-        onOpenChange(false);
         setIsSubmitted(false);
-        // Reset form
-        setFormData({
-          did_support: false,
-          support_parcels: 0,
-          app_screenshot: null,
-        });
       }, 2000);
     },
     onError: (error: any) => {
@@ -262,6 +296,41 @@ const EODModal: React.FC<EODModalProps> = ({ open, onOpenChange }) => {
             Complete your daily delivery report with performance metrics.
           </DialogDescription>
         </DialogHeader>
+
+        {/* Previous Submissions */}
+        {todaySubmissions && todaySubmissions.length > 0 && (
+          <div className="mb-6">
+            <h3 className="text-sm font-medium mb-3">Previous Submissions Today</h3>
+            <div className="space-y-2">
+              {todaySubmissions.map((submission, index) => (
+                <div key={submission.id} className="p-3 bg-muted rounded-lg">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="text-sm font-medium">
+                        Submission #{todaySubmissions.length - index}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {format(new Date(submission.submitted_at), 'HH:mm:ss')}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div>
+                          <span className="text-muted-foreground">Deliveries:</span>
+                          <div className="font-medium">{submission.successful_deliveries || 0}</div>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Collections:</span>
+                          <div className="font-medium">{submission.successful_collections || 0}</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {loadingDriverInfo ? (
           <div className="flex items-center justify-center py-8">

@@ -361,6 +361,25 @@ const StartOfDay = () => {
                 </CardHeader>
                 <CardContent>
                   <form onSubmit={handleSubmit} className="space-y-6">
+                    {/* Processing Hint */}
+                    <div className="p-4 bg-gradient-to-r from-primary/10 to-primary/5 border border-primary/20 rounded-lg">
+                      <div className="flex items-start space-x-3">
+                        <div className="flex-shrink-0">
+                          <div className="w-8 h-8 bg-primary/20 rounded-full flex items-center justify-center">
+                            <Package className="w-4 h-4 text-primary" />
+                          </div>
+                        </div>
+                        <div className="flex-grow">
+                          <h3 className="text-sm font-medium text-foreground mb-1">
+                            Enhanced Data Processing
+                          </h3>
+                          <p className="text-xs text-muted-foreground leading-relaxed">
+                            Take a screenshot of your parcel manifest after completing your start of day. Our system will automatically process and extract parcel count information using advanced OCR technology.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
                     {/* Basic Information */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-2">

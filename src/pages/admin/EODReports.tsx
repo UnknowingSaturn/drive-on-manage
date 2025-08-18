@@ -92,14 +92,13 @@ const EODReports = () => {
         .from('end_of_day_reports')
         .select(`
           *,
-          driver_profiles!inner(
+          driver_profiles!driver_id(
             id,
             user_id,
             company_id,
-            profiles!inner(first_name, last_name)
+            profiles!user_id(first_name, last_name)
           )
         `)
-        .in('driver_profiles.company_id', companyIds)
         .gte('submitted_at', dayStart.toISOString())
         .lte('submitted_at', dayEnd.toISOString())
         .order('submitted_at', { ascending: false });
@@ -111,8 +110,18 @@ const EODReports = () => {
 
       const { data, error } = await query;
 
-      if (error) throw error;
-      return data as EODReport[];
+      if (error) {
+        console.error('EOD Reports query error:', error);
+        throw error;
+      }
+      
+      // Filter by company after fetch since we need the join
+      const filteredData = data?.filter(report => 
+        report.driver_profiles?.company_id && 
+        companyIds.includes(report.driver_profiles.company_id)
+      ) || [];
+
+      return filteredData as EODReport[];
     },
     enabled: companyIds.length > 0,
   });
