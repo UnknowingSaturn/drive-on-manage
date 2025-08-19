@@ -120,7 +120,7 @@ const AdminDashboard = () => {
         
         const reports = await response.json();
 
-        if (!reports || reports.length === 0) {
+        if (!Array.isArray(reports) || reports.length === 0) {
           return {
             today: 0,
             pending: 0,

@@ -140,11 +140,8 @@ export function LiveTrackingMap() {
       // Get latest location for each active driver
       const { data, error } = await supabase
         .from('location_points')
-        .select(`
-          *
-        `)
+        .select('*')
         .eq('company_id', profile.company_id)
-        .eq('driver_shifts.status', 'active')
         .gte('timestamp', new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString()) // Last 4 hours
         .order('timestamp', { ascending: false });
 
