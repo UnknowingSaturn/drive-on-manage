@@ -22,6 +22,20 @@ const PARCEL_TYPES = [
   { id: 'return', name: 'Returns' }
 ];
 
+interface CompanyRevenueRecord {
+  id: string;
+  company_id: string;
+  parcel_type: string;
+  description?: string;
+  rate_per_parcel: number;
+  quantity: number;
+  total_amount: number;
+  date: string;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export const CompanyRevenue = () => {
   const { profile } = useAuth();
   const { toast } = useToast();
@@ -39,29 +53,22 @@ export const CompanyRevenue = () => {
     date: format(new Date(), 'yyyy-MM-dd')
   });
 
-  // Use existing operating_costs table for company revenue tracking
+  // Use the new company_revenue table 
   const { data: revenues = [], isLoading } = useQuery({
     queryKey: ['company-revenue', profile?.company_id, selectedPeriod],
-    queryFn: async () => {
+    queryFn: async (): Promise<CompanyRevenueRecord[]> => {
       if (!profile?.company_id) return [];
       
-      const { data, error } = await supabase
-        .from('operating_costs')
+      const { data, error }: { data: any; error: any } = await supabase
+        .from('company_revenue' as any)
         .select('*')
         .eq('company_id', profile.company_id)
-        .eq('category', 'revenue')
         .gte('date', selectedPeriod.start)
         .lte('date', selectedPeriod.end)
         .order('date', { ascending: false });
 
       if (error) throw error;
-      return data?.map(item => ({
-        ...item,
-        parcel_type: item.description?.split(' - ')[0] || 'standard',
-        rate_per_parcel: item.amount,
-        quantity: 1,
-        total_amount: item.amount
-      })) || [];
+      return data || [];
     },
     enabled: !!profile?.company_id
   });
@@ -74,7 +81,7 @@ export const CompanyRevenue = () => {
       const totalAmount = parseFloat(revenueData.rate_per_parcel) * parseInt(revenueData.quantity);
       
       const { data, error } = await supabase
-        .from('company_revenue')
+        .from('company_revenue' as any)
         .insert({
           company_id: profile.company_id,
           created_by: profile.user_id,

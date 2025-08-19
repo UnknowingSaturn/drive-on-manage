@@ -6,6 +6,7 @@ import { AppSidebar } from '@/components/AppSidebar';
 import { InvoiceManagement } from '@/components/finance/InvoiceManagement';
 import { OperatingCosts } from '@/components/finance/OperatingCosts';
 import { ProfitLoss } from '@/components/finance/ProfitLoss';
+import { CompanyRevenue } from '@/components/finance/CompanyRevenue';
 
 const Finance = () => {
   const { profile } = useAuth();
@@ -54,6 +55,10 @@ const Finance = () => {
                   <span className="mobile-hidden">Driver Invoicing</span>
                   <span className="mobile-only">Invoicing</span>
                 </TabsTrigger>
+                <TabsTrigger value="revenue" className="mobile-button-sm">
+                  <span className="mobile-hidden">Company Revenue</span>
+                  <span className="mobile-only">Revenue</span>
+                </TabsTrigger>
                 <TabsTrigger value="costs" className="mobile-button-sm">
                   <span className="mobile-hidden">Operating Costs</span>
                   <span className="mobile-only">Costs</span>
@@ -66,6 +71,10 @@ const Finance = () => {
               
               <TabsContent value="invoicing">
                 <InvoiceManagement />
+              </TabsContent>
+              
+              <TabsContent value="revenue">
+                <CompanyRevenue />
               </TabsContent>
               
               <TabsContent value="costs">

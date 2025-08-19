@@ -107,6 +107,48 @@ export type Database = {
         }
         Relationships: []
       }
+      company_revenue: {
+        Row: {
+          company_id: string
+          created_at: string
+          created_by: string
+          date: string
+          description: string | null
+          id: string
+          parcel_type: string
+          quantity: number
+          rate_per_parcel: number
+          total_amount: number
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          created_by: string
+          date?: string
+          description?: string | null
+          id?: string
+          parcel_type: string
+          quantity?: number
+          rate_per_parcel?: number
+          total_amount?: number
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          created_by?: string
+          date?: string
+          description?: string | null
+          id?: string
+          parcel_type?: string
+          quantity?: number
+          rate_per_parcel?: number
+          total_amount?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       company_settings: {
         Row: {
           allow_late_submissions: boolean | null

@@ -1,20 +1,22 @@
 import React, { useState, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
+import { AppSidebar } from '@/components/AppSidebar';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { CalendarIcon, Download, Eye, FileText, ChevronLeft, ChevronRight } from 'lucide-react';
-import { format, startOfDay, endOfDay, addDays, subDays } from 'date-fns';
-import { cn } from '@/lib/utils';
-import { toast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
-import { SidebarProvider, SidebarTrigger, SidebarInset } from '@/components/ui/sidebar';
-import { AppSidebar } from '@/components/AppSidebar';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Calendar, Download, FileText, Search, ChevronLeft, ChevronRight, Eye } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+import { useQuery } from '@tanstack/react-query';
+import { format, addDays, subDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth, addWeeks, subWeeks, addMonths, subMonths } from 'date-fns';
+import { Label } from '@/components/ui/label';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
 
 interface EODReport {
   id: string;
@@ -31,22 +33,30 @@ interface EODReport {
   successful_collections: number;
   has_company_van: boolean;
   van_registration?: string;
-  total_parcels: number;
-  round_start_time?: string;
-  round_end_time?: string;
+  total_parcels?: number;
+  processing_status?: string;
   app_screenshot?: string;
-  created_at: string;
-  updated_at: string;
+  vision_api_response?: any;
+  driver_profiles: {
+    id: string;
+    profiles: {
+      first_name: string;
+      last_name: string;
+      email: string;
+    };
+  };
 }
+
+type ViewType = 'daily' | 'weekly' | 'monthly';
 
 const EODReports = () => {
   const { profile } = useAuth();
+  const { toast } = useToast();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDriver, setSelectedDriver] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
-  
-  const dayStart = startOfDay(currentDate);
-  const dayEnd = endOfDay(currentDate);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [viewType, setViewType] = useState<ViewType>('daily');
 
   // Fetch user companies
   const { data: userCompanies } = useQuery({
@@ -82,151 +92,200 @@ const EODReports = () => {
     enabled: companyIds.length > 0,
   });
 
-  // Fetch EOD reports
-  const { data: reports, isLoading, error } = useQuery({
-    queryKey: ['eod-reports', companyIds, selectedDriver, dayStart.toISOString()],
-    queryFn: async () => {
-      if (companyIds.length === 0) return [];
+  // Calculate date range based on view type
+  const getDateRange = () => {
+    switch (viewType) {
+      case 'weekly':
+        return {
+          start: format(startOfWeek(currentDate, { weekStartsOn: 1 }), 'yyyy-MM-dd'),
+          end: format(endOfWeek(currentDate, { weekStartsOn: 1 }), 'yyyy-MM-dd')
+        };
+      case 'monthly':
+        return {
+          start: format(startOfMonth(currentDate), 'yyyy-MM-dd'),
+          end: format(endOfMonth(currentDate), 'yyyy-MM-dd')
+        };
+      default:
+        const dateStr = format(currentDate, 'yyyy-MM-dd');
+        return { start: dateStr, end: dateStr };
+    }
+  };
 
+  const dateRange = getDateRange();
+
+  // Fetch EOD reports for the current date range
+  const { data: reports = [], isLoading } = useQuery({
+    queryKey: ['eod-reports', profile?.company_id, dateRange.start, dateRange.end, selectedDriver, viewType],
+    queryFn: async () => {
+      if (!profile?.company_id) return [];
+      
       let query = supabase
         .from('end_of_day_reports')
         .select(`
           *,
-          driver_profiles!driver_id(
-            id,
-            user_id,
-            company_id,
-            profiles!user_id(first_name, last_name)
+          driver_profiles!inner(
+            *,
+            profiles!inner(first_name, last_name, email)
           )
         `)
-        .gte('submitted_at', dayStart.toISOString())
-        .lte('submitted_at', dayEnd.toISOString())
-        .order('submitted_at', { ascending: false });
+        .eq('driver_profiles.company_id', profile.company_id);
 
-      // Filter by specific driver
-      if (selectedDriver && selectedDriver !== 'all') {
+      if (viewType === 'daily') {
+        query = query
+          .gte('submitted_at', `${dateRange.start}T00:00:00`)
+          .lt('submitted_at', `${dateRange.start}T23:59:59`);
+      } else {
+        query = query
+          .gte('submitted_at', `${dateRange.start}T00:00:00`)
+          .lte('submitted_at', `${dateRange.end}T23:59:59`);
+      }
+
+      query = query.order('submitted_at', { ascending: false });
+
+      if (selectedDriver !== 'all') {
         query = query.eq('driver_id', selectedDriver);
       }
 
       const { data, error } = await query;
-
-      if (error) {
-        console.error('EOD Reports query error:', error);
-        throw error;
-      }
-      
-      // Filter by company after fetch since we need the join
-      const filteredData = data?.filter(report => 
-        report.driver_profiles?.company_id && 
-        companyIds.includes(report.driver_profiles.company_id)
-      ) || [];
-
-      return filteredData as EODReport[];
+      if (error) throw error;
+      return data || [];
     },
-    enabled: companyIds.length > 0,
+    enabled: !!profile?.company_id
   });
 
-  // Filter reports by search term
+  // Filter reports based on search term
   const filteredReports = useMemo(() => {
-    if (!reports) return [];
+    if (!searchTerm) return reports;
     
-    if (!searchTerm.trim()) return reports;
-    
-    return reports.filter(report => 
-      report.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      report.van_registration?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      [report.round_1_number, report.round_2_number, report.round_3_number, report.round_4_number]
-        .filter(Boolean)
-        .some(round => round?.toLowerCase().includes(searchTerm.toLowerCase()))
-    );
+    return reports.filter((report) => {
+      const driverName = `${report.driver_profiles.profiles.first_name} ${report.driver_profiles.profiles.last_name}`.toLowerCase();
+      const driverEmail = report.driver_profiles.profiles.email.toLowerCase();
+      const vanReg = report.van_registration?.toLowerCase() || '';
+      const search = searchTerm.toLowerCase();
+      
+      return driverName.includes(search) || 
+             driverEmail.includes(search) || 
+             vanReg.includes(search) ||
+             report.round_1_number?.toLowerCase().includes(search) ||
+             report.round_2_number?.toLowerCase().includes(search) ||
+             report.round_3_number?.toLowerCase().includes(search) ||
+             report.round_4_number?.toLowerCase().includes(search);
+    });
   }, [reports, searchTerm]);
 
-  const handleExportCSV = () => {
-    if (!filteredReports || filteredReports.length === 0) {
-      toast({
-        title: "No Data",
-        description: "No reports available to export.",
-        variant: "destructive",
-      });
-      return;
+  const navigateDate = (direction: 'prev' | 'next') => {
+    if (direction === 'prev') {
+      switch (viewType) {
+        case 'weekly':
+          setCurrentDate(prev => subWeeks(prev, 1));
+          break;
+        case 'monthly':
+          setCurrentDate(prev => subMonths(prev, 1));
+          break;
+        default:
+          setCurrentDate(prev => subDays(prev, 1));
+      }
+    } else {
+      switch (viewType) {
+        case 'weekly':
+          setCurrentDate(prev => addWeeks(prev, 1));
+          break;
+        case 'monthly':
+          setCurrentDate(prev => addMonths(prev, 1));
+          break;
+        default:
+          setCurrentDate(prev => addDays(prev, 1));
+      }
     }
-
-    const headers = [
-      'Driver Name',
-      'Submitted At',
-      'Round 1',
-      'Round 2', 
-      'Round 3',
-      'Round 4',
-      'Support Work',
-      'Support Parcels',
-      'Successful Deliveries',
-      'Successful Collections',
-      'Total Parcels',
-      'Company Van',
-      'Van Registration',
-      'Round Start Time',
-      'Round End Time',
-      'Screenshot'
-    ];
-
-    const csvContent = [
-      headers.join(','),
-      ...filteredReports.map(report => [
-        `"${report.name}"`,
-        `"${format(new Date(report.submitted_at), 'yyyy-MM-dd HH:mm:ss')}"`,
-        `"${report.round_1_number || ''}"`,
-        `"${report.round_2_number || ''}"`,
-        `"${report.round_3_number || ''}"`,
-        `"${report.round_4_number || ''}"`,
-        report.did_support ? 'Yes' : 'No',
-        report.support_parcels,
-        report.successful_deliveries,
-        report.successful_collections,
-        report.total_parcels,
-        report.has_company_van ? 'Yes' : 'No',
-        `"${report.van_registration || ''}"`,
-        report.round_start_time ? `"${format(new Date(report.round_start_time), 'yyyy-MM-dd HH:mm:ss')}"` : '',
-        report.round_end_time ? `"${format(new Date(report.round_end_time), 'yyyy-MM-dd HH:mm:ss')}"` : '',
-        report.app_screenshot ? 'Yes' : 'No'
-      ].join(','))
-    ].join('\n');
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', `eod-reports-${format(new Date(), 'yyyy-MM-dd')}.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-
-    toast({
-      title: "Export Successful",
-      description: "EOD reports have been exported to CSV.",
-    });
   };
 
-  const navigateDay = (direction: 'prev' | 'next') => {
-    setCurrentDate(prev => direction === 'prev' ? subDays(prev, 1) : addDays(prev, 1));
+  const handleExportCSV = () => {
+    const csvData = filteredReports.map(report => ({
+      'Date': format(new Date(report.submitted_at), 'dd/MM/yyyy HH:mm'),
+      'Driver': `${report.driver_profiles.profiles.first_name} ${report.driver_profiles.profiles.last_name}`,
+      'Email': report.driver_profiles.profiles.email,
+      'Van Registration': report.van_registration || 'N/A',
+      'Total Parcels': report.total_parcels || 0,
+      'Successful Deliveries': report.successful_deliveries,
+      'Successful Collections': report.successful_collections,
+      'Did Support': report.did_support ? 'Yes' : 'No',
+      'Support Parcels': report.support_parcels,
+      'Has Company Van': report.has_company_van ? 'Yes' : 'No',
+      'Processing Status': report.processing_status,
+      'Round 1': report.round_1_number || '',
+      'Round 2': report.round_2_number || '',
+      'Round 3': report.round_3_number || '',
+      'Round 4': report.round_4_number || ''
+    }));
+
+    const csv = [
+      Object.keys(csvData[0] || {}).join(','),
+      ...csvData.map(row => Object.values(row).join(','))
+    ].join('\n');
+
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `eod-reports-${viewType}-${format(currentDate, 'yyyy-MM-dd')}.csv`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+  };
+
+  const handleExportPDF = () => {
+    const doc = new jsPDF();
+    
+    // Title
+    const title = `EOD Reports - ${viewType.charAt(0).toUpperCase() + viewType.slice(1)} View`;
+    doc.setFontSize(16);
+    doc.text(title, 14, 20);
+    
+    // Date range
+    const dateText = viewType === 'daily' 
+      ? format(currentDate, 'dd/MM/yyyy')
+      : `${format(new Date(dateRange.start), 'dd/MM/yyyy')} - ${format(new Date(dateRange.end), 'dd/MM/yyyy')}`;
+    doc.setFontSize(12);
+    doc.text(`Period: ${dateText}`, 14, 30);
+    
+    // Table data
+    const tableData = filteredReports.map(report => [
+      format(new Date(report.submitted_at), 'dd/MM/yyyy HH:mm'),
+      `${report.driver_profiles.profiles.first_name} ${report.driver_profiles.profiles.last_name}`,
+      report.van_registration || 'N/A',
+      report.total_parcels?.toString() || '0',
+      report.successful_deliveries.toString(),
+      report.successful_collections.toString(),
+      report.did_support ? 'Yes' : 'No',
+      report.support_parcels.toString(),
+      report.processing_status
+    ]);
+
+    (doc as any).autoTable({
+      head: [['Date', 'Driver', 'Van Reg', 'Total', 'Deliveries', 'Collections', 'Support', 'Support #', 'Status']],
+      body: tableData,
+      startY: 40,
+      styles: { fontSize: 8 },
+      headStyles: { fillColor: [59, 130, 246] }
+    });
+    
+    doc.save(`eod-reports-${viewType}-${format(currentDate, 'yyyy-MM-dd')}.pdf`);
   };
 
   const viewScreenshot = async (screenshotPath: string) => {
     try {
-      const { data } = await supabase.storage
+      const { data, error } = await supabase.storage
         .from('eod-screenshots')
-        .createSignedUrl(screenshotPath, 3600); // 1 hour expiry
+        .createSignedUrl(screenshotPath, 3600);
 
+      if (error) throw error;
+      
       if (data?.signedUrl) {
-        window.open(data.signedUrl, '_blank');
-      } else {
-        throw new Error('Failed to generate signed URL');
+        setImagePreview(data.signedUrl);
       }
     } catch (error: any) {
       toast({
-        title: "Error",
-        description: "Failed to load screenshot.",
+        title: "Error loading screenshot",
+        description: error.message,
         variant: "destructive",
       });
     }
@@ -235,244 +294,228 @@ const EODReports = () => {
   if (isLoading) {
     return (
       <SidebarProvider>
-        <AppSidebar />
-        <SidebarInset>
-          <div className="container mx-auto py-8">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-              <p>Loading EOD reports...</p>
+        <div className="min-h-screen flex w-full bg-background">
+          <AppSidebar />
+          <SidebarInset className="flex-1">
+            <div className="flex items-center justify-center h-full">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+                <p>Loading EOD reports...</p>
+              </div>
             </div>
-          </div>
-        </SidebarInset>
-      </SidebarProvider>
-    );
-  }
-
-  if (error) {
-    return (
-      <SidebarProvider>
-        <AppSidebar />
-        <SidebarInset>
-          <div className="container mx-auto py-8">
-            <Card>
-              <CardContent className="pt-6">
-                <p className="text-center text-destructive">
-                  Error loading EOD reports: {(error as Error).message}
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-        </SidebarInset>
+          </SidebarInset>
+        </div>
       </SidebarProvider>
     );
   }
 
   return (
     <SidebarProvider>
-      <AppSidebar />
-      <SidebarInset>
-        <div className="flex h-16 items-center justify-between px-4 border-b">
-          <div className="flex items-center gap-2">
-            <SidebarTrigger />
-            <div>
-              <h1 className="text-2xl font-semibold">End of Day Reports</h1>
-              <p className="text-sm text-muted-foreground">Daily view of driver EOD submissions</p>
-            </div>
-          </div>
-          <div className="flex items-center space-x-4">
-            <Button variant="outline" onClick={() => navigateDay('prev')}>
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <div className="text-sm font-semibold min-w-[120px] text-center">
-              {format(currentDate, 'MMM dd, yyyy')}
-            </div>
-            <Button variant="outline" onClick={() => navigateDay('next')}>
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
+      <div className="min-h-screen flex w-full bg-background">
+        <AppSidebar />
         
-        <div className="container mx-auto py-8 space-y-6">
-          <div className="flex justify-between items-center">
-            <div>
-              <p className="text-muted-foreground">
-                View and manage driver EOD submissions
-              </p>
-            </div>
-            <Button onClick={handleExportCSV} className="flex items-center gap-2">
-              <Download className="h-4 w-4" />
-              Export CSV
-            </Button>
-          </div>
-
-          {/* Filters */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Filters</CardTitle>
-              <CardDescription>Filter reports by driver, date, or search term</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {/* Driver Filter */}
-                <div className="space-y-2">
-                  <Label>Driver</Label>
-                  <Select value={selectedDriver} onValueChange={setSelectedDriver}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select driver" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Drivers</SelectItem>
-                      {drivers?.map((driver) => (
-                        <SelectItem key={driver.id} value={driver.id}>
-                          {driver.first_name} {driver.last_name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Search */}
-                <div className="space-y-2">
-                  <Label htmlFor="search">Search</Label>
-                  <Input
-                    id="search"
-                    placeholder="Search by name, van reg, rounds..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                  />
-                </div>
-
-                {/* Clear Filters */}
-                <div className="space-y-2">
-                  <Label>&nbsp;</Label>
-                  <Button 
-                    variant="outline" 
-                    onClick={() => {
-                      setSelectedDriver('all');
-                      setSearchTerm('');
-                    }}
-                    className="w-full"
-                  >
-                    Clear Filters
-                  </Button>
+        <SidebarInset className="flex-1">
+          <header className="border-b bg-card sticky top-0 z-10">
+            <div className="flex items-center justify-between px-4 py-4">
+              <div className="flex items-center">
+                <SidebarTrigger className="mr-4" />
+                <div>
+                  <h1 className="text-xl font-semibold text-foreground">End of Day Reports</h1>
+                  <p className="text-sm text-muted-foreground">View and manage driver EOD submissions</p>
                 </div>
               </div>
-            </CardContent>
-          </Card>
+              <div className="flex items-center space-x-2">
+                <Select value={viewType} onValueChange={(value: ViewType) => setViewType(value)}>
+                  <SelectTrigger className="w-32">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="daily">Daily</SelectItem>
+                    <SelectItem value="weekly">Weekly</SelectItem>
+                    <SelectItem value="monthly">Monthly</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => navigateDate('prev')}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <div className="px-4 py-2 bg-muted rounded-md min-w-[200px] text-center">
+                  <span className="font-medium">
+                    {viewType === 'daily' && format(currentDate, 'EEEE, dd MMM yyyy')}
+                    {viewType === 'weekly' && `Week of ${format(startOfWeek(currentDate, { weekStartsOn: 1 }), 'dd MMM')} - ${format(endOfWeek(currentDate, { weekStartsOn: 1 }), 'dd MMM yyyy')}`}
+                    {viewType === 'monthly' && format(currentDate, 'MMMM yyyy')}
+                  </span>
+                </div>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => navigateDate('next')}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+                <Button onClick={handleExportCSV} variant="outline" size="sm">
+                  <Download className="h-4 w-4 mr-2" />
+                  Export CSV
+                </Button>
+                <Button onClick={handleExportPDF} variant="outline" size="sm">
+                  <FileText className="h-4 w-4 mr-2" />
+                  Export PDF
+                </Button>
+              </div>
+            </div>
+          </header>
 
-          {/* Reports Table */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Reports ({filteredReports?.length || 0})</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {filteredReports && filteredReports.length > 0 ? (
-                <div className="overflow-x-auto">
+          <main className="p-6 space-y-6">
+            {/* Filters */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Filters</CardTitle>
+                <CardDescription>Filter and search EOD reports</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="driver-select">Driver</Label>
+                    <Select value={selectedDriver} onValueChange={setSelectedDriver}>
+                      <SelectTrigger id="driver-select">
+                        <SelectValue placeholder="All drivers" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Drivers</SelectItem>
+                        {drivers?.map((driver) => (
+                          <SelectItem key={driver.id} value={driver.id}>
+                            {driver.first_name} {driver.last_name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="search">Search</Label>
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="search"
+                        placeholder="Search by driver, email, van reg, or round..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="pl-10"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Reports Table */}
+            <Card>
+              <CardHeader>
+                <CardTitle>EOD Reports ({filteredReports.length})</CardTitle>
+                <CardDescription>
+                  {viewType === 'daily' && `Reports for ${format(currentDate, 'EEEE, dd MMM yyyy')}`}
+                  {viewType === 'weekly' && `Reports for week of ${format(startOfWeek(currentDate, { weekStartsOn: 1 }), 'dd MMM')} - ${format(endOfWeek(currentDate, { weekStartsOn: 1 }), 'dd MMM yyyy')}`}
+                  {viewType === 'monthly' && `Reports for ${format(currentDate, 'MMMM yyyy')}`}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {filteredReports.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    No EOD reports found for this period.
+                  </div>
+                ) : (
                   <Table>
                     <TableHeader>
                       <TableRow>
+                        <TableHead>Time</TableHead>
                         <TableHead>Driver</TableHead>
-                        <TableHead>Submitted</TableHead>
-                        <TableHead>Rounds</TableHead>
+                        <TableHead>Van Reg</TableHead>
+                        <TableHead>Total Parcels</TableHead>
                         <TableHead>Deliveries</TableHead>
                         <TableHead>Collections</TableHead>
                         <TableHead>Support</TableHead>
-                        <TableHead>Total</TableHead>
-                        <TableHead>Van</TableHead>
-                        <TableHead>Timing</TableHead>
+                        <TableHead>Status</TableHead>
                         <TableHead>Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {filteredReports.map((report) => (
                         <TableRow key={report.id}>
-                          <TableCell className="font-medium">
-                            {report.name}
+                          <TableCell>
+                            {format(new Date(report.submitted_at), 'HH:mm')}
                           </TableCell>
                           <TableCell>
-                            {format(new Date(report.submitted_at), 'MMM dd, yyyy HH:mm')}
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex flex-wrap gap-1">
-                              {[report.round_1_number, report.round_2_number, report.round_3_number, report.round_4_number]
-                                .filter(Boolean)
-                                .map((round, index) => (
-                                  <Badge key={index} variant="outline" className="text-xs">
-                                    {round}
-                                  </Badge>
-                                ))}
+                            <div>
+                              <div className="font-medium">
+                                {report.driver_profiles.profiles.first_name} {report.driver_profiles.profiles.last_name}
+                              </div>
+                              <div className="text-sm text-muted-foreground">
+                                {report.driver_profiles.profiles.email}
+                              </div>
                             </div>
                           </TableCell>
+                          <TableCell>{report.van_registration || 'N/A'}</TableCell>
+                          <TableCell className="font-medium">{report.total_parcels || 0}</TableCell>
                           <TableCell>{report.successful_deliveries}</TableCell>
                           <TableCell>{report.successful_collections}</TableCell>
                           <TableCell>
                             {report.did_support ? (
                               <Badge variant="secondary">{report.support_parcels}</Badge>
                             ) : (
-                              <span className="text-muted-foreground">-</span>
+                              <Badge variant="outline">No</Badge>
                             )}
                           </TableCell>
                           <TableCell>
-                            <Badge variant="default">{report.total_parcels}</Badge>
+                            <Badge variant={
+                              report.processing_status === 'completed' ? 'default' :
+                              report.processing_status === 'processing' ? 'secondary' :
+                              'outline'
+                            }>
+                              {report.processing_status || 'pending'}
+                            </Badge>
                           </TableCell>
                           <TableCell>
-                            {report.has_company_van ? (
-                              <div>
-                                <Badge variant="outline">Company</Badge>
-                                {report.van_registration && (
-                                  <div className="text-xs text-muted-foreground mt-1">
-                                    {report.van_registration}
-                                  </div>
-                                )}
-                              </div>
-                            ) : (
-                              <span className="text-muted-foreground">Personal</span>
+                            {report.app_screenshot && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => viewScreenshot(report.app_screenshot!)}
+                              >
+                                <Eye className="h-4 w-4" />
+                              </Button>
                             )}
-                          </TableCell>
-                          <TableCell>
-                            {report.round_start_time && report.round_end_time ? (
-                              <div className="text-xs">
-                                <div>{format(new Date(report.round_start_time), 'HH:mm')}</div>
-                                <div>to</div>
-                                <div>{format(new Date(report.round_end_time), 'HH:mm')}</div>
-                              </div>
-                            ) : (
-                              <span className="text-muted-foreground">-</span>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex gap-2">
-                              {report.app_screenshot && (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => viewScreenshot(report.app_screenshot!)}
-                                >
-                                  <Eye className="h-3 w-3" />
-                                </Button>
-                              )}
-                            </div>
                           </TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
                   </Table>
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-lg font-medium mb-2">No Reports Found</h3>
-                  <p className="text-muted-foreground">
-                    {searchTerm || selectedDriver !== 'all'
-                      ? "No reports match your current filters."
-                      : "No EOD reports have been submitted yet."}
-                  </p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-      </SidebarInset>
+                )}
+              </CardContent>
+            </Card>
+          </main>
+        </SidebarInset>
+      </div>
+
+      {/* Image Preview Dialog */}
+      <Dialog open={!!imagePreview} onOpenChange={() => setImagePreview(null)}>
+        <DialogContent className="max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>EOD Screenshot</DialogTitle>
+            <DialogDescription>Driver's end of day app screenshot</DialogDescription>
+          </DialogHeader>
+          {imagePreview && (
+            <div className="flex justify-center">
+              <img 
+                src={imagePreview} 
+                alt="EOD Screenshot" 
+                className="max-w-full max-h-[70vh] object-contain rounded-lg"
+              />
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </SidebarProvider>
   );
 };
