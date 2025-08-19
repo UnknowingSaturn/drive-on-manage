@@ -723,8 +723,7 @@ export type Database = {
           round2_number: string | null
           round3_number: string | null
           round4_number: string | null
-          screenshot_url: string | null
-          submitted_at: string
+          screenshot_path: string | null
           successful_collections: number
           successful_deliveries: number
           support: boolean
@@ -748,8 +747,7 @@ export type Database = {
           round2_number?: string | null
           round3_number?: string | null
           round4_number?: string | null
-          screenshot_url?: string | null
-          submitted_at?: string
+          screenshot_path?: string | null
           successful_collections?: number
           successful_deliveries?: number
           support?: boolean
@@ -773,8 +771,7 @@ export type Database = {
           round2_number?: string | null
           round3_number?: string | null
           round4_number?: string | null
-          screenshot_url?: string | null
-          submitted_at?: string
+          screenshot_path?: string | null
           successful_collections?: number
           successful_deliveries?: number
           support?: boolean
@@ -1408,7 +1405,8 @@ export type Database = {
           screenshot_url: string | null
           small_packets: number | null
           standard: number | null
-          submitted_at: string
+          total_collections: number | null
+          total_deliveries: number | null
           updated_at: string
           vision_api_response: Json | null
         }
@@ -1428,7 +1426,8 @@ export type Database = {
           screenshot_url?: string | null
           small_packets?: number | null
           standard?: number | null
-          submitted_at?: string
+          total_collections?: number | null
+          total_deliveries?: number | null
           updated_at?: string
           vision_api_response?: Json | null
         }
@@ -1448,7 +1447,8 @@ export type Database = {
           screenshot_url?: string | null
           small_packets?: number | null
           standard?: number | null
-          submitted_at?: string
+          total_collections?: number | null
+          total_deliveries?: number | null
           updated_at?: string
           vision_api_response?: Json | null
         }

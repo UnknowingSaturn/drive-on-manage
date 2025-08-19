@@ -99,8 +99,8 @@ const EndOfDay = () => {
         .from('end_of_day_reports')
         .select('*')
         .eq('driver_id', driverInfo.driverProfile.id)
-        .gte('submitted_at', `${today}T00:00:00.000Z`)
-        .lte('submitted_at', `${today}T23:59:59.999Z`)
+        .gte('created_at', `${today}T00:00:00.000Z`)
+        .lte('created_at', `${today}T23:59:59.999Z`)
         .order('submitted_at', { ascending: false });
       return data || [];
     },
@@ -148,7 +148,7 @@ const EndOfDay = () => {
           successful_collections: 0, // Will be updated by Vision API
           company_van: driverInfo.hasCompanyVan,
           van_registration: driverInfo.assignedVan?.registration || null,
-          screenshot_url: fileName,
+          screenshot_path: fileName,
           processing_status: 'pending'
         })
         .select()
@@ -347,9 +347,9 @@ const EndOfDay = () => {
                               <p className="text-sm font-medium">
                                 Submission #{todaySubmissions.length - index}
                               </p>
-                              <p className="text-xs text-muted-foreground">
-                                {format(new Date(submission.submitted_at), 'HH:mm:ss')}
-                              </p>
+                               <p className="text-xs text-muted-foreground">
+                                 {format(new Date(submission.created_at), 'HH:mm:ss')}
+                               </p>
                             </div>
                             <div className="text-right">
                               <div className="grid grid-cols-2 gap-2 text-xs">

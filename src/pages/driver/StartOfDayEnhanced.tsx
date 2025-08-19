@@ -84,9 +84,9 @@ const StartOfDayEnhanced = () => {
         .from('start_of_day_reports')
         .select('*')
         .eq('driver_id', driverInfo.driverProfile.id)
-        .gte('submitted_at', `${today}T00:00:00Z`)
-        .lt('submitted_at', `${today}T23:59:59Z`)
-        .order('submitted_at', { ascending: false });
+        .gte('created_at', `${today}T00:00:00Z`)
+        .lt('created_at', `${today}T23:59:59Z`)
+        .order('created_at', { ascending: false });
       return data || [];
     },
     enabled: !!driverInfo?.driverProfile?.id
@@ -374,9 +374,9 @@ const StartOfDayEnhanced = () => {
                                report.processing_status === 'failed' ? 'Failed' : 'Pending'}
                             </Badge>
                           </div>
-                          <div className="text-xs text-muted-foreground">
-                            {new Date(report.submitted_at).toLocaleTimeString()}
-                          </div>
+                           <div className="text-xs text-muted-foreground">
+                             {new Date(report.created_at).toLocaleTimeString()}
+                           </div>
                         </div>
                       ))}
                     </div>

@@ -125,9 +125,9 @@ const StartOfDayReports = () => {
         .from('start_of_day_reports')
         .select('*')
         .in('company_id', companyIds)
-        .gte('submitted_at', dayStart.toISOString())
-        .lte('submitted_at', dayEnd.toISOString())
-        .order('submitted_at', { ascending: false });
+        .gte('created_at', dayStart.toISOString())
+        .lte('created_at', dayEnd.toISOString())
+        .order('created_at', { ascending: false });
 
       if (selectedDriver && selectedDriver !== 'all') {
         query = query.eq('driver_id', selectedDriver);
@@ -333,7 +333,7 @@ const StartOfDayReports = () => {
     if (!reports || reports.length === 0) return;
 
     const csvData = reports.map(report => ({
-      Date: format(new Date(report.submitted_at), 'yyyy-MM-dd HH:mm'),
+      Date: format(new Date(report.created_at), 'yyyy-MM-dd HH:mm'),
       Driver: report.driver_name,
       'Selected Round': report.round_number,
       'Detected Round': report.extracted_round_number || '',
@@ -343,6 +343,8 @@ const StartOfDayReports = () => {
       'Packets': report.packets || 0,
       'Small Packets': report.small_packets || 0,
       'Postables': report.postables || 0,
+      'Total Deliveries': report.total_deliveries || 0,
+      'Total Collections': report.total_collections || 0,
       'Status': report.processing_status
     }));
 
@@ -380,19 +382,19 @@ const StartOfDayReports = () => {
     
     // Table data
     const tableData = reports.map(report => [
-      format(new Date(report.submitted_at), 'dd/MM/yyyy HH:mm'),
+      format(new Date(report.created_at), 'dd/MM/yyyy HH:mm'),
       report.driver_name,
       report.round_number,
       report.extracted_round_number || '',
       (report.heavy_parcels || 0).toString(),
       (report.standard || 0).toString(),
-      ((report.heavy_parcels || 0) + (report.standard || 0) + (report.hanging_garments || 0) + (report.packets || 0) + (report.small_packets || 0) + (report.postables || 0)).toString(),
-      '0', // Collections not tracked in SOD
+      (report.total_deliveries || 0).toString(),
+      (report.total_collections || 0).toString(),
       report.processing_status
     ]);
 
     (doc as any).autoTable({
-      head: [['Date', 'Driver', 'Round', 'Detected', 'Heavy', 'Standard', 'Deliveries', 'Collections', 'Status']],
+      head: [['Date', 'Driver', 'Round', 'Detected', 'Heavy', 'Standard', 'Total Deliveries', 'Total Collections', 'Status']],
       body: tableData,
       startY: 40,
       styles: { fontSize: 8 },
@@ -566,11 +568,11 @@ const StartOfDayReports = () => {
                                 <span className="text-muted-foreground">-</span>
                               )}
                             </TableCell>
-                            <TableCell className="text-center">
-                              {format(new Date(report.submitted_at), 'yyyy-MM-dd')}
-                            </TableCell>
-                            <TableCell className="text-center">{0}</TableCell> {/* Collections not tracked in SOD */}
-                            <TableCell className="text-center">{(report.heavy_parcels || 0) + (report.standard || 0) + (report.hanging_garments || 0) + (report.packets || 0) + (report.small_packets || 0) + (report.postables || 0)}</TableCell>
+                             <TableCell className="text-center">
+                               {format(new Date(report.created_at), 'yyyy-MM-dd')}
+                             </TableCell>
+                             <TableCell className="text-center">{report.total_collections || 0}</TableCell>
+                             <TableCell className="text-center">{report.total_deliveries || 0}</TableCell>
                             <TableCell className="text-center">{report.heavy_parcels || 0}</TableCell>
                             <TableCell className="text-center">{report.standard || 0}</TableCell>
                             <TableCell className="text-center">{report.hanging_garments || 0}</TableCell>

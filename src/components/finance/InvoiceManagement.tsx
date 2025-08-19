@@ -137,10 +137,10 @@ export const InvoiceManagement = () => {
       // Get approved EOD reports for the period
       const { data: eodReports, error: eodError } = await supabase
         .from('end_of_day_reports')
-        .select('successful_deliveries, successful_collections, submitted_at, driver_id')
+        .select('successful_deliveries, successful_collections, created_at, driver_id')
         .eq('company_id', profile.company_id)
-        .gte('submitted_at', selectedPeriod.start)
-        .lte('submitted_at', selectedPeriod.end);
+        .gte('created_at', selectedPeriod.start)
+        .lte('created_at', selectedPeriod.end);
 
       if (eodError) throw eodError;
 

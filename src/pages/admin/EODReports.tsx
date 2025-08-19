@@ -127,9 +127,9 @@ const EODReports = () => {
           company_van,
           van_registration,
           total_parcels,
-          submitted_at,
+          created_at,
           processing_status,
-          screenshot_url,
+          screenshot_path,
           company_id
         `);
 
@@ -138,19 +138,19 @@ const EODReports = () => {
 
       if (viewType === 'daily') {
         query = query
-          .gte('submitted_at', `${dateRange.start}T00:00:00`)
-          .lte('submitted_at', `${dateRange.start}T23:59:59`);
+          .gte('created_at', `${dateRange.start}T00:00:00`)
+          .lte('created_at', `${dateRange.start}T23:59:59`);
       } else {
         query = query
-          .gte('submitted_at', `${dateRange.start}T00:00:00`)
-          .lte('submitted_at', `${dateRange.end}T23:59:59`);
+          .gte('created_at', `${dateRange.start}T00:00:00`)
+          .lte('created_at', `${dateRange.end}T23:59:59`);
       }
 
       if (selectedDriver !== 'all') {
         query = query.eq('driver_id', selectedDriver);
       }
 
-      query = query.order('submitted_at', { ascending: false });
+      query = query.order('created_at', { ascending: false });
 
       const { data, error } = await query;
       if (error) throw error;
@@ -205,7 +205,7 @@ const EODReports = () => {
 
   const handleExportCSV = () => {
     const csvData = filteredReports.map(report => ({
-      'Date': format(new Date(report.submitted_at), 'dd/MM/yyyy HH:mm'),
+      'Date': format(new Date(report.created_at), 'dd/MM/yyyy HH:mm'),
       'Driver': report.driver_name,
       'Van Registration': report.van_registration || 'N/A',
       'Total Parcels': report.total_parcels || 0,
@@ -395,9 +395,9 @@ const EODReports = () => {
                     <TableBody>
                       {filteredReports.map((report) => (
                         <TableRow key={report.id}>
-                          <TableCell>
-                            {format(new Date(report.submitted_at), 'HH:mm')}
-                          </TableCell>
+                           <TableCell>
+                             {format(new Date(report.created_at), 'HH:mm')}
+                           </TableCell>
                           <TableCell>
                             <div className="font-medium">{report.driver_name}</div>
                           </TableCell>
@@ -421,17 +421,17 @@ const EODReports = () => {
                               {report.processing_status || 'pending'}
                             </Badge>
                           </TableCell>
-                          <TableCell>
-                            {report.screenshot_url && (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => viewScreenshot(report.screenshot_url!)}
-                              >
-                                <Eye className="h-4 w-4" />
-                              </Button>
-                            )}
-                          </TableCell>
+                           <TableCell>
+                             {report.screenshot_path && (
+                               <Button
+                                 variant="outline"
+                                 size="sm"
+                                 onClick={() => viewScreenshot(report.screenshot_path!)}
+                               >
+                                 <Eye className="h-4 w-4" />
+                               </Button>
+                             )}
+                           </TableCell>
                         </TableRow>
                       ))}
                     </TableBody>

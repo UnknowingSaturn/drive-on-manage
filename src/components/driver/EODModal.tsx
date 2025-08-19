@@ -310,9 +310,9 @@ const EODModal: React.FC<EODModalProps> = ({ open, onOpenChange }) => {
                       <p className="text-sm font-medium">
                         Submission #{todaySubmissions.length - index}
                       </p>
-                      <p className="text-xs text-muted-foreground">
-                        {format(new Date(submission.submitted_at), 'HH:mm:ss')}
-                      </p>
+                               <p className="text-xs text-muted-foreground">
+                                 {format(new Date(submission.created_at), 'HH:mm:ss')}
+                               </p>
                     </div>
                     <div className="text-right">
                       <div className="grid grid-cols-2 gap-2 text-xs">

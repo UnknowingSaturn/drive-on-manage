@@ -272,7 +272,7 @@ const StartOfDay = () => {
     }
   };
 
-  const isAlreadyStarted = todayLog?.submitted_at;
+  const isAlreadyStarted = todayLog?.created_at;
 
   if (isLoading) {
     return (
@@ -352,7 +352,7 @@ const StartOfDay = () => {
                       </div>
                       <div className="text-center p-4 rounded-lg bg-card/50">
                          <div className="text-sm text-success">
-                           Started at {new Date(todayLog.submitted_at).toLocaleTimeString()}
+                           Started at {new Date(todayLog.created_at).toLocaleTimeString()}
                         </div>
                         <div className="text-sm text-muted-foreground">Time</div>
                       </div>
