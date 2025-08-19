@@ -21,30 +21,22 @@ import 'jspdf-autotable';
 interface EODReport {
   id: string;
   driver_id: string;
+  driver_name: string;
   submitted_at: string;
-  name: string;
-  round_1_number?: string;
-  round_2_number?: string;
-  round_3_number?: string;
-  round_4_number?: string;
-  did_support: boolean;
+  round1_number?: string;
+  round2_number?: string;
+  round3_number?: string;
+  round4_number?: string;
+  support: boolean;
   support_parcels: number;
   successful_deliveries: number;
   successful_collections: number;
-  has_company_van: boolean;
+  company_van: boolean;
   van_registration?: string;
   total_parcels?: number;
   processing_status?: string;
-  app_screenshot?: string;
-  vision_api_response?: any;
-  driver_profiles: {
-    id: string;
-    profiles: {
-      first_name: string;
-      last_name: string;
-      email: string;
-    };
-  };
+  screenshot_url?: string;
+  company_id: string;
 }
 
 type ViewType = 'daily' | 'weekly' | 'monthly';
@@ -122,17 +114,27 @@ const EODReports = () => {
       let query = supabase
         .from('end_of_day_reports')
         .select(`
-          *,
-          driver_profiles!inner(
-            id,
-            user_id,
-            company_id,
-            profiles!inner(first_name, last_name, email)
-          )
+          id,
+          driver_name,
+          round1_number,
+          round2_number,
+          round3_number,
+          round4_number,
+          support,
+          support_parcels,
+          successful_deliveries,
+          successful_collections,
+          company_van,
+          van_registration,
+          total_parcels,
+          submitted_at,
+          processing_status,
+          screenshot_url,
+          company_id
         `);
 
-      // Filter by company via driver_profiles relationship and add date filters
-      query = query.eq('driver_profiles.company_id', profile.company_id);
+      // Filter by company directly and add date filters  
+      query = query.eq('company_id', profile.company_id);
 
       if (viewType === 'daily') {
         query = query
@@ -162,18 +164,16 @@ const EODReports = () => {
     if (!searchTerm) return reports;
     
     return reports.filter((report) => {
-      const driverName = `${report.driver_profiles.profiles.first_name} ${report.driver_profiles.profiles.last_name}`.toLowerCase();
-      const driverEmail = report.driver_profiles.profiles.email.toLowerCase();
+      const driverName = report.driver_name.toLowerCase();
       const vanReg = report.van_registration?.toLowerCase() || '';
       const search = searchTerm.toLowerCase();
       
       return driverName.includes(search) || 
-             driverEmail.includes(search) || 
              vanReg.includes(search) ||
-             report.round_1_number?.toLowerCase().includes(search) ||
-             report.round_2_number?.toLowerCase().includes(search) ||
-             report.round_3_number?.toLowerCase().includes(search) ||
-             report.round_4_number?.toLowerCase().includes(search);
+             report.round1_number?.toLowerCase().includes(search) ||
+             report.round2_number?.toLowerCase().includes(search) ||
+             report.round3_number?.toLowerCase().includes(search) ||
+             report.round4_number?.toLowerCase().includes(search);
     });
   }, [reports, searchTerm]);
 
@@ -206,20 +206,19 @@ const EODReports = () => {
   const handleExportCSV = () => {
     const csvData = filteredReports.map(report => ({
       'Date': format(new Date(report.submitted_at), 'dd/MM/yyyy HH:mm'),
-      'Driver': `${report.driver_profiles.profiles.first_name} ${report.driver_profiles.profiles.last_name}`,
-      'Email': report.driver_profiles.profiles.email,
+      'Driver': report.driver_name,
       'Van Registration': report.van_registration || 'N/A',
       'Total Parcels': report.total_parcels || 0,
       'Successful Deliveries': report.successful_deliveries,
       'Successful Collections': report.successful_collections,
-      'Did Support': report.did_support ? 'Yes' : 'No',
+      'Support': report.support ? 'Yes' : 'No',
       'Support Parcels': report.support_parcels,
-      'Has Company Van': report.has_company_van ? 'Yes' : 'No',
+      'Company Van': report.company_van ? 'Yes' : 'No',
       'Processing Status': report.processing_status,
-      'Round 1': report.round_1_number || '',
-      'Round 2': report.round_2_number || '',
-      'Round 3': report.round_3_number || '',
-      'Round 4': report.round_4_number || ''
+      'Round 1': report.round1_number || '',
+      'Round 2': report.round2_number || '',
+      'Round 3': report.round3_number || '',
+      'Round 4': report.round4_number || ''
     }));
 
     const csv = [
@@ -234,45 +233,6 @@ const EODReports = () => {
     a.download = `eod-reports-${viewType}-${format(currentDate, 'yyyy-MM-dd')}.csv`;
     a.click();
     window.URL.revokeObjectURL(url);
-  };
-
-  const handleExportPDF = () => {
-    const doc = new jsPDF();
-    
-    // Title
-    const title = `EOD Reports - ${viewType.charAt(0).toUpperCase() + viewType.slice(1)} View`;
-    doc.setFontSize(16);
-    doc.text(title, 14, 20);
-    
-    // Date range
-    const dateText = viewType === 'daily' 
-      ? format(currentDate, 'dd/MM/yyyy')
-      : `${format(new Date(dateRange.start), 'dd/MM/yyyy')} - ${format(new Date(dateRange.end), 'dd/MM/yyyy')}`;
-    doc.setFontSize(12);
-    doc.text(`Period: ${dateText}`, 14, 30);
-    
-    // Table data
-    const tableData = filteredReports.map(report => [
-      format(new Date(report.submitted_at), 'dd/MM/yyyy HH:mm'),
-      `${report.driver_profiles.profiles.first_name} ${report.driver_profiles.profiles.last_name}`,
-      report.van_registration || 'N/A',
-      report.total_parcels?.toString() || '0',
-      report.successful_deliveries.toString(),
-      report.successful_collections.toString(),
-      report.did_support ? 'Yes' : 'No',
-      report.support_parcels.toString(),
-      report.processing_status
-    ]);
-
-    (doc as any).autoTable({
-      head: [['Date', 'Driver', 'Van Reg', 'Total', 'Deliveries', 'Collections', 'Support', 'Support #', 'Status']],
-      body: tableData,
-      startY: 40,
-      styles: { fontSize: 8 },
-      headStyles: { fillColor: [59, 130, 246] }
-    });
-    
-    doc.save(`eod-reports-${viewType}-${format(currentDate, 'yyyy-MM-dd')}.pdf`);
   };
 
   const viewScreenshot = async (screenshotPath: string) => {
@@ -339,11 +299,7 @@ const EODReports = () => {
                     <SelectItem value="monthly">Monthly</SelectItem>
                   </SelectContent>
                 </Select>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => navigateDate('prev')}
-                >
+                <Button variant="outline" size="sm" onClick={() => navigateDate('prev')}>
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
                 <div className="px-4 py-2 bg-muted rounded-md min-w-[200px] text-center">
@@ -353,20 +309,12 @@ const EODReports = () => {
                     {viewType === 'monthly' && format(currentDate, 'MMMM yyyy')}
                   </span>
                 </div>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => navigateDate('next')}
-                >
+                <Button variant="outline" size="sm" onClick={() => navigateDate('next')}>
                   <ChevronRight className="h-4 w-4" />
                 </Button>
                 <Button onClick={handleExportCSV} variant="outline" size="sm">
                   <Download className="h-4 w-4 mr-2" />
                   Export CSV
-                </Button>
-                <Button onClick={handleExportPDF} variant="outline" size="sm">
-                  <FileText className="h-4 w-4 mr-2" />
-                  Export PDF
                 </Button>
               </div>
             </div>
@@ -403,7 +351,7 @@ const EODReports = () => {
                       <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input
                         id="search"
-                        placeholder="Search by driver, email, van reg, or round..."
+                        placeholder="Search by driver, van reg, or round..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         className="pl-10"
@@ -451,21 +399,14 @@ const EODReports = () => {
                             {format(new Date(report.submitted_at), 'HH:mm')}
                           </TableCell>
                           <TableCell>
-                            <div>
-                              <div className="font-medium">
-                                {report.driver_profiles.profiles.first_name} {report.driver_profiles.profiles.last_name}
-                              </div>
-                              <div className="text-sm text-muted-foreground">
-                                {report.driver_profiles.profiles.email}
-                              </div>
-                            </div>
+                            <div className="font-medium">{report.driver_name}</div>
                           </TableCell>
                           <TableCell>{report.van_registration || 'N/A'}</TableCell>
                           <TableCell className="font-medium">{report.total_parcels || 0}</TableCell>
                           <TableCell>{report.successful_deliveries}</TableCell>
                           <TableCell>{report.successful_collections}</TableCell>
                           <TableCell>
-                            {report.did_support ? (
+                            {report.support ? (
                               <Badge variant="secondary">{report.support_parcels}</Badge>
                             ) : (
                               <Badge variant="outline">No</Badge>
@@ -481,11 +422,11 @@ const EODReports = () => {
                             </Badge>
                           </TableCell>
                           <TableCell>
-                            {report.app_screenshot && (
+                            {report.screenshot_url && (
                               <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={() => viewScreenshot(report.app_screenshot!)}
+                                onClick={() => viewScreenshot(report.screenshot_url!)}
                               >
                                 <Eye className="h-4 w-4" />
                               </Button>

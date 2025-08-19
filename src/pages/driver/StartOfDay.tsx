@@ -160,7 +160,20 @@ const StartOfDay = () => {
 
       const { data: result, error } = await supabase
         .from('start_of_day_reports')
-        .insert(logData)
+        .insert({
+          driver_id: driverProfile.id,
+          company_id: profile.company_id,
+          driver_name: `${profile.first_name} ${profile.last_name}`.trim(),
+          round_number: formData.roundNumber,
+          heavy_parcels: formData.heavyParcels || 0,
+          standard: formData.standard || 0,
+          hanging_garments: formData.hangingGarments || 0,
+          packets: formData.packets || 0,
+          small_packets: formData.smallPackets || 0,
+          postables: formData.postables || 0,
+          screenshot_url: screenshotUrl,
+          processing_status: 'pending'
+        })
         .select()
         .single();
 
@@ -173,11 +186,10 @@ const StartOfDay = () => {
           .insert({
             driver_id: driverProfile.id,
             company_id: profile.company_id,
-            name: `${profile.first_name} ${profile.last_name}`.trim(),
+            driver_name: `${profile.first_name} ${profile.last_name}`.trim(),
             round_number: 'TBD', // Will be extracted by Vision API
             screenshot_url: screenshotUrl,
-            processing_status: 'pending',
-            manifest_date: today
+            processing_status: 'pending'
           })
           .select()
           .single();

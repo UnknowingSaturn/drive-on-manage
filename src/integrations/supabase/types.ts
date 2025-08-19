@@ -710,72 +710,88 @@ export type Database = {
       }
       end_of_day_reports: {
         Row: {
-          app_screenshot: string | null
+          company_id: string
+          company_van: boolean
           created_at: string
-          did_support: boolean
           driver_id: string
-          has_company_van: boolean
+          driver_name: string
           id: string
-          name: string
           processing_status: string | null
-          round_1_number: string | null
-          round_2_number: string | null
-          round_3_number: string | null
-          round_4_number: string | null
+          round_end_time: string | null
+          round_start_time: string | null
+          round1_number: string | null
+          round2_number: string | null
+          round3_number: string | null
+          round4_number: string | null
+          screenshot_url: string | null
           submitted_at: string
           successful_collections: number
           successful_deliveries: number
-          support_parcels: number
+          support: boolean
+          support_parcels: number | null
           total_parcels: number | null
           updated_at: string
           van_registration: string | null
           vision_api_response: Json | null
         }
         Insert: {
-          app_screenshot?: string | null
+          company_id: string
+          company_van?: boolean
           created_at?: string
-          did_support?: boolean
           driver_id: string
-          has_company_van?: boolean
+          driver_name: string
           id?: string
-          name: string
           processing_status?: string | null
-          round_1_number?: string | null
-          round_2_number?: string | null
-          round_3_number?: string | null
-          round_4_number?: string | null
+          round_end_time?: string | null
+          round_start_time?: string | null
+          round1_number?: string | null
+          round2_number?: string | null
+          round3_number?: string | null
+          round4_number?: string | null
+          screenshot_url?: string | null
           submitted_at?: string
           successful_collections?: number
           successful_deliveries?: number
-          support_parcels?: number
+          support?: boolean
+          support_parcels?: number | null
           total_parcels?: number | null
           updated_at?: string
           van_registration?: string | null
           vision_api_response?: Json | null
         }
         Update: {
-          app_screenshot?: string | null
+          company_id?: string
+          company_van?: boolean
           created_at?: string
-          did_support?: boolean
           driver_id?: string
-          has_company_van?: boolean
+          driver_name?: string
           id?: string
-          name?: string
           processing_status?: string | null
-          round_1_number?: string | null
-          round_2_number?: string | null
-          round_3_number?: string | null
-          round_4_number?: string | null
+          round_end_time?: string | null
+          round_start_time?: string | null
+          round1_number?: string | null
+          round2_number?: string | null
+          round3_number?: string | null
+          round4_number?: string | null
+          screenshot_url?: string | null
           submitted_at?: string
           successful_collections?: number
           successful_deliveries?: number
-          support_parcels?: number
+          support?: boolean
+          support_parcels?: number | null
           total_parcels?: number | null
           updated_at?: string
           van_registration?: string | null
           vision_api_response?: Json | null
         }
         Relationships: [
+          {
+            foreignKeyName: "end_of_day_reports_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "end_of_day_reports_driver_id_fkey"
             columns: ["driver_id"]
@@ -1380,12 +1396,11 @@ export type Database = {
           company_id: string
           created_at: string
           driver_id: string
+          driver_name: string
           extracted_round_number: string | null
           hanging_garments: number | null
           heavy_parcels: number | null
           id: string
-          manifest_date: string | null
-          name: string
           packets: number | null
           postables: number | null
           processing_status: string | null
@@ -1394,8 +1409,6 @@ export type Database = {
           small_packets: number | null
           standard: number | null
           submitted_at: string
-          total_collections: number | null
-          total_deliveries: number | null
           updated_at: string
           vision_api_response: Json | null
         }
@@ -1403,12 +1416,11 @@ export type Database = {
           company_id: string
           created_at?: string
           driver_id: string
+          driver_name: string
           extracted_round_number?: string | null
           hanging_garments?: number | null
           heavy_parcels?: number | null
           id?: string
-          manifest_date?: string | null
-          name: string
           packets?: number | null
           postables?: number | null
           processing_status?: string | null
@@ -1417,8 +1429,6 @@ export type Database = {
           small_packets?: number | null
           standard?: number | null
           submitted_at?: string
-          total_collections?: number | null
-          total_deliveries?: number | null
           updated_at?: string
           vision_api_response?: Json | null
         }
@@ -1426,12 +1436,11 @@ export type Database = {
           company_id?: string
           created_at?: string
           driver_id?: string
+          driver_name?: string
           extracted_round_number?: string | null
           hanging_garments?: number | null
           heavy_parcels?: number | null
           id?: string
-          manifest_date?: string | null
-          name?: string
           packets?: number | null
           postables?: number | null
           processing_status?: string | null
@@ -1440,8 +1449,6 @@ export type Database = {
           small_packets?: number | null
           standard?: number | null
           submitted_at?: string
-          total_collections?: number | null
-          total_deliveries?: number | null
           updated_at?: string
           vision_api_response?: Json | null
         }

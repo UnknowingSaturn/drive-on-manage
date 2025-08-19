@@ -185,7 +185,7 @@ const StartOfDayReports = () => {
       if (searchQuery) {
         const searchLower = searchQuery.toLowerCase();
         filteredData = filteredData.filter(report => 
-          report.name.toLowerCase().includes(searchLower) ||
+          report.driver_name.toLowerCase().includes(searchLower) ||
           report.round_number.toLowerCase().includes(searchLower) ||
           (report.extracted_round_number && report.extracted_round_number.toLowerCase().includes(searchLower))
         );

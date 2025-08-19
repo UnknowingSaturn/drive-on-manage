@@ -152,7 +152,7 @@ const StartOfDayEnhanced = () => {
           .insert({
             driver_id: driverInfo.driverProfile.id,
             company_id: driverInfo.driverProfile.company_id,
-            name: driverInfo.driverName,
+            driver_name: driverInfo.driverName,
             round_number: data.roundNumber,
             screenshot_url: screenshotUrl,
             processing_status: 'processing'

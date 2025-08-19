@@ -136,7 +136,7 @@ export function useRealtimeValidation(options: RealtimeValidationOptions = {}) {
       // Get SOD parcel count
       const { data: sodData, error: sodError } = await supabase
         .from('start_of_day_reports')
-        .select('total_deliveries')
+        .select('heavy_parcels, standard, hanging_garments, packets, small_packets, postables')
         .eq('driver_id', driverId)
         .gte('submitted_at', `${today}T00:00:00.000Z`)
         .lt('submitted_at', `${today}T23:59:59.999Z`)
@@ -157,7 +157,7 @@ export function useRealtimeValidation(options: RealtimeValidationOptions = {}) {
         return { isValid: true, warning: 'No SOD entry found - proceeding without parcel count validation' };
       }
 
-      const startingCount = sodData.total_deliveries;
+      const startingCount = (sodData.heavy_parcels || 0) + (sodData.standard || 0) + (sodData.hanging_garments || 0) + (sodData.packets || 0) + (sodData.small_packets || 0) + (sodData.postables || 0);
       const isValid = deliveredCount <= startingCount;
       
       if (!isValid) {

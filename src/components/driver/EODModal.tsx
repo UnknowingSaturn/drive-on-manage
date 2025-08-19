@@ -149,18 +149,19 @@ const EODModal: React.FC<EODModalProps> = ({ open, onOpenChange }) => {
         .from('end_of_day_reports')
         .insert({
           driver_id: driverInfo.driverProfile.id,
-          name: driverInfo.driverName,
-          round_1_number: driverInfo.roundNumbers[0] || null,
-          round_2_number: driverInfo.roundNumbers[1] || null,
-          round_3_number: driverInfo.roundNumbers[2] || null,
-          round_4_number: driverInfo.roundNumbers[3] || null,
-          did_support: data.did_support,
+          company_id: driverInfo.driverProfile.company_id,
+          driver_name: driverInfo.driverName,
+          round1_number: driverInfo.roundNumbers[0] || null,
+          round2_number: driverInfo.roundNumbers[1] || null,
+          round3_number: driverInfo.roundNumbers[2] || null,
+          round4_number: driverInfo.roundNumbers[3] || null,
+          support: data.did_support,
           support_parcels: data.support_parcels,
           successful_deliveries: 0, // Will be updated by Vision API
           successful_collections: 0, // Will be updated by Vision API
-          has_company_van: driverInfo.hasCompanyVan,
+          company_van: driverInfo.hasCompanyVan,
           van_registration: driverInfo.assignedVan?.registration || null,
-          app_screenshot: fileName,
+          screenshot_url: fileName,
           processing_status: 'pending'
         })
         .select()
