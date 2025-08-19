@@ -45,9 +45,16 @@ export function useGeolocation() {
 
   const checkPermissions = async () => {
     try {
-      const permissions = await Geolocation.checkPermissions();
-      if (permissions.location === 'granted' || permissions.coarseLocation === 'granted') {
-        setPermissionGranted(true);
+      if (Capacitor.isNativePlatform()) {
+        const permissions = await Geolocation.checkPermissions();
+        if (permissions.location === 'granted' || permissions.coarseLocation === 'granted') {
+          setPermissionGranted(true);
+        }
+      } else {
+        // Web environment - check if geolocation is available
+        if (navigator.geolocation) {
+          setPermissionGranted(true);
+        }
       }
     } catch (error) {
       console.error('Error checking permissions:', error);
@@ -56,14 +63,33 @@ export function useGeolocation() {
 
   const requestPermissions = async () => {
     try {
-      const permissions = await Geolocation.requestPermissions();
-      if (permissions.location === 'granted' || permissions.coarseLocation === 'granted') {
-        setPermissionGranted(true);
-        toast.success('Location permissions granted');
-        return true;
+      if (Capacitor.isNativePlatform()) {
+        const permissions = await Geolocation.requestPermissions();
+        if (permissions.location === 'granted' || permissions.coarseLocation === 'granted') {
+          setPermissionGranted(true);
+          toast.success('Location permissions granted');
+          return true;
+        } else {
+          toast.error('Location permissions required for tracking');
+          return false;
+        }
       } else {
-        toast.error('Location permissions required for tracking');
-        return false;
+        // Web environment - test with getCurrentPosition
+        return new Promise((resolve) => {
+          navigator.geolocation.getCurrentPosition(
+            () => {
+              setPermissionGranted(true);
+              toast.success('Location permissions granted');
+              resolve(true);
+            },
+            (error) => {
+              console.error('Geolocation error:', error);
+              toast.error('Location permissions denied or unavailable');
+              resolve(false);
+            },
+            { timeout: 10000 }
+          );
+        });
       }
     } catch (error) {
       console.error('Error requesting permissions:', error);
@@ -245,15 +271,38 @@ export function useGeolocation() {
       });
 
       // Start location tracking
-      watchId.current = await Geolocation.watchPosition(
-        {
-          enableHighAccuracy: true,
-          timeout: 30000,
-          maximumAge: 30000
-        },
-        async (position: Position | null) => {
-          if (!position) return;
+      if (Capacitor.isNativePlatform()) {
+        watchId.current = await Geolocation.watchPosition(
+          {
+            enableHighAccuracy: true,
+            timeout: 30000,
+            maximumAge: 30000
+          },
+          async (position: Position | null) => {
+            if (!position) return;
 
+            const batteryLevel = await getBatteryLevel();
+            
+            const locationPoint: LocationPoint = {
+              latitude: position.coords.latitude,
+              longitude: position.coords.longitude,
+              accuracy: position.coords.accuracy || 0,
+              speed: position.coords.speed || undefined,
+              heading: position.coords.heading || undefined,
+              timestamp: position.timestamp,
+              batteryLevel
+            };
+
+            setCurrentLocation(locationPoint);
+
+            if (shouldSendUpdate(locationPoint)) {
+              await sendLocationUpdate(locationPoint);
+            }
+          }
+        );
+      } else {
+        // Web environment - use navigator.geolocation
+        const watchHandler = async (position: GeolocationPosition) => {
           const batteryLevel = await getBatteryLevel();
           
           const locationPoint: LocationPoint = {
@@ -271,8 +320,23 @@ export function useGeolocation() {
           if (shouldSendUpdate(locationPoint)) {
             await sendLocationUpdate(locationPoint);
           }
-        }
-      );
+        };
+
+        const webWatchId = navigator.geolocation.watchPosition(
+          watchHandler,
+          (error) => {
+            console.error('Geolocation watch error:', error);
+            toast.error('Location tracking error: ' + error.message);
+          },
+          {
+            enableHighAccuracy: true,
+            timeout: 30000,
+            maximumAge: 30000
+          }
+        );
+        
+        watchId.current = webWatchId.toString();
+      }
 
       setIsTracking(true);
       toast.success('Shift started - Location tracking enabled');
@@ -302,7 +366,11 @@ export function useGeolocation() {
       setShift(prev => ({ ...prev, status: 'paused' }));
       
       if (watchId.current) {
-        await Geolocation.clearWatch({ id: watchId.current });
+        if (Capacitor.isNativePlatform()) {
+          await Geolocation.clearWatch({ id: watchId.current });
+        } else {
+          navigator.geolocation.clearWatch(parseInt(watchId.current));
+        }
         watchId.current = null;
       }
       
@@ -328,15 +396,38 @@ export function useGeolocation() {
       setShift(prev => ({ ...prev, status: 'active' }));
       
       // Restart location tracking
-      watchId.current = await Geolocation.watchPosition(
-        {
-          enableHighAccuracy: true,
-          timeout: 30000,
-          maximumAge: 30000
-        },
-        async (position: Position | null) => {
-          if (!position) return;
+      if (Capacitor.isNativePlatform()) {
+        watchId.current = await Geolocation.watchPosition(
+          {
+            enableHighAccuracy: true,
+            timeout: 30000,
+            maximumAge: 30000
+          },
+          async (position: Position | null) => {
+            if (!position) return;
 
+            const batteryLevel = await getBatteryLevel();
+            
+            const locationPoint: LocationPoint = {
+              latitude: position.coords.latitude,
+              longitude: position.coords.longitude,
+              accuracy: position.coords.accuracy || 0,
+              speed: position.coords.speed || undefined,
+              heading: position.coords.heading || undefined,
+              timestamp: position.timestamp,
+              batteryLevel
+            };
+
+            setCurrentLocation(locationPoint);
+
+            if (shouldSendUpdate(locationPoint)) {
+              await sendLocationUpdate(locationPoint);
+            }
+          }
+        );
+      } else {
+        // Web environment - use navigator.geolocation
+        const watchHandler = async (position: GeolocationPosition) => {
           const batteryLevel = await getBatteryLevel();
           
           const locationPoint: LocationPoint = {
@@ -354,8 +445,23 @@ export function useGeolocation() {
           if (shouldSendUpdate(locationPoint)) {
             await sendLocationUpdate(locationPoint);
           }
-        }
-      );
+        };
+
+        const webWatchId = navigator.geolocation.watchPosition(
+          watchHandler,
+          (error) => {
+            console.error('Geolocation watch error:', error);
+            toast.error('Location tracking error: ' + error.message);
+          },
+          {
+            enableHighAccuracy: true,
+            timeout: 30000,
+            maximumAge: 30000
+          }
+        );
+        
+        watchId.current = webWatchId.toString();
+      }
 
       setIsTracking(true);
       toast.success('Shift resumed - Location tracking enabled');
@@ -371,7 +477,11 @@ export function useGeolocation() {
     try {
       // Stop location tracking
       if (watchId.current) {
-        await Geolocation.clearWatch({ id: watchId.current });
+        if (Capacitor.isNativePlatform()) {
+          await Geolocation.clearWatch({ id: watchId.current });
+        } else {
+          navigator.geolocation.clearWatch(parseInt(watchId.current));
+        }
         watchId.current = null;
       }
 
