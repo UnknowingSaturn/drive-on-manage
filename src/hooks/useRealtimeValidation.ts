@@ -43,7 +43,7 @@ export function useRealtimeValidation(options: RealtimeValidationOptions = {}) {
       
       const { data: sodLogs, error } = await supabase
         .from('start_of_day_reports')
-        .select('driver_id, company_id, submitted_at')
+        .select('driver_id, company_id, created_at')
         .eq('company_id', options.companyId)
         .eq('driver_id', vehicleId)
         .limit(1);
@@ -91,10 +91,10 @@ export function useRealtimeValidation(options: RealtimeValidationOptions = {}) {
       
       const { data: existingEntries, error } = await supabase
         .from(tableName)
-        .select('id, submitted_at')
+        .select('id, created_at')
         .eq('driver_id', driverId)
-        .gte('submitted_at', `${today}T00:00:00.000Z`)
-        .lt('submitted_at', `${today}T23:59:59.999Z`);
+        .gte('created_at', `${today}T00:00:00.000Z`)
+        .lt('created_at', `${today}T23:59:59.999Z`);
 
       if (error) {
         console.error(`Duplicate ${entryType} check failed:`, error);
@@ -138,8 +138,8 @@ export function useRealtimeValidation(options: RealtimeValidationOptions = {}) {
         .from('start_of_day_reports')
         .select('heavy_parcels, standard, hanging_garments, packets, small_packets, postables')
         .eq('driver_id', driverId)
-        .gte('submitted_at', `${today}T00:00:00.000Z`)
-        .lt('submitted_at', `${today}T23:59:59.999Z`)
+        .gte('created_at', `${today}T00:00:00.000Z`)
+        .lt('created_at', `${today}T23:59:59.999Z`)
         .single();
 
       if (sodError) {
