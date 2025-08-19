@@ -112,14 +112,7 @@ const AdminDashboard = () => {
       const {
         data: reports,
         error
-      } = await supabase.from('end_of_day_reports').select(`
-          id, 
-          submitted_at, 
-          successful_deliveries, 
-          successful_collections,
-          driver_id,
-          processing_status
-        `).eq('company_id', profile.company_id).gte('submitted_at', sevenDaysAgo).order('submitted_at', {
+      } = await supabase.from('end_of_day_reports').select('id, submitted_at, successful_deliveries, successful_collections, driver_id, processing_status').eq('company_id', profile.company_id).gte('submitted_at', sevenDaysAgo).order('submitted_at', {
         ascending: false
       }).limit(5);
       if (error) throw error;
@@ -137,7 +130,7 @@ const AdminDashboard = () => {
         const profile = profiles?.find(p => p.user_id === driver?.user_id);
         return {
           ...report,
-          driver_name: profile ? `${profile.first_name} ${profile.last_name}` : 'Unknown'
+          driver_name: profile ? `${profile.first_name || ''} ${profile.last_name || ''}` : 'Unknown'
         };
       }) || [];
       const todayReports = reports?.filter(r => isToday(new Date(r.submitted_at))).length || 0;

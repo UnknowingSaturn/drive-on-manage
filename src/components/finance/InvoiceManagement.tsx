@@ -72,57 +72,64 @@ export const InvoiceManagement = () => {
     queryFn: async () => {
       if (!profile?.company_id) return null;
       
-      // Get EOD reports for the period
-      const { data: eodReports, error: eodError } = await supabase
-        .from('end_of_day_reports')
-        .select('*')
-        .eq('company_id', profile.company_id)
-        .eq('status', 'approved')
-        .gte('log_date', selectedPeriod.start)
-        .lte('log_date', selectedPeriod.end);
+      // Get EOD reports for the period with simplified query
+      try {
+        const eodResult = await supabase
+          .from('end_of_day_reports')
+          .select('successful_deliveries, successful_collections, submitted_at')
+          .eq('company_id', profile.company_id)
+          .gte('submitted_at', selectedPeriod.start)
+          .lte('submitted_at', selectedPeriod.end) as any;
+        
+        if (eodResult.error) throw eodResult.error;
+        const eodReports = eodResult.data || [];
 
-      if (eodError) throw eodError;
+        // Get driver payments for the period
+        const paymentsResult = await supabase
+          .from('payments')
+          .select('total_pay')
+          .eq('company_id', profile.company_id)
+          .gte('period_start', selectedPeriod.start)
+          .lte('period_end', selectedPeriod.end);
 
-      // Get driver payments for the period
-      const { data: payments, error: paymentsError } = await supabase
-        .from('payments')
-        .select('*')
-        .eq('company_id', profile.company_id)
-        .gte('period_start', selectedPeriod.start)
-        .lte('period_end', selectedPeriod.end);
+        if (paymentsResult.error) throw paymentsResult.error;
+        const payments = paymentsResult.data || [];
 
-      if (paymentsError) throw paymentsError;
+        // Get operating costs for the period
+        const costsResult = await supabase
+          .from('operating_costs')
+          .select('amount, category')
+          .eq('company_id', profile.company_id)
+          .gte('date', selectedPeriod.start)
+          .lte('date', selectedPeriod.end);
 
-      // Get operating costs for the period
-      const { data: operatingCosts, error: costsError } = await supabase
-        .from('operating_costs')
-        .select('*')
-        .eq('company_id', profile.company_id)
-        .gte('date', selectedPeriod.start)
-        .lte('date', selectedPeriod.end);
+        if (costsResult.error) throw costsResult.error;
+        const operatingCosts = costsResult.data || [];
 
-      if (costsError) throw costsError;
+        // Calculate metrics
+        const totalParcels = eodReports.reduce((sum, report) => sum + (report.successful_deliveries + report.successful_collections), 0);
+        const totalRevenue = eodReports.reduce((sum, report) => {
+          // Estimate revenue based on parcel count * average rate (£0.50 default)
+          return sum + ((report.successful_deliveries + report.successful_collections) * 0.50);
+        }, 0);
+        const totalWages = payments.reduce((sum, payment) => sum + payment.total_pay, 0);
+        const totalOperatingCosts = operatingCosts.reduce((sum, cost) => sum + cost.amount, 0);
+        const profitBeforeCosts = totalRevenue - totalWages;
+        const profitAfterCosts = profitBeforeCosts - totalOperatingCosts;
 
-      // Calculate metrics
-      const totalParcels = eodReports?.reduce((sum, report) => sum + (report.successful_deliveries + report.successful_collections), 0) || 0;
-      const totalRevenue = eodReports?.reduce((sum, report) => {
-        // Estimate revenue based on parcel count * average rate (£0.50 default)
-        return sum + ((report.successful_deliveries + report.successful_collections) * 0.50);
-      }, 0) || 0;
-      const totalWages = payments?.reduce((sum, payment) => sum + payment.total_pay, 0) || 0;
-      const totalOperatingCosts = operatingCosts?.reduce((sum, cost) => sum + cost.amount, 0) || 0;
-      const profitBeforeCosts = totalRevenue - totalWages;
-      const profitAfterCosts = profitBeforeCosts - totalOperatingCosts;
-
-      return {
-        totalParcels,
-        totalRevenue,
-        totalWages,
-        totalOperatingCosts,
-        profitBeforeCosts,
-        profitAfterCosts,
-        operatingCosts: operatingCosts || []
-      };
+        return {
+          totalParcels,
+          totalRevenue,
+          totalWages,
+          totalOperatingCosts,
+          profitBeforeCosts,
+          profitAfterCosts,
+          operatingCosts
+        };
+      } catch (error) {
+        console.error('Error fetching period metrics:', error);
+        return null;
+      }
     },
     enabled: !!profile?.company_id
   });
@@ -135,11 +142,10 @@ export const InvoiceManagement = () => {
       // Get approved EOD reports for the period
       const { data: eodReports, error: eodError } = await supabase
         .from('end_of_day_reports')
-        .select('*')
+        .select('successful_deliveries, successful_collections, submitted_at, driver_id')
         .eq('company_id', profile.company_id)
-        .eq('status', 'approved')
-        .gte('log_date', selectedPeriod.start)
-        .lte('log_date', selectedPeriod.end);
+        .gte('submitted_at', selectedPeriod.start)
+        .lte('submitted_at', selectedPeriod.end);
 
       if (eodError) throw eodError;
 

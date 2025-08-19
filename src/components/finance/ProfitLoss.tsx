@@ -32,9 +32,8 @@ export const ProfitLoss = () => {
         .from('end_of_day_reports')
         .select('successful_deliveries, successful_collections')
         .eq('company_id', profile.company_id)
-        .eq('status', 'approved')
-        .gte('log_date', selectedPeriod.start)
-        .lte('log_date', selectedPeriod.end);
+        .gte('submitted_at', selectedPeriod.start)
+        .lte('submitted_at', selectedPeriod.end);
 
       if (eodError) throw eodError;
 
