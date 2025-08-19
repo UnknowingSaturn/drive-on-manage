@@ -302,7 +302,6 @@ export const useLocationTracking = (config: Partial<LocationTrackingConfig> = {}
     toast({
       title: "Location Tracking Paused",
       description: "GPS tracking is temporarily paused.",
-      variant: "secondary",
     });
   }, [toast]);
 
