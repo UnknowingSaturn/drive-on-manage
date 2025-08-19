@@ -45,6 +45,7 @@ const adminItems = [
   { title: "Van Management", url: "/admin/vans", icon: Truck },
   { title: "Round Management", url: "/admin/rounds", icon: MapPin },
   { title: "Schedule View", url: "/admin/schedule", icon: Calendar },
+  { title: "Live Map", url: "/admin/live-map", icon: MapPin },
   { title: "EOD Reports", url: "/admin/reports", icon: FileText },
   { title: "SOD Reports", url: "/admin/start-of-day-reports", icon: Package },
   { title: "Finance", url: "/admin/finance", icon: Calculator },

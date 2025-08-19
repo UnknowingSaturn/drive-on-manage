@@ -18,6 +18,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
+import { useLocationTracking } from '@/hooks/useLocationTracking';
 
 interface EndOfDayFormData {
   did_support: boolean;
@@ -30,6 +31,7 @@ const EndOfDay = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const locationTracking = useLocationTracking();
   
   const [formData, setFormData] = useState<EndOfDayFormData>({
     did_support: false,
@@ -181,9 +183,15 @@ const EndOfDay = () => {
     },
     onSuccess: () => {
       setProcessing(false);
+      
+      // Stop location tracking when EOD is submitted
+      if (locationTracking.isTracking) {
+        locationTracking.stopTracking();
+      }
+      
       toast({
         title: "End of Day Report Submitted",
-        description: "Your EOD report has been submitted and screenshot is being processed.",
+        description: "Your EOD report has been submitted and location tracking has been stopped.",
       });
       setIsSubmitted(true);
       queryClient.invalidateQueries({ queryKey: ['eod-reports'] });
