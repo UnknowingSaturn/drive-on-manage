@@ -109,30 +109,50 @@ const AdminDashboard = () => {
       };
       const today = new Date().toISOString().split('T')[0];
       const sevenDaysAgo = format(subDays(new Date(), 7), 'yyyy-MM-dd');
-      const {
-        data: reports,
-        error
-      } = await supabase.from('end_of_day_reports').select('id, submitted_at, successful_deliveries, successful_collections, driver_id, processing_status').eq('company_id', profile.company_id).gte('submitted_at', sevenDaysAgo).order('submitted_at', {
-        ascending: false
-      }).limit(5);
-      if (error) throw error;
+      // Use explicit typing to avoid TypeScript instantiation issues
+      try {
+        const reportResult = await supabase
+          .from('end_of_day_reports')
+          .select('id, submitted_at, successful_deliveries, successful_collections, driver_id, processing_status')
+          .eq('company_id', profile.company_id)
+          .gte('submitted_at', sevenDaysAgo)
+          .order('submitted_at', { ascending: false })
+          .limit(5);
+          
+        if (reportResult.error) throw reportResult.error;
+        const reports = reportResult.data || [];
 
-      // Get driver names for recent reports
-      const driverIds = reports?.map(r => r.driver_id) || [];
-      const {
-        data: drivers
-      } = await supabase.from('driver_profiles').select('id, user_id').in('id', driverIds);
-      const {
-        data: profiles
-      } = await supabase.from('profiles').select('user_id, first_name, last_name').in('user_id', drivers?.map(d => d.user_id) || []);
+      // Get driver names for recent reports in a single optimized query
+      const driverIds = [...new Set(reports?.map(r => r.driver_id).filter(Boolean) || [])];
+      
+      if (driverIds.length === 0) {
+        return {
+          today: 0,
+          pending: 0,
+          total: 0,
+          recent: []
+        };
+      }
+
+      const { data: driversWithProfiles } = await supabase
+        .from('driver_profiles')
+        .select(`
+          id,
+          user_id,
+          profiles!inner(first_name, last_name)
+        `)
+        .in('id', driverIds);
+
       const recentWithNames = reports?.map(report => {
-        const driver = drivers?.find(d => d.id === report.driver_id);
-        const profile = profiles?.find(p => p.user_id === driver?.user_id);
+        const driver = driversWithProfiles?.find(d => d.id === report.driver_id);
         return {
           ...report,
-          driver_name: profile ? `${profile.first_name || ''} ${profile.last_name || ''}` : 'Unknown'
+          driver_name: driver?.profiles ? 
+            `${driver.profiles.first_name || ''} ${driver.profiles.last_name || ''}`.trim() : 
+            'Unknown'
         };
       }) || [];
+
       const todayReports = reports?.filter(r => isToday(new Date(r.submitted_at))).length || 0;
       const pendingReports = reports?.filter(r => r.processing_status === 'pending').length || 0;
       return {
@@ -141,6 +161,15 @@ const AdminDashboard = () => {
         total: reports?.length || 0,
         recent: recentWithNames
       };
+      } catch (error) {
+        console.error('Error fetching EOD reports:', error);
+        return {
+          today: 0,
+          pending: 0,
+          total: 0,
+          recent: []
+        };
+      }
     },
     enabled: !!profile?.company_id
   });

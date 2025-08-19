@@ -72,18 +72,17 @@ export const InvoiceManagement = () => {
     queryFn: async () => {
       if (!profile?.company_id) return null;
       
-      // Get EOD reports for the period with simplified approach
+      // Use direct async/await to avoid TypeScript instantiation issues
       try {
-        const eodReports = await supabase
+        const eodResult = await supabase
           .from('end_of_day_reports')
           .select('successful_deliveries, successful_collections, submitted_at')
           .eq('company_id', profile.company_id)
           .gte('submitted_at', selectedPeriod.start)
-          .lte('submitted_at', selectedPeriod.end)
-          .then(result => {
-            if (result.error) throw result.error;
-            return result.data || [];
-          });
+          .lte('submitted_at', selectedPeriod.end);
+          
+        if (eodResult.error) throw eodResult.error;
+        const eodReports = eodResult.data || [];
 
         // Get driver payments for the period
         const paymentsResult = await supabase

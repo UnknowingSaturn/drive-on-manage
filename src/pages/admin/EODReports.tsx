@@ -129,8 +129,10 @@ const EODReports = () => {
             company_id,
             profiles!inner(first_name, last_name, email)
           )
-        `)
-        .eq('driver_profiles.company_id', profile.company_id);
+        `);
+
+      // Filter by company via driver_profiles relationship and add date filters
+      query = query.eq('driver_profiles.company_id', profile.company_id);
 
       if (viewType === 'daily') {
         query = query
@@ -142,11 +144,11 @@ const EODReports = () => {
           .lte('submitted_at', `${dateRange.end}T23:59:59`);
       }
 
-      query = query.order('submitted_at', { ascending: false });
-
       if (selectedDriver !== 'all') {
         query = query.eq('driver_id', selectedDriver);
       }
+
+      query = query.order('submitted_at', { ascending: false });
 
       const { data, error } = await query;
       if (error) throw error;
