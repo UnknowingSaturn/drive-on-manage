@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/AppSidebar';
@@ -10,11 +10,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Package, Eye, Search, Filter, Download, Calendar, ChevronLeft, ChevronRight, AlertTriangle, CheckCircle, X, Edit } from 'lucide-react';
+import { Package, Eye, Search, Filter, Download, Calendar, ChevronLeft, ChevronRight, AlertTriangle, CheckCircle, X, Edit, FileText } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { format, startOfDay, endOfDay, addDays, subDays, parseISO, isToday, differenceInDays } from 'date-fns';
+import { format, startOfDay, endOfDay, addDays, subDays, parseISO, isToday, differenceInDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth, addWeeks, subWeeks, addMonths, subMonths } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
 
 interface ValidationIssue {
   type: 'round_mismatch' | 'date_mismatch';
@@ -26,6 +28,8 @@ interface ValidationResult {
   isValid: boolean;
   issues: ValidationIssue[];
 }
+
+type ViewType = 'daily' | 'weekly' | 'monthly';
 
 const StartOfDayReports = () => {
   const { profile } = useAuth();
@@ -39,9 +43,29 @@ const StartOfDayReports = () => {
   const [selectedReportValidation, setSelectedReportValidation] = useState<any>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingReport, setEditingReport] = useState<any>(null);
+  const [viewType, setViewType] = useState<ViewType>('daily');
   
-  const dayStart = startOfDay(currentDate);
-  const dayEnd = endOfDay(currentDate);
+  // Calculate date range based on view type
+  const getDateRange = () => {
+    switch (viewType) {
+      case 'weekly':
+        return {
+          start: startOfWeek(currentDate, { weekStartsOn: 1 }),
+          end: endOfWeek(currentDate, { weekStartsOn: 1 })
+        };
+      case 'monthly':
+        return {
+          start: startOfMonth(currentDate),
+          end: endOfMonth(currentDate)
+        };
+      default:
+        return { start: currentDate, end: currentDate };
+    }
+  };
+
+  const dateRange = getDateRange();
+  const dayStart = startOfDay(dateRange.start);
+  const dayEnd = endOfDay(dateRange.end);
 
   // Get user companies first
   const { data: userCompanies } = useQuery({
@@ -93,7 +117,7 @@ const StartOfDayReports = () => {
 
   // Get SOD reports with filters
   const { data: reports, isLoading } = useQuery({
-    queryKey: ['sod-reports', companyIds, dayStart.toISOString(), selectedDriver, searchQuery],
+    queryKey: ['sod-reports', companyIds, dayStart.toISOString(), dayEnd.toISOString(), selectedDriver, searchQuery, viewType],
     queryFn: async () => {
       if (companyIds.length === 0) return [];
 
@@ -340,8 +364,30 @@ const StartOfDayReports = () => {
     setPreviewImage(url);
   };
 
-  const navigateDay = (direction: 'prev' | 'next') => {
-    setCurrentDate(prev => direction === 'prev' ? subDays(prev, 1) : addDays(prev, 1));
+  const navigateDate = (direction: 'prev' | 'next') => {
+    if (direction === 'prev') {
+      switch (viewType) {
+        case 'weekly':
+          setCurrentDate(prev => subWeeks(prev, 1));
+          break;
+        case 'monthly':
+          setCurrentDate(prev => subMonths(prev, 1));
+          break;
+        default:
+          setCurrentDate(prev => subDays(prev, 1));
+      }
+    } else {
+      switch (viewType) {
+        case 'weekly':
+          setCurrentDate(prev => addWeeks(prev, 1));
+          break;
+        case 'monthly':
+          setCurrentDate(prev => addMonths(prev, 1));
+          break;
+        default:
+          setCurrentDate(prev => addDays(prev, 1));
+      }
+    }
   };
 
   const exportToCSV = () => {
@@ -371,9 +417,50 @@ const StartOfDayReports = () => {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `sod-reports-${format(currentDate, 'yyyy-MM-dd')}.csv`;
+    link.download = `sod-reports-${viewType}-${format(currentDate, 'yyyy-MM-dd')}.csv`;
     link.click();
     URL.revokeObjectURL(url);
+  };
+
+  const exportToPDF = () => {
+    if (!reports || reports.length === 0) return;
+
+    const doc = new jsPDF();
+    
+    // Title
+    const title = `Start of Day Reports - ${viewType.charAt(0).toUpperCase() + viewType.slice(1)} View`;
+    doc.setFontSize(16);
+    doc.text(title, 14, 20);
+    
+    // Date range
+    const dateText = viewType === 'daily' 
+      ? format(currentDate, 'dd/MM/yyyy')
+      : `${format(dateRange.start, 'dd/MM/yyyy')} - ${format(dateRange.end, 'dd/MM/yyyy')}`;
+    doc.setFontSize(12);
+    doc.text(`Period: ${dateText}`, 14, 30);
+    
+    // Table data
+    const tableData = reports.map(report => [
+      format(new Date(report.submitted_at), 'dd/MM/yyyy HH:mm'),
+      report.name,
+      report.round_number,
+      report.extracted_round_number || '',
+      (report.heavy_parcels || 0).toString(),
+      (report.standard || 0).toString(),
+      (report.total_deliveries || 0).toString(),
+      (report.total_collections || 0).toString(),
+      report.processing_status
+    ]);
+
+    (doc as any).autoTable({
+      head: [['Date', 'Driver', 'Round', 'Detected', 'Heavy', 'Standard', 'Deliveries', 'Collections', 'Status']],
+      body: tableData,
+      startY: 40,
+      styles: { fontSize: 8 },
+      headStyles: { fillColor: [59, 130, 246] }
+    });
+    
+    doc.save(`sod-reports-${viewType}-${format(currentDate, 'yyyy-MM-dd')}.pdf`);
   };
 
   return (
@@ -391,19 +478,37 @@ const StartOfDayReports = () => {
                   <p className="text-xs md:text-sm text-muted-foreground">Daily view of driver manifest uploads</p>
                 </div>
               </div>
-              <div className="flex items-center space-x-4">
-                <Button variant="outline" onClick={() => navigateDay('prev')}>
+              <div className="flex items-center space-x-2">
+                <Select value={viewType} onValueChange={(value: ViewType) => setViewType(value)}>
+                  <SelectTrigger className="w-32">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="daily">Daily</SelectItem>
+                    <SelectItem value="weekly">Weekly</SelectItem>
+                    <SelectItem value="monthly">Monthly</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button variant="outline" size="sm" onClick={() => navigateDate('prev')}>
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
-                <div className="text-sm font-semibold min-w-[120px] text-center">
-                  {format(currentDate, 'MMM dd, yyyy')}
+                <div className="px-4 py-2 bg-muted rounded-md min-w-[200px] text-center">
+                  <span className="font-medium">
+                    {viewType === 'daily' && format(currentDate, 'EEEE, dd MMM yyyy')}
+                    {viewType === 'weekly' && `Week of ${format(startOfWeek(currentDate, { weekStartsOn: 1 }), 'dd MMM')} - ${format(endOfWeek(currentDate, { weekStartsOn: 1 }), 'dd MMM yyyy')}`}
+                    {viewType === 'monthly' && format(currentDate, 'MMMM yyyy')}
+                  </span>
                 </div>
-                <Button variant="outline" onClick={() => navigateDay('next')}>
+                <Button variant="outline" size="sm" onClick={() => navigateDate('next')}>
                   <ChevronRight className="h-4 w-4" />
                 </Button>
                 <Button onClick={exportToCSV} variant="outline" size="sm">
                   <Download className="h-4 w-4 mr-2" />
                   Export CSV
+                </Button>
+                <Button onClick={exportToPDF} variant="outline" size="sm">
+                  <FileText className="h-4 w-4 mr-2" />
+                  Export PDF
                 </Button>
               </div>
             </div>
@@ -472,7 +577,10 @@ const StartOfDayReports = () => {
                   Start of Day Reports
                 </CardTitle>
                 <CardDescription>
-                  Total reports: {reports?.length || 0}
+                  {viewType === 'daily' && `Reports for ${format(currentDate, 'EEEE, dd MMM yyyy')}`}
+                  {viewType === 'weekly' && `Reports for week of ${format(startOfWeek(currentDate, { weekStartsOn: 1 }), 'dd MMM')} - ${format(endOfWeek(currentDate, { weekStartsOn: 1 }), 'dd MMM yyyy')}`}
+                  {viewType === 'monthly' && `Reports for ${format(currentDate, 'MMMM yyyy')}`}
+                  <br />Total reports: {reports?.length || 0}
                 </CardDescription>
               </CardHeader>
               <CardContent>
