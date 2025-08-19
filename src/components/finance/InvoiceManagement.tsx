@@ -74,7 +74,7 @@ export const InvoiceManagement = () => {
       
       // Get EOD reports for the period
       const { data: eodReports, error: eodError } = await supabase
-        .from('eod_reports')
+        .from('end_of_day_reports')
         .select('*')
         .eq('company_id', profile.company_id)
         .eq('status', 'approved')
@@ -104,10 +104,10 @@ export const InvoiceManagement = () => {
       if (costsError) throw costsError;
 
       // Calculate metrics
-      const totalParcels = eodReports?.reduce((sum, report) => sum + report.parcels_delivered, 0) || 0;
+      const totalParcels = eodReports?.reduce((sum, report) => sum + (report.successful_deliveries + report.successful_collections), 0) || 0;
       const totalRevenue = eodReports?.reduce((sum, report) => {
         // Estimate revenue based on parcel count * average rate (£0.50 default)
-        return sum + (report.parcels_delivered * 0.50);
+        return sum + ((report.successful_deliveries + report.successful_collections) * 0.50);
       }, 0) || 0;
       const totalWages = payments?.reduce((sum, payment) => sum + payment.total_pay, 0) || 0;
       const totalOperatingCosts = operatingCosts?.reduce((sum, cost) => sum + cost.amount, 0) || 0;
@@ -134,7 +134,7 @@ export const InvoiceManagement = () => {
 
       // Get approved EOD reports for the period
       const { data: eodReports, error: eodError } = await supabase
-        .from('eod_reports')
+        .from('end_of_day_reports')
         .select('*')
         .eq('company_id', profile.company_id)
         .eq('status', 'approved')
@@ -156,7 +156,7 @@ export const InvoiceManagement = () => {
         if (!acc[report.driver_id]) {
           acc[report.driver_id] = { parcels: 0, reports: [] };
         }
-        acc[report.driver_id].parcels += report.parcels_delivered;
+        acc[report.driver_id].parcels += (report.successful_deliveries + report.successful_collections);
         acc[report.driver_id].reports.push(report);
         return acc;
       }, {} as Record<string, { parcels: number; reports: any[] }>);

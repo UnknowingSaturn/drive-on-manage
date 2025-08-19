@@ -29,8 +29,8 @@ export const ProfitLoss = () => {
       
       // Get EOD reports for revenue calculation
       const { data: eodReports, error: eodError } = await supabase
-        .from('eod_reports')
-        .select('parcels_delivered')
+        .from('end_of_day_reports')
+        .select('successful_deliveries, successful_collections')
         .eq('company_id', profile.company_id)
         .eq('status', 'approved')
         .gte('log_date', selectedPeriod.start)
@@ -59,7 +59,7 @@ export const ProfitLoss = () => {
       if (costsError) throw costsError;
 
       // Calculate metrics
-      const totalParcels = eodReports?.reduce((sum, report) => sum + (report.parcels_delivered || 0), 0) || 0;
+      const totalParcels = eodReports?.reduce((sum, report) => sum + ((report.successful_deliveries || 0) + (report.successful_collections || 0)), 0) || 0;
       const totalRevenue = totalParcels * 0.50; // £0.50 per parcel
       const totalWages = payments?.reduce((sum, payment) => sum + (payment.total_pay || 0), 0) || 0;
       const totalOperatingCosts = operatingCosts?.reduce((sum, cost) => sum + (cost.amount || 0), 0) || 0;

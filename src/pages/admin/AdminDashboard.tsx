@@ -112,15 +112,14 @@ const AdminDashboard = () => {
       const {
         data: reports,
         error
-      } = await supabase.from('eod_reports').select(`
+      } = await supabase.from('end_of_day_reports').select(`
           id, 
-          log_date, 
-          parcels_delivered, 
-          estimated_pay, 
-          status, 
-          timestamp,
-          driver_id
-        `).eq('company_id', profile.company_id).gte('log_date', sevenDaysAgo).order('timestamp', {
+          submitted_at, 
+          successful_deliveries, 
+          successful_collections,
+          driver_id,
+          processing_status
+        `).eq('company_id', profile.company_id).gte('submitted_at', sevenDaysAgo).order('submitted_at', {
         ascending: false
       }).limit(5);
       if (error) throw error;
@@ -141,8 +140,8 @@ const AdminDashboard = () => {
           driver_name: profile ? `${profile.first_name} ${profile.last_name}` : 'Unknown'
         };
       }) || [];
-      const todayReports = reports?.filter(r => isToday(new Date(r.log_date))).length || 0;
-      const pendingReports = reports?.filter(r => r.status === 'submitted').length || 0;
+      const todayReports = reports?.filter(r => isToday(new Date(r.submitted_at))).length || 0;
+      const pendingReports = reports?.filter(r => r.processing_status === 'pending').length || 0;
       return {
         today: todayReports,
         pending: pendingReports,
@@ -169,10 +168,10 @@ const AdminDashboard = () => {
       const {
         data: reports,
         error
-      } = await supabase.from('eod_reports').select('parcels_delivered, estimated_pay').eq('company_id', profile.company_id).gte('log_date', sevenDaysAgo);
+      } = await supabase.from('end_of_day_reports').select('successful_deliveries, successful_collections').eq('company_id', profile.company_id).gte('submitted_at', sevenDaysAgo);
       if (error) throw error;
-      const totalDelivered = reports?.reduce((sum, r) => sum + (r.parcels_delivered || 0), 0) || 0;
-      const totalPay = reports?.reduce((sum, r) => sum + (r.estimated_pay || 0), 0) || 0;
+      const totalDelivered = reports?.reduce((sum, r) => sum + ((r.successful_deliveries || 0) + (r.successful_collections || 0)), 0) || 0;
+      const totalPay = 0; // Calculate based on your pay structure
       const avgDeliveryRate = reports?.length ? Math.round(totalDelivered / reports.length) : 0;
       return {
         totalDelivered,
@@ -517,10 +516,10 @@ const AdminDashboard = () => {
                           <div className="flex-1">
                             <p className="text-sm font-semibold text-foreground">{report.driver_name}</p>
                             <p className="text-xs text-muted-foreground">
-                              Submitted EOD: {report.parcels_delivered} parcels
+                              Submitted EOD: {(report.successful_deliveries || 0) + (report.successful_collections || 0)} parcels
                             </p>
                           </div>
-                          {getStatusBadge(report.status)}
+                          {getStatusBadge(report.processing_status || 'pending')}
                         </div>)}
                     </div>
                   </div>

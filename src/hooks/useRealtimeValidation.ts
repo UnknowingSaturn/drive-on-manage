@@ -42,10 +42,10 @@ export function useRealtimeValidation(options: RealtimeValidationOptions = {}) {
       const today = new Date().toISOString().split('T')[0];
       
       const { data: sodLogs, error } = await supabase
-        .from('sod_logs')
-        .select('driver_id, van_id, log_date')
-        .eq('van_id', vehicleId)
-        .eq('log_date', today)
+        .from('start_of_day_reports')
+        .select('driver_id, company_id, submitted_at')
+        .eq('company_id', options.companyId)
+        .eq('driver_id', vehicleId)
         .limit(1);
 
       if (error) {
@@ -87,13 +87,14 @@ export function useRealtimeValidation(options: RealtimeValidationOptions = {}) {
     try {
       
       const today = new Date().toISOString().split('T')[0];
-      const tableName = entryType === 'sod' ? 'sod_logs' : 'eod_reports';
+      const tableName = entryType === 'sod' ? 'start_of_day_reports' : 'end_of_day_reports';
       
       const { data: existingEntries, error } = await supabase
         .from(tableName)
-        .select('id, log_date')
+        .select('id, submitted_at')
         .eq('driver_id', driverId)
-        .eq('log_date', today);
+        .gte('submitted_at', `${today}T00:00:00.000Z`)
+        .lt('submitted_at', `${today}T23:59:59.999Z`);
 
       if (error) {
         console.error(`Duplicate ${entryType} check failed:`, error);
@@ -134,10 +135,11 @@ export function useRealtimeValidation(options: RealtimeValidationOptions = {}) {
       
       // Get SOD parcel count
       const { data: sodData, error: sodError } = await supabase
-        .from('sod_logs')
-        .select('parcel_count')
+        .from('start_of_day_reports')
+        .select('total_deliveries')
         .eq('driver_id', driverId)
-        .eq('log_date', today)
+        .gte('submitted_at', `${today}T00:00:00.000Z`)
+        .lt('submitted_at', `${today}T23:59:59.999Z`)
         .single();
 
       if (sodError) {
@@ -155,7 +157,7 @@ export function useRealtimeValidation(options: RealtimeValidationOptions = {}) {
         return { isValid: true, warning: 'No SOD entry found - proceeding without parcel count validation' };
       }
 
-      const startingCount = sodData.parcel_count;
+      const startingCount = sodData.total_deliveries;
       const isValid = deliveredCount <= startingCount;
       
       if (!isValid) {
@@ -211,7 +213,7 @@ export function useRealtimeValidation(options: RealtimeValidationOptions = {}) {
           {
             event: '*',
             schema: 'public',
-            table: 'sod_logs',
+            table: 'start_of_day_reports',
             filter: `company_id=eq.${options.companyId}`
           },
           (payload) => {
@@ -246,7 +248,7 @@ export function useRealtimeValidation(options: RealtimeValidationOptions = {}) {
           {
             event: 'INSERT',
             schema: 'public',
-            table: 'eod_reports',
+            table: 'end_of_day_reports',
             filter: `company_id=eq.${options.companyId}`
           },
           (payload) => {

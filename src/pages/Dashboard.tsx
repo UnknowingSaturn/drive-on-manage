@@ -50,10 +50,11 @@ const Dashboard = () => {
       if (driverProfile) {
         const today = new Date().toISOString().split('T')[0];
         const { data } = await supabase
-          .from('sod_logs')
+          .from('start_of_day_reports')
           .select('*')
           .eq('driver_id', driverProfile.id)
-          .eq('log_date', today)
+          .gte('submitted_at', `${today}T00:00:00.000Z`)
+          .lt('submitted_at', `${today}T23:59:59.999Z`)
           .maybeSingle();
         return data;
       }

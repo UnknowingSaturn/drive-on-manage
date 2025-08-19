@@ -69,10 +69,11 @@ const StartOfDay = () => {
     queryFn: async () => {
       if (!driverProfile?.id) return null;
       const { data } = await supabase
-        .from('sod_logs')
+        .from('start_of_day_reports')
         .select('*')
         .eq('driver_id', driverProfile.id)
-        .eq('log_date', today)
+        .gte('submitted_at', `${today}T00:00:00.000Z`)
+        .lt('submitted_at', `${today}T23:59:59.999Z`)
         .maybeSingle();
       return data;
     },
@@ -149,19 +150,16 @@ const StartOfDay = () => {
       const logData = {
         driver_id: driverProfile.id,
         company_id: profile.company_id,
-        van_id: driverProfile.assigned_van_id,
-        log_date: today,
-        parcel_count: parseInt(data.parcelCount),
-        starting_mileage: parseInt(data.mileage),
-        notes: data.notes ? sanitizeInput(data.notes) : null,
-        van_confirmed: data.vanConfirmed,
-        vehicle_check_completed: Object.values(vehicleCheck).every(checked => checked),
-        vehicle_check_items: vehicleCheck,
-        timestamp: new Date().toISOString()
+        name: `${profile.first_name} ${profile.last_name}`.trim(),
+        round_number: 'Manual Entry',
+        total_deliveries: parseInt(data.parcelCount),
+        screenshot_url: screenshotUrl,
+        processing_status: 'manual',
+        manifest_date: today
       };
 
       const { data: result, error } = await supabase
-        .from('sod_logs')
+        .from('start_of_day_reports')
         .insert(logData)
         .select()
         .single();
@@ -262,7 +260,7 @@ const StartOfDay = () => {
     }
   };
 
-  const isAlreadyStarted = todayLog?.timestamp;
+  const isAlreadyStarted = todayLog?.submitted_at;
 
   if (isLoading) {
     return (
@@ -329,20 +327,20 @@ const StartOfDay = () => {
                   <div className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div className="text-center p-4 rounded-lg bg-card/50">
-                        <div className="text-2xl font-bold text-gradient">
-                          {todayLog.parcel_count || 0}
+                         <div className="text-2xl font-bold text-gradient">
+                           {todayLog.total_deliveries || 0}
                         </div>
                         <div className="text-sm text-muted-foreground">Parcels</div>
                       </div>
                       <div className="text-center p-4 rounded-lg bg-card/50">
-                        <div className="text-2xl font-bold text-gradient">
-                          {todayLog.starting_mileage || 0}
+                         <div className="text-2xl font-bold text-gradient">
+                           N/A
                         </div>
                         <div className="text-sm text-muted-foreground">Start Mileage</div>
                       </div>
                       <div className="text-center p-4 rounded-lg bg-card/50">
-                        <div className="text-sm text-success">
-                          Started at {new Date(todayLog.timestamp).toLocaleTimeString()}
+                         <div className="text-sm text-success">
+                           Started at {new Date(todayLog.submitted_at).toLocaleTimeString()}
                         </div>
                         <div className="text-sm text-muted-foreground">Time</div>
                       </div>
@@ -363,10 +361,10 @@ const StartOfDay = () => {
                         </div>
                       </div>
                     </div>
-                    {todayLog.notes && (
-                      <div className="p-4 bg-muted rounded-lg">
-                        <Label className="text-sm font-medium">Notes:</Label>
-                        <p className="text-sm mt-1">{todayLog.notes}</p>
+                     {todayLog.round_number && (
+                       <div className="p-4 bg-muted rounded-lg">
+                         <Label className="text-sm font-medium">Round:</Label>
+                         <p className="text-sm mt-1">{todayLog.round_number}</p>
                       </div>
                     )}
                   </div>
@@ -689,13 +687,13 @@ const StartOfDay = () => {
           {successData && (
             <div className="space-y-3 my-4">
               <div className="grid grid-cols-2 gap-4 text-sm">
-                <div className="text-center p-3 bg-card/50 rounded-lg">
-                  <div className="font-semibold text-lg">{successData.parcel_count}</div>
-                  <div className="text-muted-foreground">Parcels</div>
-                </div>
-                <div className="text-center p-3 bg-card/50 rounded-lg">
-                  <div className="font-semibold text-lg">{successData.starting_mileage}</div>
-                  <div className="text-muted-foreground">Start Mileage</div>
+                 <div className="text-center p-3 bg-card/50 rounded-lg">
+                   <div className="font-semibold text-lg">{successData.total_deliveries}</div>
+                   <div className="text-muted-foreground">Parcels</div>
+                 </div>
+                 <div className="text-center p-3 bg-card/50 rounded-lg">
+                   <div className="font-semibold text-lg">Manual Entry</div>
+                   <div className="text-muted-foreground">Entry Type</div>
                 </div>
               </div>
               
@@ -715,15 +713,15 @@ const StartOfDay = () => {
                   </span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
-                  <span>Started at:</span>
-                  <span>{new Date(successData.timestamp).toLocaleTimeString()}</span>
+                   <span>Started at:</span>
+                   <span>{new Date(successData.submitted_at).toLocaleTimeString()}</span>
                 </div>
               </div>
 
-              {successData.notes && (
+              {successData.round_number && (
                 <div className="p-3 bg-muted rounded-lg">
-                  <Label className="text-xs font-medium">Notes:</Label>
-                  <p className="text-sm mt-1">{successData.notes}</p>
+                  <Label className="text-xs font-medium">Round:</Label>
+                  <p className="text-sm mt-1">{successData.round_number}</p>
                 </div>
               )}
             </div>
