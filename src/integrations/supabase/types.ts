@@ -785,96 +785,6 @@ export type Database = {
           },
         ]
       }
-      eod_reports: {
-        Row: {
-          actual_pay: number | null
-          admin_notes: string | null
-          approved_at: string | null
-          approved_by: string | null
-          company_id: string
-          cover_confirmed: boolean | null
-          cover_confirmed_at: string | null
-          cover_confirmed_by: string | null
-          cover_parcels: number | null
-          created_at: string
-          driver_id: string
-          estimated_pay: number | null
-          id: string
-          issues_reported: string | null
-          log_date: string
-          manager_notes: string | null
-          parcels_delivered: number
-          screenshot_url: string | null
-          status: string
-          timestamp: string
-          updated_at: string
-          van_id: string | null
-        }
-        Insert: {
-          actual_pay?: number | null
-          admin_notes?: string | null
-          approved_at?: string | null
-          approved_by?: string | null
-          company_id: string
-          cover_confirmed?: boolean | null
-          cover_confirmed_at?: string | null
-          cover_confirmed_by?: string | null
-          cover_parcels?: number | null
-          created_at?: string
-          driver_id: string
-          estimated_pay?: number | null
-          id?: string
-          issues_reported?: string | null
-          log_date?: string
-          manager_notes?: string | null
-          parcels_delivered: number
-          screenshot_url?: string | null
-          status?: string
-          timestamp?: string
-          updated_at?: string
-          van_id?: string | null
-        }
-        Update: {
-          actual_pay?: number | null
-          admin_notes?: string | null
-          approved_at?: string | null
-          approved_by?: string | null
-          company_id?: string
-          cover_confirmed?: boolean | null
-          cover_confirmed_at?: string | null
-          cover_confirmed_by?: string | null
-          cover_parcels?: number | null
-          created_at?: string
-          driver_id?: string
-          estimated_pay?: number | null
-          id?: string
-          issues_reported?: string | null
-          log_date?: string
-          manager_notes?: string | null
-          parcels_delivered?: number
-          screenshot_url?: string | null
-          status?: string
-          timestamp?: string
-          updated_at?: string
-          van_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "fk_eod_reports_company"
-            columns: ["company_id"]
-            isOneToOne: false
-            referencedRelation: "companies"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "fk_eod_reports_driver"
-            columns: ["driver_id"]
-            isOneToOne: false
-            referencedRelation: "driver_profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       incident_reports: {
         Row: {
           admin_notes: string | null
@@ -1258,13 +1168,6 @@ export type Database = {
             referencedRelation: "driver_profiles"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "fk_payments_eod_report"
-            columns: ["eod_report_id"]
-            isOneToOne: false
-            referencedRelation: "eod_reports"
-            referencedColumns: ["id"]
-          },
         ]
       }
       profiles: {
@@ -1471,57 +1374,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      sod_logs: {
-        Row: {
-          company_id: string
-          created_at: string
-          driver_id: string
-          id: string
-          log_date: string
-          notes: string | null
-          parcel_count: number
-          starting_mileage: number
-          timestamp: string
-          updated_at: string
-          van_confirmed: boolean
-          van_id: string | null
-          vehicle_check_completed: boolean
-          vehicle_check_items: Json | null
-        }
-        Insert: {
-          company_id: string
-          created_at?: string
-          driver_id: string
-          id?: string
-          log_date?: string
-          notes?: string | null
-          parcel_count: number
-          starting_mileage: number
-          timestamp?: string
-          updated_at?: string
-          van_confirmed?: boolean
-          van_id?: string | null
-          vehicle_check_completed?: boolean
-          vehicle_check_items?: Json | null
-        }
-        Update: {
-          company_id?: string
-          created_at?: string
-          driver_id?: string
-          id?: string
-          log_date?: string
-          notes?: string | null
-          parcel_count?: number
-          starting_mileage?: number
-          timestamp?: string
-          updated_at?: string
-          van_confirmed?: boolean
-          van_id?: string | null
-          vehicle_check_completed?: boolean
-          vehicle_check_items?: Json | null
-        }
-        Relationships: []
       }
       start_of_day_reports: {
         Row: {
