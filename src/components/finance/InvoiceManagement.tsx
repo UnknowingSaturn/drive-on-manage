@@ -72,64 +72,59 @@ export const InvoiceManagement = () => {
     queryFn: async () => {
       if (!profile?.company_id) return null;
       
-      // Use direct async/await to avoid TypeScript instantiation issues
-      try {
-        const eodResult = await supabase
-          .from('end_of_day_reports')
-          .select('successful_deliveries, successful_collections, submitted_at')
-          .eq('company_id', profile.company_id)
-          .gte('submitted_at', selectedPeriod.start)
-          .lte('submitted_at', selectedPeriod.end);
+      // Query with type assertion to avoid TypeScript issues
+      const eodQuery = await (supabase as any)
+        .from('end_of_day_reports')
+        .select('successful_deliveries, successful_collections, submitted_at')
+        .eq('company_id', profile.company_id)
+        .gte('submitted_at', selectedPeriod.start)
+        .lte('submitted_at', selectedPeriod.end);
           
-        if (eodResult.error) throw eodResult.error;
-        const eodReports = eodResult.data || [];
+      if (eodQuery.error) throw eodQuery.error;
+      const eodReports = eodQuery.data || [];
 
-        // Get driver payments for the period
-        const paymentsResult = await supabase
-          .from('payments')
-          .select('total_pay')
-          .eq('company_id', profile.company_id)
-          .gte('period_start', selectedPeriod.start)
-          .lte('period_end', selectedPeriod.end);
+      // Get driver payments for the period
+      const paymentsResult = await supabase
+        .from('payments')
+        .select('total_pay')
+        .eq('company_id', profile.company_id)
+        .gte('period_start', selectedPeriod.start)
+        .lte('period_end', selectedPeriod.end);
 
-        if (paymentsResult.error) throw paymentsResult.error;
-        const payments = paymentsResult.data || [];
+      if (paymentsResult.error) throw paymentsResult.error;
+      const payments = paymentsResult.data || [];
 
-        // Get operating costs for the period
-        const costsResult = await supabase
-          .from('operating_costs')
-          .select('amount, category')
-          .eq('company_id', profile.company_id)
-          .gte('date', selectedPeriod.start)
-          .lte('date', selectedPeriod.end);
+      // Get operating costs for the period
+      const costsResult = await supabase
+        .from('operating_costs')
+        .select('amount, category')
+        .eq('company_id', profile.company_id)
+        .gte('date', selectedPeriod.start)
+        .lte('date', selectedPeriod.end);
 
-        if (costsResult.error) throw costsResult.error;
-        const operatingCosts = costsResult.data || [];
+      if (costsResult.error) throw costsResult.error;
+      const operatingCosts = costsResult.data || [];
 
-        // Calculate metrics
-        const totalParcels = eodReports.reduce((sum, report) => sum + (report.successful_deliveries + report.successful_collections), 0);
-        const totalRevenue = eodReports.reduce((sum, report) => {
-          // Estimate revenue based on parcel count * average rate (£0.50 default)
-          return sum + ((report.successful_deliveries + report.successful_collections) * 0.50);
-        }, 0);
-        const totalWages = payments.reduce((sum, payment) => sum + payment.total_pay, 0);
-        const totalOperatingCosts = operatingCosts.reduce((sum, cost) => sum + cost.amount, 0);
-        const profitBeforeCosts = totalRevenue - totalWages;
-        const profitAfterCosts = profitBeforeCosts - totalOperatingCosts;
+      // Calculate metrics
+      const totalParcels = eodReports.reduce((sum, report) => sum + (report.successful_deliveries + report.successful_collections), 0);
+      const totalRevenue = eodReports.reduce((sum, report) => {
+        // Estimate revenue based on parcel count * average rate (£0.50 default)
+        return sum + ((report.successful_deliveries + report.successful_collections) * 0.50);
+      }, 0);
+      const totalWages = payments.reduce((sum, payment) => sum + payment.total_pay, 0);
+      const totalOperatingCosts = operatingCosts.reduce((sum, cost) => sum + cost.amount, 0);
+      const profitBeforeCosts = totalRevenue - totalWages;
+      const profitAfterCosts = profitBeforeCosts - totalOperatingCosts;
 
-        return {
-          totalParcels,
-          totalRevenue,
-          totalWages,
-          totalOperatingCosts,
-          profitBeforeCosts,
-          profitAfterCosts,
-          operatingCosts
-        };
-      } catch (error) {
-        console.error('Error fetching period metrics:', error);
-        return null;
-      }
+      return {
+        totalParcels,
+        totalRevenue,
+        totalWages,
+        totalOperatingCosts,
+        profitBeforeCosts,
+        profitAfterCosts,
+        operatingCosts
+      };
     },
     enabled: !!profile?.company_id
   });
