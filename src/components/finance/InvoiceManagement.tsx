@@ -72,17 +72,18 @@ export const InvoiceManagement = () => {
     queryFn: async () => {
       if (!profile?.company_id) return null;
       
-      // Get EOD reports for the period with simplified query
+      // Get EOD reports for the period with simplified approach
       try {
-        const eodResult = await supabase
+        const eodReports = await supabase
           .from('end_of_day_reports')
           .select('successful_deliveries, successful_collections, submitted_at')
           .eq('company_id', profile.company_id)
           .gte('submitted_at', selectedPeriod.start)
-          .lte('submitted_at', selectedPeriod.end) as any;
-        
-        if (eodResult.error) throw eodResult.error;
-        const eodReports = eodResult.data || [];
+          .lte('submitted_at', selectedPeriod.end)
+          .then(result => {
+            if (result.error) throw result.error;
+            return result.data || [];
+          });
 
         // Get driver payments for the period
         const paymentsResult = await supabase
