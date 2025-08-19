@@ -121,7 +121,6 @@ const StartOfDayReports = () => {
     queryFn: async () => {
       if (companyIds.length === 0) return [];
 
-      // First get the reports
       let query = supabase
         .from('start_of_day_reports')
         .select('*')
@@ -130,7 +129,6 @@ const StartOfDayReports = () => {
         .lte('submitted_at', dayEnd.toISOString())
         .order('submitted_at', { ascending: false });
 
-      // Apply driver filter
       if (selectedDriver && selectedDriver !== 'all') {
         query = query.eq('driver_id', selectedDriver);
       }
@@ -146,42 +144,8 @@ const StartOfDayReports = () => {
         return [];
       }
 
-      // Get driver profiles for the reports
-      const driverIds = [...new Set(reportsData.map(report => report.driver_id))];
-      const { data: driverData, error: driverError } = await supabase
-        .from('driver_profiles')
-        .select(`
-          id,
-          user_id,
-          profiles!inner(
-            first_name,
-            last_name,
-            email
-          )
-        `)
-        .in('id', driverIds);
-
-      if (driverError) {
-        console.error('Error fetching driver profiles:', driverError);
-        throw driverError;
-      }
-
-      // Create a map of driver data
-      const driverMap = driverData?.reduce((acc, driver) => {
-        acc[driver.id] = driver;
-        return acc;
-      }, {} as Record<string, any>) || {};
-
-      // Merge the data
-      const enrichedReports = reportsData.map(report => ({
-        ...report,
-        driver_profiles: driverMap[report.driver_id] || {
-          profiles: { first_name: 'Unknown', last_name: 'Driver', email: '' }
-        }
-      }));
-
       // Apply search filter on client side
-      let filteredData = enrichedReports;
+      let filteredData = reportsData;
       if (searchQuery) {
         const searchLower = searchQuery.toLowerCase();
         filteredData = filteredData.filter(report => 
@@ -214,28 +178,6 @@ const StartOfDayReports = () => {
           type: 'round_mismatch',
           severity: 'warning',
           message: `Selected round "${report.round_number}" doesn't match detected round "${report.extracted_round_number}"`
-        });
-      }
-    }
-    
-    // Check manifest date vs today
-    if (report.manifest_date) {
-      try {
-        const manifestDate = parseISO(report.manifest_date);
-        const daysDiff = Math.abs(differenceInDays(manifestDate, new Date()));
-        
-        if (daysDiff > 1) {
-          issues.push({
-            type: 'date_mismatch',
-            severity: daysDiff > 7 ? 'error' : 'warning',
-            message: `Manifest date (${format(manifestDate, 'dd/MM/yyyy')}) is ${daysDiff} days from today`
-          });
-        }
-      } catch (error) {
-        issues.push({
-          type: 'date_mismatch',
-          severity: 'error',
-          message: 'Invalid manifest date format'
         });
       }
     }
@@ -279,7 +221,7 @@ const StartOfDayReports = () => {
       const { error } = await supabase
         .from('start_of_day_reports')
         .update({
-          name: data.name,
+          driver_name: data.driver_name,
           round_number: data.round_number,
           extracted_round_number: data.extracted_round_number,
           heavy_parcels: parseInt(data.heavy_parcels) || 0,
@@ -288,9 +230,6 @@ const StartOfDayReports = () => {
           packets: parseInt(data.packets) || 0,
           small_packets: parseInt(data.small_packets) || 0,
           postables: parseInt(data.postables) || 0,
-          total_deliveries: parseInt(data.total_deliveries) || 0,
-          total_collections: parseInt(data.total_collections) || 0,
-          manifest_date: data.manifest_date || null,
           processing_status: data.processing_status
         })
         .eq('id', data.id);
@@ -395,7 +334,7 @@ const StartOfDayReports = () => {
 
     const csvData = reports.map(report => ({
       Date: format(new Date(report.submitted_at), 'yyyy-MM-dd HH:mm'),
-      Driver: report.name,
+      Driver: report.driver_name,
       'Selected Round': report.round_number,
       'Detected Round': report.extracted_round_number || '',
       'Heavy Parcels': report.heavy_parcels || 0,
@@ -442,13 +381,13 @@ const StartOfDayReports = () => {
     // Table data
     const tableData = reports.map(report => [
       format(new Date(report.submitted_at), 'dd/MM/yyyy HH:mm'),
-      report.name,
+      report.driver_name,
       report.round_number,
       report.extracted_round_number || '',
       (report.heavy_parcels || 0).toString(),
       (report.standard || 0).toString(),
-      (report.total_deliveries || 0).toString(),
-      (report.total_collections || 0).toString(),
+      ((report.heavy_parcels || 0) + (report.standard || 0) + (report.hanging_garments || 0) + (report.packets || 0) + (report.small_packets || 0) + (report.postables || 0)).toString(),
+      '0', // Collections not tracked in SOD
       report.processing_status
     ]);
 
@@ -597,7 +536,7 @@ const StartOfDayReports = () => {
                            <TableHead>Driver</TableHead>
                            <TableHead>Selected Round</TableHead>
                            <TableHead>Detected Round</TableHead>
-                           <TableHead>Manifest Date</TableHead>
+                           <TableHead>Date</TableHead>
                            <TableHead>Collections</TableHead>
                            <TableHead>Deliveries</TableHead>
                            <TableHead>Heavy</TableHead>
@@ -615,10 +554,7 @@ const StartOfDayReports = () => {
                          {reports.map((report) => (
                            <TableRow key={report.id}>
                              <TableCell>
-                               <div className="font-medium">{report.name}</div>
-                               <div className="text-sm text-muted-foreground">
-                                 {report.driver_profiles.profiles.email}
-                               </div>
+                               <div className="font-medium">{report.driver_name}</div>
                              </TableCell>
                             <TableCell>
                               <Badge variant="outline">{report.round_number}</Badge>
@@ -631,10 +567,10 @@ const StartOfDayReports = () => {
                               )}
                             </TableCell>
                             <TableCell className="text-center">
-                              {report.manifest_date || <span className="text-muted-foreground">-</span>}
+                              {format(new Date(report.submitted_at), 'yyyy-MM-dd')}
                             </TableCell>
-                            <TableCell className="text-center">{report.total_collections || 0}</TableCell>
-                            <TableCell className="text-center">{report.total_deliveries || 0}</TableCell>
+                            <TableCell className="text-center">{0}</TableCell> {/* Collections not tracked in SOD */}
+                            <TableCell className="text-center">{(report.heavy_parcels || 0) + (report.standard || 0) + (report.hanging_garments || 0) + (report.packets || 0) + (report.small_packets || 0) + (report.postables || 0)}</TableCell>
                             <TableCell className="text-center">{report.heavy_parcels || 0}</TableCell>
                             <TableCell className="text-center">{report.standard || 0}</TableCell>
                             <TableCell className="text-center">{report.hanging_garments || 0}</TableCell>
@@ -657,7 +593,7 @@ const StartOfDayReports = () => {
                                   </DialogTrigger>
                                   <DialogContent className="max-w-4xl">
                                     <DialogHeader>
-                                      <DialogTitle>Manifest Screenshot - {report.name}</DialogTitle>
+                                      <DialogTitle>Manifest Screenshot - {report.driver_name}</DialogTitle>
                                     </DialogHeader>
                                     <div className="flex justify-center">
                                       {previewImage && (
@@ -716,7 +652,7 @@ const StartOfDayReports = () => {
            <DialogHeader>
              <DialogTitle className="flex items-center">
                <AlertTriangle className="h-5 w-5 text-yellow-600 mr-2" />
-               Validation Issues - {selectedReportValidation?.name}
+               Validation Issues - {selectedReportValidation?.driver_name}
              </DialogTitle>
            </DialogHeader>
            
@@ -737,14 +673,6 @@ const StartOfDayReports = () => {
                      ) : (
                        <span className="text-muted-foreground ml-2">Not detected</span>
                      )}
-                   </div>
-                   <div>
-                     <span className="text-muted-foreground">Manifest Date:</span>
-                     <span className="ml-2">{selectedReportValidation.manifest_date || 'Not detected'}</span>
-                   </div>
-                   <div>
-                     <span className="text-muted-foreground">Submission Date:</span>
-                     <span className="ml-2">{format(new Date(selectedReportValidation.submitted_at), 'dd/MM/yyyy')}</span>
                    </div>
                  </div>
                </div>
@@ -814,7 +742,7 @@ const StartOfDayReports = () => {
             <DialogHeader>
               <DialogTitle className="flex items-center">
                 <Edit className="h-5 w-5 text-primary mr-2" />
-                Edit SOD Report - {editingReport?.name}
+                Edit SOD Report - {editingReport?.driver_name}
               </DialogTitle>
               <DialogDescription>
                 Edit the details of this Start of Day report
@@ -833,11 +761,11 @@ const StartOfDayReports = () => {
                   <div className="space-y-4">
                     <h4 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground">Driver Information</h4>
                     <div className="space-y-2">
-                      <Label htmlFor="name">Driver Name</Label>
+                      <Label htmlFor="driver_name">Driver Name</Label>
                       <Input
-                        id="name"
-                        name="name"
-                        defaultValue={editingReport.name}
+                        id="driver_name"
+                        name="driver_name"
+                        defaultValue={editingReport.driver_name}
                         required
                       />
                     </div>
@@ -861,15 +789,6 @@ const StartOfDayReports = () => {
                         id="extracted_round_number"
                         name="extracted_round_number"
                         defaultValue={editingReport.extracted_round_number || ''}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="manifest_date">Manifest Date</Label>
-                      <Input
-                        id="manifest_date"
-                        name="manifest_date"
-                        type="date"
-                        defaultValue={editingReport.manifest_date || ''}
                       />
                     </div>
                   </div>
@@ -941,31 +860,9 @@ const StartOfDayReports = () => {
                     </div>
                   </div>
 
-                  {/* Totals */}
+                  {/* Status */}
                   <div className="space-y-4">
-                    <h4 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground">Totals</h4>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="total_deliveries">Total Deliveries</Label>
-                        <Input
-                          id="total_deliveries"
-                          name="total_deliveries"
-                          type="number"
-                          min="0"
-                          defaultValue={editingReport.total_deliveries || 0}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="total_collections">Total Collections</Label>
-                        <Input
-                          id="total_collections"
-                          name="total_collections"
-                          type="number"
-                          min="0"
-                          defaultValue={editingReport.total_collections || 0}
-                        />
-                      </div>
-                    </div>
+                    <h4 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground">Status</h4>
                     <div className="space-y-2">
                       <Label htmlFor="processing_status">Processing Status</Label>
                       <Select name="processing_status" defaultValue={editingReport.processing_status}>
