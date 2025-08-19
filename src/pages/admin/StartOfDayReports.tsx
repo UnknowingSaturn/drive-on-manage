@@ -164,6 +164,19 @@ const StartOfDayReports = () => {
   const validateReport = (report: any): ValidationResult => {
     const issues: ValidationIssue[] = [];
     
+    // Check manifest date is today
+    if (report.manifest_date) {
+      const manifestDate = parseISO(report.manifest_date);
+      if (!isToday(manifestDate)) {
+        const daysDiff = differenceInDays(new Date(), manifestDate);
+        issues.push({
+          type: 'date_mismatch',
+          severity: daysDiff > 1 ? 'error' : 'warning',
+          message: `Manifest date ${format(manifestDate, 'dd/MM/yyyy')} is ${daysDiff > 0 ? `${daysDiff} day(s) old` : `${Math.abs(daysDiff)} day(s) in the future`}`
+        });
+      }
+    }
+    
     // Check round similarity
     if (report.round_number && report.extracted_round_number) {
       const selected = report.round_number.toLowerCase().trim();
