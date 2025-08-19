@@ -94,7 +94,10 @@ const AdminSettings = () => {
 
   const updateSetting = (key: string, value: any) => {
     if (!settings) return;
-    updateSettingsMutation.mutate({ ...settings, [key]: value });
+    
+    // Debounce the update to prevent rapid API calls
+    const newSettings = { ...settings, [key]: value };
+    updateSettingsMutation.mutate(newSettings);
   };
 
   if (isLoading) {
