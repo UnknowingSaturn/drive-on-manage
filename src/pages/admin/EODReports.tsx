@@ -135,7 +135,7 @@ const EODReports = () => {
       if (viewType === 'daily') {
         query = query
           .gte('submitted_at', `${dateRange.start}T00:00:00`)
-          .lt('submitted_at', `${dateRange.start}T23:59:59`);
+          .lte('submitted_at', `${dateRange.start}T23:59:59`);
       } else {
         query = query
           .gte('submitted_at', `${dateRange.start}T00:00:00`)
