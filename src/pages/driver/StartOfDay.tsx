@@ -17,6 +17,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { sanitizeInput } from '@/lib/security';
+import { useLocationTracking } from '@/hooks/useLocationTracking';
+import { Switch } from '@/components/ui/switch';
 
 const StartOfDay = () => {
   const { user, profile } = useAuth();
@@ -24,12 +26,16 @@ const StartOfDay = () => {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   
+  // Location tracking hook
+  const locationTracking = useLocationTracking();
+  
   const [formData, setFormData] = useState({
     parcelCount: '',
     mileage: '',
     notes: '',
     vanConfirmed: false,
-    screenshot: null as File | null
+    screenshot: null as File | null,
+    enableLocationTracking: false
   });
 
   const [vehicleCheck, setVehicleCheck] = useState({
@@ -212,6 +218,11 @@ const StartOfDay = () => {
       return result;
     },
     onSuccess: (data) => {
+      // Start location tracking if enabled
+      if (formData.enableLocationTracking) {
+        locationTracking.startTracking(data.id);
+      }
+      
       setSuccessData(data);
       setShowSuccess(true);
       queryClient.invalidateQueries({ queryKey: ['today-sod-log'] });
@@ -604,6 +615,34 @@ const StartOfDay = () => {
                         onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
                         className="min-h-[80px]"
                       />
+                    </div>
+
+                    {/* Location Tracking Toggle */}
+                    <div className="space-y-3">
+                      <div className="p-4 border rounded-lg bg-card/50">
+                        <div className="flex items-center justify-between">
+                          <div className="space-y-1">
+                            <Label className="text-sm font-medium">Enable Location Tracking</Label>
+                            <p className="text-xs text-muted-foreground">
+                              Allow GPS tracking during your shift for route optimization and safety
+                            </p>
+                          </div>
+                          <Switch
+                            checked={formData.enableLocationTracking}
+                            onCheckedChange={(checked) => 
+                              setFormData(prev => ({ ...prev, enableLocationTracking: checked }))
+                            }
+                          />
+                        </div>
+                        {formData.enableLocationTracking && (
+                          <div className="mt-3 p-3 bg-primary/10 rounded-lg">
+                            <p className="text-xs text-primary">
+                              Location tracking will start automatically when you begin your shift. 
+                              You can pause or stop tracking at any time from the dashboard.
+                            </p>
+                          </div>
+                        )}
+                      </div>
                     </div>
 
                     {errors.vanAssignment && (
