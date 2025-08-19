@@ -1398,6 +1398,7 @@ export type Database = {
           hanging_garments: number | null
           heavy_parcels: number | null
           id: string
+          manifest_date: string | null
           packets: number | null
           postables: number | null
           processing_status: string | null
@@ -1419,6 +1420,7 @@ export type Database = {
           hanging_garments?: number | null
           heavy_parcels?: number | null
           id?: string
+          manifest_date?: string | null
           packets?: number | null
           postables?: number | null
           processing_status?: string | null
@@ -1440,6 +1442,7 @@ export type Database = {
           hanging_garments?: number | null
           heavy_parcels?: number | null
           id?: string
+          manifest_date?: string | null
           packets?: number | null
           postables?: number | null
           processing_status?: string | null
