@@ -86,44 +86,41 @@ const TeamManagement = () => {
     mutationFn: async (memberData: typeof newMember) => {
       if (!profile?.company_id) throw new Error('No company ID');
 
-      // First create the user account
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: memberData.email,
-        password: Math.random().toString(36).slice(-8) + 'A1!', // Generate temp password
-        options: {
-          data: {
-            first_name: memberData.first_name,
-            last_name: memberData.last_name,
-            user_type: memberData.role
-          }
+      // Use the comprehensive create function similar to driver creation
+      const { data: createResult, error: createError } = await supabase.functions.invoke('comprehensive-create-driver', {
+        body: {
+          email: memberData.email.trim(),
+          firstName: memberData.first_name.trim(),
+          lastName: memberData.last_name.trim(),
+          phone: null,
+          companyId: profile.company_id,
+          userType: memberData.role, // This will create admin/supervisor instead of driver
+          skipDriverProfile: true // Skip driver-specific setup
         }
       });
 
-      if (authError) throw authError;
-      if (!authData.user) throw new Error('Failed to create user account');
-
-      // Add to user_companies
-      const { error: companyError } = await supabase
-        .from('user_companies')
-        .insert({
-          user_id: authData.user.id,
-          company_id: profile.company_id,
-          role: memberData.role
-        });
-
-      if (companyError) throw companyError;
+      if (createError || !createResult?.success) {
+        throw new Error(createError?.message || 'Failed to create team member account');
+      }
 
       // Send credentials email
-      const { error: emailError } = await supabase.functions.invoke('resend-driver-credentials', {
-        body: { email: memberData.email }
+      const { error: emailError } = await supabase.functions.invoke('send-driver-credentials', {
+        body: {
+          email: memberData.email,
+          firstName: memberData.first_name,
+          lastName: memberData.last_name,
+          tempPassword: createResult.tempPassword,
+          companyId: profile.company_id,
+          isTeamMember: true
+        }
       });
 
       if (emailError) {
-        
         // Don't throw here as the user was still created successfully
+        console.warn('Email sending failed:', emailError);
       }
 
-      return authData.user;
+      return createResult;
     },
     onSuccess: () => {
       toast({

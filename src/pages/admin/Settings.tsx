@@ -92,12 +92,28 @@ const AdminSettings = () => {
     }
   });
 
+  const [pendingUpdates, setPendingUpdates] = useState<Record<string, any>>({});
+  const [updateTimeout, setUpdateTimeout] = useState<NodeJS.Timeout | null>(null);
+
   const updateSetting = (key: string, value: any) => {
     if (!settings) return;
     
-    // Debounce the update to prevent rapid API calls
-    const newSettings = { ...settings, [key]: value };
-    updateSettingsMutation.mutate(newSettings);
+    // Update local state immediately for responsive UI
+    setPendingUpdates(prev => ({ ...prev, [key]: value }));
+    
+    // Clear existing timeout
+    if (updateTimeout) {
+      clearTimeout(updateTimeout);
+    }
+    
+    // Set new timeout for debounced API call
+    const newTimeout = setTimeout(() => {
+      const newSettings = { ...settings, ...pendingUpdates, [key]: value };
+      updateSettingsMutation.mutate(newSettings);
+      setPendingUpdates({});
+    }, 1000); // 1 second debounce
+    
+    setUpdateTimeout(newTimeout);
   };
 
   if (isLoading) {
@@ -153,7 +169,7 @@ const AdminSettings = () => {
                     <Input
                       id="work-hours"
                       type="number"
-                      value={settings?.standard_work_hours || 8}
+                      value={pendingUpdates.standard_work_hours ?? settings?.standard_work_hours ?? 8}
                       onChange={(e) => updateSetting('standard_work_hours', parseInt(e.target.value))}
                       min="1"
                       max="24"
@@ -165,7 +181,7 @@ const AdminSettings = () => {
                       id="overtime-multiplier"
                       type="number"
                       step="0.1"
-                      value={settings?.overtime_rate_multiplier || 1.5}
+                      value={pendingUpdates.overtime_rate_multiplier ?? settings?.overtime_rate_multiplier ?? 1.5}
                       onChange={(e) => updateSetting('overtime_rate_multiplier', parseFloat(e.target.value))}
                       min="1"
                       max="3"
@@ -194,7 +210,7 @@ const AdminSettings = () => {
                       id="parcel-rate"
                       type="number"
                       step="0.01"
-                      value={settings?.default_parcel_rate || 0.75}
+                      value={pendingUpdates.default_parcel_rate ?? settings?.default_parcel_rate ?? 0.75}
                       onChange={(e) => updateSetting('default_parcel_rate', parseFloat(e.target.value))}
                       min="0"
                     />
@@ -205,7 +221,7 @@ const AdminSettings = () => {
                       id="cover-rate"
                       type="number"
                       step="0.01"
-                      value={settings?.default_cover_rate || 1.00}
+                      value={pendingUpdates.default_cover_rate ?? settings?.default_cover_rate ?? 1.00}
                       onChange={(e) => updateSetting('default_cover_rate', parseFloat(e.target.value))}
                       min="0"
                     />
@@ -216,7 +232,7 @@ const AdminSettings = () => {
                       id="base-pay"
                       type="number"
                       step="0.01"
-                      value={settings?.default_base_pay || 10.00}
+                      value={pendingUpdates.default_base_pay ?? settings?.default_base_pay ?? 10.00}
                       onChange={(e) => updateSetting('default_base_pay', parseFloat(e.target.value))}
                       min="0"
                     />
@@ -247,7 +263,7 @@ const AdminSettings = () => {
                     <Input
                       id="payment-day"
                       type="number"
-                      value={settings?.payment_day || 5}
+                      value={pendingUpdates.payment_day ?? settings?.payment_day ?? 5}
                       onChange={(e) => updateSetting('payment_day', parseInt(e.target.value))}
                       min="1"
                       max="31"
@@ -416,7 +432,7 @@ const AdminSettings = () => {
                     <Input
                       id="late-submission-hours"
                       type="number"
-                      value={settings?.late_submission_hours || 24}
+                      value={pendingUpdates.late_submission_hours ?? settings?.late_submission_hours ?? 24}
                       onChange={(e) => updateSetting('late_submission_hours', parseInt(e.target.value))}
                       min="1"
                       max="168"

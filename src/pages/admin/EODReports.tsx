@@ -124,7 +124,9 @@ const EODReports = () => {
         .select(`
           *,
           driver_profiles!inner(
-            *,
+            id,
+            user_id,
+            company_id,
             profiles!inner(first_name, last_name, email)
           )
         `)
