@@ -42,6 +42,18 @@ const StartOfDay = () => {
     offlineQueueLength,
     captureLocationWithFallbacks
   } = useGeolocation();
+
+  // Initialize consent from localStorage
+  useEffect(() => {
+    try {
+      const storedConsent = localStorage.getItem('locationTrackingConsent') === 'true';
+      if (storedConsent && !consentGiven) {
+        setConsentGiven(true);
+      }
+    } catch (error) {
+      console.error('Failed to read stored consent:', error);
+    }
+  }, [consentGiven, setConsentGiven]);
   
   const [formData, setFormData] = useState({
     parcelCount: '',
@@ -68,6 +80,28 @@ const StartOfDay = () => {
   const [locationTrackingStarted, setLocationTrackingStarted] = useState(false);
 
   const today = new Date().toISOString().split('T')[0];
+
+  const [consentGiven, setConsentGiven] = useState(() => {
+    // Check for persistent app-level consent
+    try {
+      return localStorage.getItem('locationTrackingConsent') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const persistConsentChoice = (consent: boolean) => {
+    try {
+      if (consent) {
+        localStorage.setItem('locationTrackingConsent', 'true');
+      } else {
+        localStorage.removeItem('locationTrackingConsent');
+      }
+      setConsentGiven(consent);
+    } catch (error) {
+      console.error('Failed to persist consent choice:', error);
+    }
+  };
 
   // Get driver profile
   const { data: driverProfile } = useQuery({
@@ -144,9 +178,8 @@ const StartOfDay = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  // Start of day mutation
   const startDayMutation = useMutation({
-    mutationFn: async (data: typeof formData) => {
+    mutationFn: async (data: { parcelCount: string; mileage: string; notes: string; vanConfirmed: boolean; screenshot: File | null }) => {
       if (!driverProfile?.id || !profile?.company_id) {
         throw new Error('Driver profile not found');
       }
@@ -235,13 +268,18 @@ const StartOfDay = () => {
     onSuccess: async (data) => {
       setSuccessData(data);
       
-      // Auto-start location tracking after successful SOD submission
-      // Always try to start tracking since we auto-granted consent during submission
-      if (permissionGranted) {
-        // Auto-grant consent during form submission to ensure startShift works
-        setConsentGiven(true);
-        const trackingStarted = await startShift(true); // Bypass consent check since we just granted it
+      // Auto-start location tracking if consent is given
+      if (consentGiven) {
+        console.log('Starting shift with consent already given');
+        const trackingStarted = await startShift(true);
         setLocationTrackingStarted(trackingStarted);
+        
+        if (trackingStarted) {
+          toast({
+            title: "Shift Started",
+            description: "Location tracking is now active for your delivery shift.",
+          });
+        }
       } else {
         setShowLocationConsent(true);
       }
@@ -271,65 +309,112 @@ const StartOfDay = () => {
       return;
     }
 
-    console.log('Form validated, checking location permissions...', { 
-      permissionGranted, 
-      consentGiven, 
+    console.log('Form validated, checking location consent...', { 
+      consentGiven,
+      permissionGranted,
       userAgent: navigator.userAgent 
     });
 
-    // Always ensure fresh permission check and request if needed
+    // Check for explicit consent toggle
+    if (!consentGiven) {
+      toast({
+        title: "Location Consent Required",
+        description: "Please enable location tracking to start your shift.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    console.log('Consent confirmed, requesting location permission (user gesture)...');
+    
+    // Request geolocation permission with user gesture
     let locationReady = permissionGranted;
+    let locationData: { latitude?: number; longitude?: number; accuracy?: number } | null = null;
     
     if (!locationReady) {
       console.log('Requesting location permissions...');
       locationReady = await requestPermissions();
       console.log('Permission request result:', locationReady);
     }
-    
-    if (!locationReady) {
-      toast({
-        title: "Location Access Required",
-        description: "Location tracking is mandatory for delivery shifts. Please allow location access and try again.",
-        variant: "destructive",
-      });
-      return;
-    }
 
-    // Capture initial location to verify geolocation works and show user their location is being tracked
-    console.log('Capturing initial location for SOD to verify functionality...');
+    // Always try to capture location after user gesture, even if permission failed
+    console.log('Attempting to capture current location...');
+    
     try {
-      const initialLocation = await captureLocationWithFallbacks();
-      if (initialLocation) {
-        console.log('Initial location successfully captured for SOD:', initialLocation);
+      const currentPosition = await new Promise<GeolocationPosition | null>((resolve) => {
+        if (!navigator.geolocation) {
+          console.log('Geolocation not supported');
+          resolve(null);
+          return;
+        }
+
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            console.log('Location captured successfully:', position.coords);
+            resolve(position);
+          },
+          (error) => {
+            console.log('Location capture failed:', error.code, error.message);
+            
+            // Handle different error types
+            if (error.code === 1) { // PERMISSION_DENIED
+              toast({
+                title: "Location Access Denied",
+                description: "Please enable location permissions in your browser to continue.",
+                variant: "destructive",
+              });
+              resolve(null);
+            } else {
+              // Code 2 (Position unavailable) or 3 (Timeout) - proceed anyway
+              console.log('Location unavailable or timeout, proceeding with submission');
+              resolve(null);
+            }
+          },
+          { 
+            enableHighAccuracy: false, 
+            timeout: 15000, 
+            maximumAge: 60000 
+          }
+        );
+      });
+
+      if (currentPosition) {
+        locationData = {
+          latitude: currentPosition.coords.latitude,
+          longitude: currentPosition.coords.longitude,
+          accuracy: currentPosition.coords.accuracy
+        };
+        
         toast({
-          title: "Location Confirmed",
-          description: `Starting location captured (±${Math.round(initialLocation.accuracy)}m accuracy)`,
+          title: "Location Confirmed", 
+          description: `Starting location captured (±${Math.round(currentPosition.coords.accuracy)}m accuracy)`
         });
+      } else if (!locationReady) {
+        // Only block if permission was explicitly denied
+        return;
       } else {
-        console.warn('Could not capture initial location - this may indicate GPS issues');
-        // Still allow form submission as tracking will handle fallbacks during the shift
+        // Permission granted but location unavailable/timeout - continue
         toast({
           title: "Location Detection Limited",
-          description: "Using network-based location. GPS may be unavailable on this device.",
+          description: "GPS unavailable. Proceeding with network-based location."
         });
       }
-    } catch (locationError) {
-      console.error('Initial location capture failed:', locationError);
+    } catch (error) {
+      console.error('Location capture error:', error);
       toast({
         title: "Location Warning",
-        description: "Location services may be limited. Shift tracking will use available location methods.",
+        description: "Location services limited. Shift tracking will use available methods."
       });
-      // Continue with form submission - the tracking system has multiple fallbacks
     }
 
-    console.log('All checks passed, submitting SOD form...');
+    console.log('All checks passed, submitting SOD form with location data:', locationData);
     startDayMutation.mutate(formData);
   };
 
   const handleLocationConsentAccept = async () => {
-    setConsentGiven(true);
+    persistConsentChoice(true);
     setShowLocationConsent(false);
-    const trackingStarted = await startShift();
+    const trackingStarted = await startShift(true);
     setLocationTrackingStarted(trackingStarted);
     
     if (trackingStarted) {
@@ -731,7 +816,29 @@ const StartOfDay = () => {
                       </p>
                     </div>
 
-                     {/* Notes */}
+                     {/* Location Consent Toggle */}
+                     <div className="space-y-3">
+                       <Label className="text-sm font-medium">
+                         Location Tracking Consent <span className="text-destructive">*</span>
+                       </Label>
+                       <div className="p-4 border rounded-lg bg-card/50">
+                         <div className="flex items-start space-x-3">
+                           <Checkbox
+                             id="locationConsent"
+                             checked={consentGiven}
+                             onCheckedChange={(checked) => persistConsentChoice(checked as boolean)}
+                           />
+                           <div className="flex-1">
+                             <label htmlFor="locationConsent" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                               I consent to location tracking during my shift
+                             </label>
+                             <p className="text-xs text-muted-foreground mt-1">
+                               Location data is used for safety monitoring, route optimization, and delivery verification. Data is kept for 30 days.
+                             </p>
+                           </div>
+                         </div>
+                       </div>
+                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="notes">Notes (Optional)</Label>
                       <Textarea

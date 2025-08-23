@@ -440,13 +440,25 @@ export function useGeolocation() {
     }
   };
 
-  const startShift = async (bypassConsentCheck = false): Promise<boolean> => {
+  const startShift = async (
+    bypassConsentCheck = false, 
+    locationData?: { latitude?: number; longitude?: number; accuracy?: number }
+  ): Promise<boolean> => {
+    console.log('startShift called with:', { 
+      permissionGranted, 
+      consentGiven, 
+      bypassConsentCheck,
+      hasProfile: !!profile?.id,
+      locationData 
+    });
+
     if (!permissionGranted) {
       const granted = await requestPermissions();
       if (!granted) return false;
     }
 
     if (!consentGiven && !bypassConsentCheck) {
+      console.error('Location consent not given and not bypassed');
       toast.error('Location tracking consent required');
       return false;
     }
@@ -457,15 +469,27 @@ export function useGeolocation() {
     }
 
     try {
-      // Create new shift
+      // Create new shift with location data
+      const shiftInsertData: any = {
+        driver_id: profile.id,
+        company_id: profile.company_id,
+        status: 'active',
+        consent_given: true,
+        location_consent: true // Explicitly set location consent
+      };
+
+      // Add location data if provided
+      if (locationData) {
+        if (locationData.latitude) shiftInsertData.start_lat = locationData.latitude;
+        if (locationData.longitude) shiftInsertData.start_lng = locationData.longitude;
+        if (locationData.accuracy) shiftInsertData.start_accuracy_m = locationData.accuracy;
+      }
+
+      console.log('Inserting shift with data:', shiftInsertData);
+
       const { data: shiftData, error: shiftError } = await supabase
         .from('driver_shifts')
-        .insert({
-          driver_id: profile.id,
-          company_id: profile.company_id,
-          status: 'active',
-          consent_given: true
-        })
+        .insert(shiftInsertData)
         .select()
         .single();
 
