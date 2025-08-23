@@ -134,95 +134,77 @@ export const InvoiceManagement = () => {
     mutationFn: async () => {
       if (!profile?.company_id) return;
 
-      // Get driver profiles first
-      const { data: drivers, error: driversError } = await supabase
-        .from('driver_profiles')
-        .select(`
-          id,
-          parcel_rate,
-          profiles!inner(first_name, last_name, email)
-        `)
-        .eq('company_id', profile.company_id);
-
-      if (driversError) throw driversError;
-
-      if (!drivers || drivers.length === 0) {
-        throw new Error('No drivers found for your company.');
-      }
-
-      // Try to get EOD reports first, but don't fail if they don't exist
-      let eodReports: any[] = [];
-      const { data: eodData, error: eodError } = await supabase
+      // Get all EOD reports for the period
+      const { data: eodReports, error: eodError } = await supabase
         .from('end_of_day_reports')
         .select('successful_deliveries, successful_collections, created_at, driver_id')
         .eq('company_id', profile.company_id)
         .gte('created_at', selectedPeriod.start)
         .lte('created_at', selectedPeriod.end);
 
-      if (!eodError && eodData) {
-        eodReports = eodData;
+      if (eodError) {
+        console.error('EOD reports query error:', eodError);
+        throw new Error('Failed to fetch EOD reports: ' + eodError.message);
       }
 
-      // If no EOD reports, try to get data from driver shifts
-      let shiftData: any[] = [];
-      if (eodReports.length === 0) {
-        const { data: shifts, error: shiftsError } = await supabase
-          .from('driver_shifts')
-          .select('driver_id, start_time, end_time, created_at')
-          .eq('company_id', profile.company_id)
-          .gte('start_time', selectedPeriod.start)
-          .lte('start_time', selectedPeriod.end)
-          .eq('status', 'completed');
+      if (!eodReports || eodReports.length === 0) {
+        throw new Error('No EOD reports found for the selected period. Please ensure drivers have submitted their end-of-day reports.');
+      }
 
-        if (!shiftsError && shifts) {
-          shiftData = shifts;
+      // Get driver profiles
+      const { data: drivers, error: driversError } = await supabase
+        .from('driver_profiles')
+        .select('*')
+        .eq('company_id', profile.company_id);
+
+      if (driversError) throw driversError;
+
+      // Group reports by driver and calculate totals
+      const driverTotals = eodReports?.reduce((acc, report) => {
+        if (!acc[report.driver_id]) {
+          acc[report.driver_id] = { parcels: 0, reports: [] };
         }
-      }
+        acc[report.driver_id].parcels += (report.successful_deliveries + report.successful_collections);
+        acc[report.driver_id].reports.push(report);
+        return acc;
+      }, {} as Record<string, { parcels: number; reports: any[] }>);
 
+      // Create invoices
       const invoicesToCreate = [];
-      
-      for (const driver of drivers) {
-        let totalParcels = 0;
-        const parcelRate = driver.parcel_rate || 0.75; // Default rate
-        
-        // Calculate parcels from EOD reports
-        const driverEodReports = eodReports.filter(r => r.driver_id === driver.id);
-        if (driverEodReports.length > 0) {
-          totalParcels = driverEodReports.reduce((sum, report) => {
-            return sum + (report.successful_deliveries + report.successful_collections);
-          }, 0);
-        } else {
-          // Estimate parcels from shifts (default 50 parcels per completed shift)
-          const driverShifts = shiftData.filter(s => s.driver_id === driver.id);
-          totalParcels = driverShifts.length * 50;
-        }
+      for (const [driverId, totals] of Object.entries(driverTotals || {})) {
+        const driver = drivers?.find(d => d.id === driverId);
+        if (!driver) continue;
 
-        // Skip if no activity found
-        if (totalParcels === 0) continue;
+        const { data: invoiceData, error: invoiceError } = await supabase
+          .rpc('calculate_driver_invoice_data', {
+            driver_id_param: driverId,
+            period_start: selectedPeriod.start,
+            period_end: selectedPeriod.end
+          });
+
+        if (invoiceError) throw invoiceError;
 
         const { data: invoiceNumber, error: numberError } = await supabase
           .rpc('generate_invoice_number');
 
         if (numberError) throw numberError;
 
-        const totalAmount = totalParcels * parcelRate;
-
         invoicesToCreate.push({
           invoice_number: invoiceNumber,
-          driver_id: driver.id,
+          driver_id: driverId,
           company_id: profile.company_id,
           billing_period_start: selectedPeriod.start,
           billing_period_end: selectedPeriod.end,
-          total_parcels: totalParcels,
-          parcel_rate: parcelRate,
-          total_amount: totalAmount,
+          total_parcels: invoiceData[0]?.total_parcels || 0,
+          parcel_rate: invoiceData[0]?.parcel_rate || 0,
+          total_amount: invoiceData[0]?.total_amount || 0,
           status: 'pending',
           generated_by: profile.user_id
         });
       }
 
       if (invoicesToCreate.length === 0) {
-        throw new Error('No invoices to generate - no driver activity found for this period. Ensure drivers have submitted EOD reports or completed shifts.');
+        throw new Error('No invoices to generate - no approved EOD reports found for this period');
       }
 
       const { error } = await supabase

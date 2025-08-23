@@ -48,58 +48,70 @@ const StaffSection = ({ className }: StaffSectionProps) => {
     queryFn: async () => {
       if (!profile?.company_id) return [];
       
-      // First, get all staff profiles (admin/supervisor) who are not drivers
-      const { data: staffProfiles, error: profilesError } = await supabase
+      // First get user_companies (exclude drivers and current user)
+      const { data: userCompanies, error: userCompaniesError } = await supabase
+        .from('user_companies')
+        .select('id, user_id, role')
+        .eq('company_id', profile.company_id)
+        .neq('user_id', profile.user_id) // Exclude current user
+        .in('role', ['admin', 'supervisor']); // Only admin and supervisor roles
+
+      if (userCompaniesError) {
+        console.error('User companies query error:', userCompaniesError);
+        throw userCompaniesError;
+      }
+
+      // Also check profiles table directly for staff members
+      const { data: allProfiles, error: allProfilesError } = await supabase
         .from('profiles')
         .select('user_id, first_name, last_name, email, is_active, created_at, user_type')
-        .in('user_type', ['admin', 'supervisor'])
+        .eq('user_type', 'supervisor')
         .neq('user_id', profile.user_id);
 
-      if (profilesError) {
-        console.error('Profiles query error:', profilesError);
-        throw profilesError;
+      if (allProfilesError) {
+        console.error('Profiles query error:', allProfilesError);
+        // Don't throw, just log
       }
 
-      // Get user_companies records for these users in this company
-      const staffUserIds = staffProfiles?.map(p => p.user_id) || [];
-      let userCompanies: any[] = [];
-      
-      if (staffUserIds.length > 0) {
-        const { data: ucData, error: ucError } = await supabase
-          .from('user_companies')
-          .select('id, user_id, role, company_id')
-          .eq('company_id', profile.company_id)
-          .in('user_id', staffUserIds);
-
-        if (ucError) {
-          console.error('User companies query error:', ucError);
-        } else {
-          userCompanies = ucData || [];
-        }
+      // If no user_companies found but profiles exist, return profile-based data
+      if ((!userCompanies || userCompanies.length === 0) && allProfiles && allProfiles.length > 0) {
+        return allProfiles.map(p => ({
+          id: p.user_id, // Use user_id as id since no user_companies record
+          user_id: p.user_id,
+          first_name: p.first_name || '',
+          last_name: p.last_name || '',
+          email: p.email || '',
+          role: p.user_type || 'supervisor',
+          is_active: p.is_active || false,
+          created_at: p.created_at || ''
+        })) as TeamMember[];
       }
 
-      // Combine data - prioritize user_companies role over profile user_type
-      const combinedMembers = staffProfiles?.map(staffProfile => {
-        const userCompany = userCompanies.find(uc => uc.user_id === staffProfile.user_id);
-        
+      if (!userCompanies || userCompanies.length === 0) return [];
+
+      // Then get profiles for those users
+      const userIds = userCompanies.map(uc => uc.user_id);
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('user_id, first_name, last_name, email, is_active, created_at')
+        .in('user_id', userIds);
+
+      if (profilesError) throw profilesError;
+
+      // Combine the data
+      return userCompanies.map(uc => {
+        const profile = profiles?.find(p => p.user_id === uc.user_id);
         return {
-          id: userCompany?.id || staffProfile.user_id,
-          user_id: staffProfile.user_id,
-          first_name: staffProfile.first_name || '',
-          last_name: staffProfile.last_name || '',
-          email: staffProfile.email || '',
-          role: userCompany?.role || staffProfile.user_type || 'supervisor',
-          is_active: staffProfile.is_active || false,
-          created_at: staffProfile.created_at || '',
-          has_company_access: !!userCompany
+          id: uc.id,
+          user_id: uc.user_id,
+          first_name: profile?.first_name || '',
+          last_name: profile?.last_name || '',
+          email: profile?.email || '',
+          role: uc.role,
+          is_active: profile?.is_active || false,
+          created_at: profile?.created_at || ''
         };
-      }) || [];
-
-      // Filter to only show members who have company access OR are supervisors/admins
-      return combinedMembers.filter(member => 
-        member.has_company_access || 
-        ['admin', 'supervisor'].includes(member.role)
-      ) as TeamMember[];
+      }) as TeamMember[];
     },
     enabled: !!profile?.company_id
   });

@@ -72,19 +72,17 @@ const handler = async (req: Request): Promise<Response> => {
     // Generate temporary password
     const tempPassword = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-8).toUpperCase();
     
-    // Create user with app metadata for proper role handling
+    // Create user with password
     const { data: authData, error: authError } = await supabase.auth.admin.createUser({
       email,
       password: tempPassword,
       email_confirm: true,
-      app_metadata: {
-        role: role,
-        company_ids: [companyId]
-      },
       user_metadata: {
         first_name: firstName || '',
         last_name: lastName || '',
-        user_type: role
+        user_type: role,
+        role: role,
+        company_ids: [companyId]
       }
     });
 
@@ -101,21 +99,6 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log('User created successfully:', authData.user?.id);
 
-    // The profile will be created automatically by the handle_new_user trigger
-    // But we also need to create a user_companies record for proper access control
-    const { error: userCompanyError } = await supabase
-      .from('user_companies')
-      .insert({
-        user_id: authData.user!.id,
-        company_id: companyId,
-        role: role
-      });
-
-    if (userCompanyError) {
-      console.error('Failed to create user_companies record:', userCompanyError);
-      // Don't fail the whole operation, but log the error
-    }
-
     // Send credentials email (using Resend API)
     try {
       const resendApiKey = Deno.env.get('RESEND_API_KEY');
@@ -126,15 +109,14 @@ const handler = async (req: Request): Promise<Response> => {
           subject: `Welcome to DriveOn Manager - Your ${role} Account`,
           html: `
             <h2>Welcome to DriveOn Manager!</h2>
-            <p>Hi ${firstName || 'there'},</p>
+            <p>Hi ${firstName},</p>
             <p>Your ${role} account has been created. Here are your login credentials:</p>
             <div style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; margin: 20px 0;">
               <strong>Email:</strong> ${email}<br>
               <strong>Temporary Password:</strong> ${tempPassword}
             </div>
-            <p>Please log in at: <a href="${appUrl}/auth">${appUrl}/auth</a></p>
+            <p>Please log in at: <a href="${appUrl}">${appUrl}</a></p>
             <p><strong>Important:</strong> Please change your password after your first login.</p>
-            <p>If you have any questions or need assistance, please contact your administrator.</p>
             <p>Best regards,<br>The DriveOn Manager Team</p>
           `
         };
