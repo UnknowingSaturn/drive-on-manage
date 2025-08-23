@@ -84,7 +84,9 @@ const handler = async (req: Request): Promise<Response> => {
       },
       app_metadata: {
         role: role,
-        company_ids: [companyId]
+        company_ids: [companyId],
+        first_name: firstName || '',
+        last_name: lastName || ''
       }
     });
 
@@ -99,7 +101,21 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
+    if (!authData.user) {
+      console.error('No user data returned');
+      return new Response(
+        JSON.stringify({ error: 'No user data returned from auth creation' }),
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
     console.log('User created successfully:', authData.user?.id);
+
+    // Wait a moment for the trigger to complete
+    await new Promise(resolve => setTimeout(resolve, 500));
 
     // Send credentials email (using Resend API)
     try {
