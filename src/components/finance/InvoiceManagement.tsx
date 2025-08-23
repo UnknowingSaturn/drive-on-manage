@@ -175,16 +175,20 @@ export const InvoiceManagement = () => {
         const reportDate = new Date(report.created_at).toDateString();
         acc[report.driver_id].workingDays.add(reportDate);
         
-        // Calculate parcel types
-        const totalParcels = report.successful_deliveries + report.successful_collections;
+        // Calculate parcel types from EOD reports
+        const totalDeliveryParcels = (report.successful_deliveries || 0) + (report.successful_collections || 0);
+        const supportParcels = report.support_parcels || 0;
         
+        // Always add support parcels separately
+        acc[report.driver_id].supportParcels += supportParcels;
+        
+        // Categorize main delivery parcels based on support flag
         if (report.support) {
-          // Support/cover work
-          acc[report.driver_id].coverParcels += totalParcels;
-          acc[report.driver_id].supportParcels += report.support_parcels || 0;
+          // This was cover work - parcels go to cover rate
+          acc[report.driver_id].coverParcels += totalDeliveryParcels;
         } else {
-          // Regular base work
-          acc[report.driver_id].baseParcels += totalParcels;
+          // Regular work - parcels go to base rate
+          acc[report.driver_id].baseParcels += totalDeliveryParcels;
         }
         
         acc[report.driver_id].reports.push(report);
