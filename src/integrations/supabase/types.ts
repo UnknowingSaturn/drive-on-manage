@@ -675,6 +675,10 @@ export type Database = {
           driver_id: string
           end_time: string | null
           id: string
+          location_consent: boolean | null
+          start_accuracy_m: number | null
+          start_lat: number | null
+          start_lng: number | null
           start_time: string
           status: string
           total_distance: number | null
@@ -688,6 +692,10 @@ export type Database = {
           driver_id: string
           end_time?: string | null
           id?: string
+          location_consent?: boolean | null
+          start_accuracy_m?: number | null
+          start_lat?: number | null
+          start_lng?: number | null
           start_time?: string
           status?: string
           total_distance?: number | null
@@ -701,6 +709,10 @@ export type Database = {
           driver_id?: string
           end_time?: string | null
           id?: string
+          location_consent?: boolean | null
+          start_accuracy_m?: number | null
+          start_lat?: number | null
+          start_lng?: number | null
           start_time?: string
           status?: string
           total_distance?: number | null
@@ -1626,7 +1638,16 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      mv_monthly_pnl: {
+        Row: {
+          amount: number | null
+          company_id: string | null
+          month: number | null
+          type: string | null
+          year: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       audit_rls_coverage: {
@@ -1710,6 +1731,16 @@ export type Database = {
           updated_at: string
           user_id: string
           vehicle_notes: string
+        }[]
+      }
+      get_monthly_pnl: {
+        Args: { p_company_id: string; p_from_date: string; p_to_date: string }
+        Returns: {
+          expenses: number
+          month: number
+          profit: number
+          revenue: number
+          year: number
         }[]
       }
       get_validation_summary: {
