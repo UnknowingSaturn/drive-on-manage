@@ -206,7 +206,7 @@ export function LocationTrackingWidget() {
           {shift.status === 'inactive' && (
             <Button 
               onClick={handleStartShift}
-              disabled={!permissionGranted || isStarting}
+              disabled={isStarting}
               className="flex-1"
             >
               <Play className="h-4 w-4 mr-2" />

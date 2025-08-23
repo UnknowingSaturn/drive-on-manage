@@ -452,14 +452,20 @@ export function useGeolocation() {
       locationData 
     });
 
+    // Try to get permissions if not already granted
     if (!permissionGranted) {
+      console.log('Requesting permissions for shift start...');
       const granted = await requestPermissions();
-      if (!granted) return false;
+      if (!granted) {
+        toast.error('Location permissions are required to start shift');
+        return false;
+      }
     }
 
+    // Check for consent, but allow bypass for SOD integration
     if (!consentGiven && !bypassConsentCheck) {
-      console.error('Location consent not given and not bypassed');
-      toast.error('Location tracking consent required');
+      console.log('Location consent required for shift start');
+      toast.error('Please accept location tracking consent to start shift');
       return false;
     }
 
@@ -469,37 +475,52 @@ export function useGeolocation() {
     }
 
     try {
-      // Create new shift with location data
-      const shiftInsertData: any = {
-        driver_id: profile.id,
-        company_id: profile.company_id,
-        status: 'active',
-        consent_given: true,
-        location_consent: true // Explicitly set location consent
-      };
+      // Use the shift management edge function instead of direct DB insert
+      const { data: shiftData, error: shiftError } = await supabase.functions.invoke('shift-management', {
+        body: {
+          action: 'start',
+          driver_id: profile.id,
+          consent_given: true
+        }
+      });
 
-      // Add location data if provided
-      if (locationData) {
-        if (locationData.latitude) shiftInsertData.start_lat = locationData.latitude;
-        if (locationData.longitude) shiftInsertData.start_lng = locationData.longitude;
-        if (locationData.accuracy) shiftInsertData.start_accuracy_m = locationData.accuracy;
+      if (shiftError) {
+        console.error('Shift management function error:', shiftError);
+        throw new Error(shiftError.message || 'Failed to start shift via function');
       }
 
-      console.log('Inserting shift with data:', shiftInsertData);
+      if (!shiftData?.shift) {
+        throw new Error('No shift data returned from function');
+      }
 
-      const { data: shiftData, error: shiftError } = await supabase
-        .from('driver_shifts')
-        .insert(shiftInsertData)
-        .select()
-        .single();
-
-      if (shiftError) throw shiftError;
+      const createdShift = shiftData.shift;
+      console.log('Shift created successfully:', createdShift);
 
       setShift({
-        id: shiftData.id,
+        id: createdShift.id,
         status: 'active',
-        startTime: new Date(shiftData.start_time)
+        startTime: new Date(createdShift.start_time)
       });
+
+      // Update location data if provided
+      if (locationData && (locationData.latitude || locationData.longitude)) {
+        try {
+          const { error: locationError } = await supabase
+            .from('driver_shifts')
+            .update({
+              start_lat: locationData.latitude,
+              start_lng: locationData.longitude,
+              start_accuracy_m: locationData.accuracy
+            })
+            .eq('id', createdShift.id);
+
+          if (locationError) {
+            console.warn('Failed to update shift location data:', locationError);
+          }
+        } catch (error) {
+          console.warn('Error updating shift location:', error);
+        }
+      }
 
       // Start location tracking with enhanced error handling
       if (Capacitor.isNativePlatform()) {

@@ -300,26 +300,12 @@ const StartOfDay = () => {
       return;
     }
 
-    // Always check the most current consent state
-    const storedConsent = localStorage.getItem('locationTrackingConsent') === 'true';
-    const hasConsent = consentGiven || storedConsent;
+    console.log('Form validated, proceeding with SOD submission...');
     
-    console.log('Form validated, checking location consent...', { 
-      consentGiven,
-      storedConsent,
-      hasConsent,
-      permissionGranted,
-      userAgent: navigator.userAgent 
-    });
-
-    // If no consent given, just proceed without location tracking initially
-    if (!hasConsent) {
-      console.log('No location consent - proceeding with SOD submission, will ask for consent after');
-    } else {
-      // Update consent state if needed
-      if (!consentGiven && storedConsent) {
-        setConsentGiven(true);
-      }
+    // Update consent state from localStorage if available
+    const storedConsent = localStorage.getItem('locationTrackingConsent') === 'true';
+    if (storedConsent && !consentGiven) {
+      setConsentGiven(true);
     }
 
     console.log('Consent confirmed, requesting location permission (user gesture)...');
