@@ -26,7 +26,6 @@ import LiveTrackingMap from "./pages/admin/LiveTrackingMap";
 
 
 import AdminSettings from "./pages/admin/Settings";
-import ResetPassword from "./pages/ResetPassword";
 import ResetPasswordNew from "./pages/ResetPasswordNew";
 
 // Driver pages

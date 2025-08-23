@@ -329,17 +329,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           title: "Password Update Failed",
           description: error.message,
         });
+        return { error };
       } else {
         toast({
           title: "Password Updated",
-          description: "Your password has been successfully updated.",
+          description: "Your password has been successfully updated. Please sign in again.",
         });
+        
+        // Sign out the user after password update for security
+        // This ensures they must log in with their new password
+        setTimeout(async () => {
+          try {
+            await supabase.auth.signOut({ scope: 'global' });
+          } catch (signOutError) {
+            console.error('Error signing out after password update:', signOutError);
+          }
+        }, 1000);
+        
+        return { error: null };
       }
-
-      return { error };
     } catch (error: any) {
       toast({
-        variant: "destructive",
+        variant: "destructive", 
         title: "Password Update Error",
         description: error.message,
       });
