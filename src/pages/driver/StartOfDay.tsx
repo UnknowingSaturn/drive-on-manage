@@ -268,7 +268,7 @@ const StartOfDay = () => {
       return;
     }
 
-    console.log('Form validated, checking location permissions...', { 
+    console.log('Form validated, checking location permissions and consent...', { 
       permissionGranted, 
       consentGiven, 
       userAgent: navigator.userAgent 
@@ -290,6 +290,12 @@ const StartOfDay = () => {
         variant: "destructive",
       });
       return;
+    }
+
+    // Auto-grant consent when permissions are confirmed during form submission
+    if (!consentGiven) {
+      console.log('Auto-granting location tracking consent for SOD submission');
+      setConsentGiven(true);
     }
 
     // Capture initial location to verify geolocation works and show user their location is being tracked
