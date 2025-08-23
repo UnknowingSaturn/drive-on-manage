@@ -48,68 +48,45 @@ const StaffSection = ({ className }: StaffSectionProps) => {
     queryFn: async () => {
       if (!profile?.company_id) return [];
       
-      // First get user_companies (exclude drivers and current user)
+      // Get user_companies for the company
       const { data: userCompanies, error: userCompaniesError } = await supabase
         .from('user_companies')
-        .select('id, user_id, role')
+        .select('id, user_id, role, created_at')
         .eq('company_id', profile.company_id)
-        .neq('user_id', profile.user_id) // Exclude current user
-        .in('role', ['admin', 'supervisor']); // Only admin and supervisor roles
+        .neq('user_id', profile.user_id)
+        .in('role', ['admin', 'supervisor']);
 
       if (userCompaniesError) {
         console.error('User companies query error:', userCompaniesError);
         throw userCompaniesError;
       }
 
-      // Also check profiles table directly for staff members
-      const { data: allProfiles, error: allProfilesError } = await supabase
-        .from('profiles')
-        .select('user_id, first_name, last_name, email, is_active, created_at, user_type')
-        .eq('user_type', 'supervisor')
-        .neq('user_id', profile.user_id);
-
-      if (allProfilesError) {
-        console.error('Profiles query error:', allProfilesError);
-        // Don't throw, just log
-      }
-
-      // If no user_companies found but profiles exist, return profile-based data
-      if ((!userCompanies || userCompanies.length === 0) && allProfiles && allProfiles.length > 0) {
-        return allProfiles.map(p => ({
-          id: p.user_id, // Use user_id as id since no user_companies record
-          user_id: p.user_id,
-          first_name: p.first_name || '',
-          last_name: p.last_name || '',
-          email: p.email || '',
-          role: p.user_type || 'supervisor',
-          is_active: p.is_active || false,
-          created_at: p.created_at || ''
-        })) as TeamMember[];
-      }
-
       if (!userCompanies || userCompanies.length === 0) return [];
 
-      // Then get profiles for those users
+      // Get profiles for those users
       const userIds = userCompanies.map(uc => uc.user_id);
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
         .select('user_id, first_name, last_name, email, is_active, created_at')
         .in('user_id', userIds);
 
-      if (profilesError) throw profilesError;
+      if (profilesError) {
+        console.error('Profiles query error:', profilesError);
+        throw profilesError;
+      }
 
       // Combine the data
       return userCompanies.map(uc => {
-        const profile = profiles?.find(p => p.user_id === uc.user_id);
+        const userProfile = profiles?.find(p => p.user_id === uc.user_id);
         return {
           id: uc.id,
           user_id: uc.user_id,
-          first_name: profile?.first_name || '',
-          last_name: profile?.last_name || '',
-          email: profile?.email || '',
+          first_name: userProfile?.first_name || '',
+          last_name: userProfile?.last_name || '',
+          email: userProfile?.email || '',
           role: uc.role,
-          is_active: profile?.is_active || false,
-          created_at: profile?.created_at || ''
+          is_active: userProfile?.is_active || false,
+          created_at: userProfile?.created_at || uc.created_at
         };
       }) as TeamMember[];
     },

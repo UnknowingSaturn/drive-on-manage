@@ -65,7 +65,7 @@ const handler = async (req: Request): Promise<Response> => {
       const invoiceContent = generateInvoicePDF(invoice);
       
       return resend.emails.send({
-        from: "Finance <finance@yourdomain.com>",
+        from: "DriveOn Manager <onboarding@resend.dev>",
         to: [invoice.driver_email],
         subject: `Invoice ${invoice.invoice_number} - Payment Due`,
         text: invoiceContent,
@@ -93,7 +93,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Send ZIP backup to admin
     const adminEmailResult = await resend.emails.send({
-      from: "Finance <finance@yourdomain.com>",
+      from: "DriveOn Manager <onboarding@resend.dev>",
       to: [admin_email],
       subject: `Invoice Backup - ${invoices.length} Invoices Generated`,
       text: `Invoice batch generated successfully.\n\nSummary:\n- Total invoices: ${invoices.length}\n- Period: ${invoices[0]?.period_start} to ${invoices[0]?.period_end}\n- Total amount: £${invoices.reduce((sum, inv) => sum + inv.total_amount, 0).toFixed(2)}`,
