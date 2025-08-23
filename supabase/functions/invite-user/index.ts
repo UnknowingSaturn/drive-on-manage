@@ -80,7 +80,9 @@ const handler = async (req: Request): Promise<Response> => {
       user_metadata: {
         first_name: firstName || '',
         last_name: lastName || '',
-        user_type: role,
+        user_type: role
+      },
+      app_metadata: {
         role: role,
         company_ids: [companyId]
       }
@@ -115,7 +117,7 @@ const handler = async (req: Request): Promise<Response> => {
               <strong>Email:</strong> ${email}<br>
               <strong>Temporary Password:</strong> ${tempPassword}
             </div>
-            <p>Please log in at: <a href="${appUrl}">${appUrl}</a></p>
+            <p>Please log in at: <a href="${appUrl}/auth">${appUrl}/auth</a></p>
             <p><strong>Important:</strong> Please change your password after your first login.</p>
             <p>Best regards,<br>The DriveOn Manager Team</p>
           `
