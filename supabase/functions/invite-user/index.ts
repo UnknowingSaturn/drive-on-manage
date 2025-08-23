@@ -69,25 +69,27 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // Create user invite with metadata
-    const { data: authData, error: authError } = await supabase.auth.admin.inviteUserByEmail(
+    // Generate temporary password
+    const tempPassword = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-8).toUpperCase();
+    
+    // Create user with password
+    const { data: authData, error: authError } = await supabase.auth.admin.createUser({
       email,
-      {
-        redirectTo: `${appUrl}/auth/callback?next=/onboarding`,
-        data: {
-          first_name: firstName || '',
-          last_name: lastName || '',
-          user_type: role,
-          role: role,
-          company_ids: [companyId]
-        }
+      password: tempPassword,
+      email_confirm: true,
+      user_metadata: {
+        first_name: firstName || '',
+        last_name: lastName || '',
+        user_type: role,
+        role: role,
+        company_ids: [companyId]
       }
-    );
+    });
 
     if (authError) {
-      console.error('Auth invite error:', authError);
+      console.error('Auth create error:', authError);
       return new Response(
-        JSON.stringify({ error: `Failed to invite user: ${authError.message}` }),
+        JSON.stringify({ error: `Failed to create user: ${authError.message}` }),
         { 
           status: 400, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -95,13 +97,56 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    console.log('User invited successfully:', authData.user?.id);
+    console.log('User created successfully:', authData.user?.id);
+
+    // Send credentials email (using Resend API)
+    try {
+      const resendApiKey = Deno.env.get('RESEND_API_KEY');
+      if (resendApiKey) {
+        const emailBody = {
+          from: 'DriveOn Manager <noreply@driveon-manage.com>',
+          to: [email],
+          subject: `Welcome to DriveOn Manager - Your ${role} Account`,
+          html: `
+            <h2>Welcome to DriveOn Manager!</h2>
+            <p>Hi ${firstName},</p>
+            <p>Your ${role} account has been created. Here are your login credentials:</p>
+            <div style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; margin: 20px 0;">
+              <strong>Email:</strong> ${email}<br>
+              <strong>Temporary Password:</strong> ${tempPassword}
+            </div>
+            <p>Please log in at: <a href="${appUrl}">${appUrl}</a></p>
+            <p><strong>Important:</strong> Please change your password after your first login.</p>
+            <p>Best regards,<br>The DriveOn Manager Team</p>
+          `
+        };
+
+        const emailResponse = await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${resendApiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(emailBody)
+        });
+
+        if (!emailResponse.ok) {
+          console.error('Failed to send email:', await emailResponse.text());
+        } else {
+          console.log('Credentials email sent successfully');
+        }
+      }
+    } catch (emailError) {
+      console.error('Email sending error:', emailError);
+      // Don't fail the whole operation for email issues
+    }
 
     return new Response(
       JSON.stringify({ 
         success: true, 
         userId: authData.user?.id,
-        message: `Invitation sent to ${email}` 
+        tempPassword: tempPassword,
+        message: `User created and credentials sent to ${email}` 
       }),
       {
         status: 200,

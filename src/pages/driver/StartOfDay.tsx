@@ -262,7 +262,7 @@ const StartOfDay = () => {
       // Auto-start location tracking if consent is given
       if (consentGiven) {
         console.log('Starting shift with consent already given');
-        const trackingStarted = await startShift(true);
+        const trackingStarted = await startShift();
         setLocationTrackingStarted(trackingStarted);
         
         if (trackingStarted) {
@@ -406,7 +406,7 @@ const StartOfDay = () => {
   const handleLocationConsentAccept = async () => {
     persistConsentChoice(true);
     setShowLocationConsent(false);
-    const trackingStarted = await startShift(true);
+    const trackingStarted = await startShift();
     setLocationTrackingStarted(trackingStarted);
     
     if (trackingStarted) {

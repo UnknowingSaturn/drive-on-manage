@@ -442,21 +442,7 @@ const AdminSettings = () => {
               </CardContent>
             </Card>
 
-            {/* Team Management */}
-            <Card className="logistics-card">
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Shield className="h-5 w-5 mr-2" />
-                  Team Management
-                </CardTitle>
-                <CardDescription>
-                  Manage your team members and their access levels
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <TeamManagement />
-              </CardContent>
-            </Card>
+            {/* Remove Team Management from Settings - now in Driver Management */}
           </main>
         </SidebarInset>
       </div>

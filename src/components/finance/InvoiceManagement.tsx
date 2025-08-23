@@ -72,13 +72,13 @@ export const InvoiceManagement = () => {
     queryFn: async () => {
       if (!profile?.company_id) return null;
       
-      // Query with type assertion to avoid TypeScript issues
-      const eodQuery = await (supabase as any)
+      // Query using the correct table name
+      const eodQuery = await supabase
         .from('end_of_day_reports')
-        .select('successful_deliveries, successful_collections, submitted_at')
+        .select('successful_deliveries, successful_collections, created_at')
         .eq('company_id', profile.company_id)
-        .gte('submitted_at', selectedPeriod.start)
-        .lte('submitted_at', selectedPeriod.end);
+        .gte('created_at', selectedPeriod.start)
+        .lte('created_at', selectedPeriod.end);
           
       if (eodQuery.error) throw eodQuery.error;
       const eodReports = eodQuery.data || [];

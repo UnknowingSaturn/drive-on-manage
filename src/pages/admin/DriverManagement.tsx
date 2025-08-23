@@ -18,6 +18,8 @@ import { ConfirmDelete } from '@/components/ConfirmDelete';
 import { DriverDetailsModal } from '@/components/DriverDetailsModal';
 import { SmartSearch } from '@/components/SmartSearch';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import UserInviteModal from '@/components/UserInviteModal';
+import TeamManagement from '@/components/TeamManagement';
 
 import { Progress } from '@/components/ui/progress';
 import { validateForm, sanitizeInput, emailSchema, nameSchema, phoneSchema, parcelRateSchema } from '@/lib/security';
