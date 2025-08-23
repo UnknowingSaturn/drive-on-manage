@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Calendar, Download, FileText, Send, Plus, Eye, Mail, Package, DollarSign, TrendingUp, TrendingDown, AlertTriangle } from 'lucide-react';
+import { Calendar, Download, FileText, Send, Plus, Eye, Mail, Package, DollarSign, TrendingUp, TrendingDown, AlertTriangle, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -25,6 +25,8 @@ export const InvoiceManagement = () => {
   });
   const [isGenerateDialogOpen, setIsGenerateDialogOpen] = useState(false);
   const [isEmailDialogOpen, setIsEmailDialogOpen] = useState(false);
+  const [selectedInvoice, setSelectedInvoice] = useState<any>(null);
+  const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
 
   // Fetch driver invoices for the selected period
   const { data: invoices = [], isLoading } = useQuery({
@@ -418,6 +420,32 @@ export const InvoiceManagement = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['driver-invoices'] });
     }
+  });
+
+  // Delete invoice mutation
+  const deleteInvoiceMutation = useMutation({
+    mutationFn: async (invoiceId: string) => {
+      const { error } = await supabase
+        .from('driver_invoices')
+        .delete()
+        .eq('id', invoiceId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({
+        title: "Invoice deleted",
+        description: "The invoice has been successfully deleted.",
+      });
+      queryClient.invalidateQueries({ queryKey: ['driver-invoices'] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error deleting invoice",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
   });
 
   const getStatusBadge = (status: string) => {
@@ -918,12 +946,22 @@ Generated: ${format(new Date(invoice.created_at), 'dd/MM/yyyy HH:mm')}
                           size="sm" 
                           variant="outline" 
                           onClick={() => {
-                            // Show detailed view modal or expand
-                            console.log('View invoice details:', invoice);
+                            setSelectedInvoice(invoice);
+                            setIsDetailsDialogOpen(true);
                           }}
                           title="View Details"
                         >
                           <Eye className="h-3 w-3" />
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => deleteInvoiceMutation.mutate(invoice.id)}
+                          disabled={deleteInvoiceMutation.isPending}
+                          title="Delete Invoice"
+                          className="text-red-600 hover:text-red-700"
+                        >
+                          <Trash2 className="h-3 w-3" />
                         </Button>
                         <Select onValueChange={(status) => updateInvoiceStatusMutation.mutate({ invoiceId: invoice.id, status })}>
                           <SelectTrigger className="w-20 h-8">
@@ -952,6 +990,143 @@ Generated: ${format(new Date(invoice.created_at), 'dd/MM/yyyy HH:mm')}
           )}
         </CardContent>
       </Card>
+
+      {/* Invoice Details Modal */}
+      <Dialog open={isDetailsDialogOpen} onOpenChange={setIsDetailsDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Invoice Details - #{selectedInvoice?.invoice_number}</DialogTitle>
+            <DialogDescription>
+              Complete breakdown for {(() => {
+                const driver = driverProfiles.find(d => d.id === selectedInvoice?.driver_id);
+                return `${driver?.profiles?.first_name || 'Unknown'} ${driver?.profiles?.last_name || 'Driver'}`;
+              })()}
+            </DialogDescription>
+          </DialogHeader>
+          {selectedInvoice && (
+            <div className="space-y-6">
+              {/* Header Info */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <h4 className="font-semibold">Driver Information</h4>
+                  <p>{(() => {
+                    const driver = driverProfiles.find(d => d.id === selectedInvoice?.driver_id);
+                    return `${driver?.profiles?.first_name || 'Unknown'} ${driver?.profiles?.last_name || 'Driver'}`;
+                  })()}</p>
+                  <p className="text-sm text-muted-foreground">{(() => {
+                    const driver = driverProfiles.find(d => d.id === selectedInvoice?.driver_id);
+                    return driver?.profiles?.email || 'unknown@email.com';
+                  })()}</p>
+                </div>
+                <div>
+                  <h4 className="font-semibold">Invoice Information</h4>
+                  <p>Invoice #: {selectedInvoice.invoice_number}</p>
+                  <p className="text-sm text-muted-foreground">
+                    Period: {format(new Date(selectedInvoice.billing_period_start), 'dd/MM/yyyy')} - {format(new Date(selectedInvoice.billing_period_end), 'dd/MM/yyyy')}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Working Days: {selectedInvoice.working_days || 0}
+                  </p>
+                </div>
+              </div>
+
+              {/* Parcel Breakdown */}
+              <div>
+                <h4 className="font-semibold mb-3">Parcel Breakdown</h4>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Parcels</TableHead>
+                      <TableHead>Rate</TableHead>
+                      <TableHead>Total</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {selectedInvoice.base_parcels > 0 && (
+                      <TableRow>
+                        <TableCell>Base Rate</TableCell>
+                        <TableCell>{selectedInvoice.base_parcels}</TableCell>
+                        <TableCell>£{(selectedInvoice.base_rate || 0).toFixed(2)}</TableCell>
+                        <TableCell>£{(selectedInvoice.base_total || 0).toFixed(2)}</TableCell>
+                      </TableRow>
+                    )}
+                    {selectedInvoice.cover_parcels > 0 && (
+                      <TableRow>
+                        <TableCell>Cover Rate</TableCell>
+                        <TableCell>{selectedInvoice.cover_parcels}</TableCell>
+                        <TableCell>£{(selectedInvoice.cover_rate || 0).toFixed(2)}</TableCell>
+                        <TableCell>£{(selectedInvoice.cover_total || 0).toFixed(2)}</TableCell>
+                      </TableRow>
+                    )}
+                    {selectedInvoice.support_parcels > 0 && (
+                      <TableRow>
+                        <TableCell>Support</TableCell>
+                        <TableCell>{selectedInvoice.support_parcels}</TableCell>
+                        <TableCell>£{(selectedInvoice.support_rate || 0).toFixed(2)}</TableCell>
+                        <TableCell>£{(selectedInvoice.support_total || 0).toFixed(2)}</TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {/* Deductions */}
+              {selectedInvoice.deductions && selectedInvoice.deductions.length > 0 && (
+                <div>
+                  <h4 className="font-semibold mb-3">Deductions</h4>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Description</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Amount</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {selectedInvoice.deductions.map((deduction: any, index: number) => (
+                        <TableRow key={index}>
+                          <TableCell>{deduction.description}</TableCell>
+                          <TableCell>{deduction.type}</TableCell>
+                          <TableCell className="text-red-600">-£{deduction.amount.toFixed(2)}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+
+              {/* Summary */}
+              <div className="border-t pt-4">
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span>Gross Total:</span>
+                    <span>£{((selectedInvoice.base_total || 0) + (selectedInvoice.cover_total || 0) + (selectedInvoice.support_total || 0)).toFixed(2)}</span>
+                  </div>
+                  {selectedInvoice.total_deductions > 0 && (
+                    <div className="flex justify-between text-red-600">
+                      <span>Total Deductions:</span>
+                      <span>-£{selectedInvoice.total_deductions.toFixed(2)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between text-lg font-bold border-t pt-2">
+                    <span>Net Amount:</span>
+                    <span>£{selectedInvoice.total_amount.toFixed(2)}</span>
+                  </div>
+                </div>
+                <div className="mt-4">
+                  <Badge className="mr-2">{selectedInvoice.status}</Badge>
+                  {selectedInvoice.created_at && (
+                    <span className="text-sm text-muted-foreground">
+                      Generated: {format(new Date(selectedInvoice.created_at), 'dd/MM/yyyy HH:mm')}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
