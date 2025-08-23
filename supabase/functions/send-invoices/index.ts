@@ -15,6 +15,33 @@ interface InvoiceData {
   driver_name: string;
   period_start: string;
   period_end: string;
+  period_description?: string;
+  working_days?: number;
+  
+  // Detailed parcel breakdown
+  base_parcels?: number;
+  base_rate?: number;
+  base_total?: number;
+  cover_parcels?: number;
+  cover_rate?: number;
+  cover_total?: number;
+  support_parcels?: number;
+  support_rate?: number;
+  support_total?: number;
+  
+  // Deductions and bonuses
+  deductions?: Array<{
+    type: string;
+    description: string;
+    amount: number;
+  }>;
+  total_deductions?: number;
+  bonus_payments?: Array<{
+    description: string;
+    amount: number;
+  }>;
+  
+  // Legacy fields
   total_parcels: number;
   parcel_rate: number;
   total_amount: number;
@@ -27,27 +54,54 @@ interface SendInvoicesRequest {
 }
 
 const generateInvoicePDF = (invoice: InvoiceData): string => {
-  return `
-INVOICE ${invoice.invoice_number}
+  let content = `
+                    INVOICE
 
-Date: ${new Date().toLocaleDateString()}
-Due Date: ${new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString()}
+Bill to: ${invoice.driver_name}                   Date: ${new Date().toLocaleDateString('en-GB')}
+                                        Driver: ${invoice.driver_name}
+                                        Invoice #: ${invoice.invoice_number}
 
-BILL TO:
-${invoice.driver_name}
-${invoice.driver_email}
+Description                             Quantity    Rate        Total
+${invoice.period_description || 'Delivery Period'}            ${invoice.working_days || 0} days     -           -`;
 
-INVOICE DETAILS:
-Period: ${new Date(invoice.period_start).toLocaleDateString()} - ${new Date(invoice.period_end).toLocaleDateString()}
-Total Parcels Delivered: ${invoice.total_parcels}
-Rate per Parcel: £${invoice.parcel_rate.toFixed(2)}
+  // Add base parcels line
+  if (invoice.base_parcels && invoice.base_parcels > 0) {
+    content += `\n - Base Rate Parcels                   ${invoice.base_parcels}        £${(invoice.base_rate || 0).toFixed(2)}     £${(invoice.base_total || 0).toFixed(2)}`;
+  }
 
-TOTAL AMOUNT: £${invoice.total_amount.toFixed(2)}
+  // Add cover parcels line
+  if (invoice.cover_parcels && invoice.cover_parcels > 0) {
+    content += `\n - Cover Parcels                       ${invoice.cover_parcels}        £${(invoice.cover_rate || 0).toFixed(2)}     £${(invoice.cover_total || 0).toFixed(2)}`;
+  }
 
-Please remit payment within 30 days.
+  // Add support parcels line
+  if (invoice.support_parcels && invoice.support_parcels > 0) {
+    content += `\n - Support Parcels                     ${invoice.support_parcels}        £${(invoice.support_rate || 0).toFixed(2)}     £${(invoice.support_total || 0).toFixed(2)}`;
+  }
 
-Thank you for your service!
-  `.trim();
+  // Add bonus payments if any
+  const bonusPayments = invoice.bonus_payments || [];
+  bonusPayments.forEach((bonus) => {
+    content += `\n - ${bonus.description}                 1           £${bonus.amount.toFixed(2)}     £${bonus.amount.toFixed(2)}`;
+  });
+
+  content += `\n\n\nDeductions                                                          Total`;
+  
+  // Add deductions
+  const deductions = invoice.deductions || [];
+  if (deductions.length > 0) {
+    deductions.forEach((deduction) => {
+      content += `\n${deduction.description}                                         £${deduction.amount.toFixed(2)}`;
+    });
+  } else {
+    content += `\nVan Rental / Insurance / Fines                                  £0.00`;
+    content += `\nFines / Repayments                                              £0.00`;
+  }
+
+  content += `\n\n\nOther Comments                          Total: £${(invoice.total_amount || 0).toFixed(2)}
+Payments are made monthly as per pay schedule please see admin for dates`;
+
+  return content.trim();
 };
 
 const handler = async (req: Request): Promise<Response> => {

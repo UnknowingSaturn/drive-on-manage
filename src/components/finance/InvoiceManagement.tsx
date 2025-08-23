@@ -137,7 +137,7 @@ export const InvoiceManagement = () => {
       // Get all EOD reports for the period
       const { data: eodReports, error: eodError } = await supabase
         .from('end_of_day_reports')
-        .select('successful_deliveries, successful_collections, created_at, driver_id')
+        .select('successful_deliveries, successful_collections, support_parcels, support, created_at, driver_id')
         .eq('company_id', profile.company_id)
         .gte('created_at', selectedPeriod.start)
         .lte('created_at', selectedPeriod.end);
@@ -151,7 +151,7 @@ export const InvoiceManagement = () => {
         throw new Error('No EOD reports found for the selected period. Please ensure drivers have submitted their end-of-day reports.');
       }
 
-      // Get driver profiles
+      // Get driver profiles with rates
       const { data: drivers, error: driversError } = await supabase
         .from('driver_profiles')
         .select('*')
@@ -159,15 +159,54 @@ export const InvoiceManagement = () => {
 
       if (driversError) throw driversError;
 
-      // Group reports by driver and calculate totals
+      // Group reports by driver and calculate detailed totals
       const driverTotals = eodReports?.reduce((acc, report) => {
         if (!acc[report.driver_id]) {
-          acc[report.driver_id] = { parcels: 0, reports: [] };
+          acc[report.driver_id] = { 
+            baseParcels: 0, 
+            coverParcels: 0, 
+            supportParcels: 0,
+            workingDays: new Set(),
+            reports: [] 
+          };
         }
-        acc[report.driver_id].parcels += (report.successful_deliveries + report.successful_collections);
+        
+        // Track working days
+        const reportDate = new Date(report.created_at).toDateString();
+        acc[report.driver_id].workingDays.add(reportDate);
+        
+        // Calculate parcel types
+        const totalParcels = report.successful_deliveries + report.successful_collections;
+        
+        if (report.support) {
+          // Support/cover work
+          acc[report.driver_id].coverParcels += totalParcels;
+          acc[report.driver_id].supportParcels += report.support_parcels || 0;
+        } else {
+          // Regular base work
+          acc[report.driver_id].baseParcels += totalParcels;
+        }
+        
         acc[report.driver_id].reports.push(report);
         return acc;
-      }, {} as Record<string, { parcels: number; reports: any[] }>);
+      }, {} as Record<string, { 
+        baseParcels: number; 
+        coverParcels: number; 
+        supportParcels: number;
+        workingDays: Set<string>;
+        reports: any[] 
+      }>);
+
+      // Get driver expenses for deductions
+      const { data: expenses, error: expensesError } = await supabase
+        .from('driver_expenses')
+        .select('driver_id, amount, expense_type, description')
+        .eq('company_id', profile.company_id)
+        .eq('is_approved', true)
+        .gte('expense_date', selectedPeriod.start)
+        .lte('expense_date', selectedPeriod.end);
+
+      if (expensesError) throw expensesError;
 
       // Create invoices
       const invoicesToCreate = [];
@@ -175,19 +214,47 @@ export const InvoiceManagement = () => {
         const driver = drivers?.find(d => d.id === driverId);
         if (!driver) continue;
 
-        const { data: invoiceData, error: invoiceError } = await supabase
-          .rpc('calculate_driver_invoice_data', {
-            driver_id_param: driverId,
-            period_start: selectedPeriod.start,
-            period_end: selectedPeriod.end
-          });
+        // Calculate rates
+        const baseRate = driver.parcel_rate || 0.70;
+        const coverRate = driver.cover_rate || 0.80;
+        const supportRate = driver.cover_rate || 0.80;
 
-        if (invoiceError) throw invoiceError;
+        // Calculate totals
+        const baseTotal = totals.baseParcels * baseRate;
+        const coverTotal = totals.coverParcels * coverRate;
+        const supportTotal = totals.supportParcels * supportRate;
 
+        // Calculate deductions for this driver
+        const driverExpenses = expenses?.filter(e => e.driver_id === driverId) || [];
+        const deductions = driverExpenses.map(exp => ({
+          type: exp.expense_type,
+          description: exp.description || exp.expense_type,
+          amount: exp.amount
+        }));
+        const totalDeductions = deductions.reduce((sum, d) => sum + d.amount, 0);
+
+        // Generate invoice number
         const { data: invoiceNumber, error: numberError } = await supabase
           .rpc('generate_invoice_number');
 
         if (numberError) throw numberError;
+
+        // Create period description
+        const startDate = new Date(selectedPeriod.start);
+        const endDate = new Date(selectedPeriod.end);
+        const periodDescription = `Delivery (${startDate.toLocaleDateString('en-GB', { 
+          weekday: 'short', 
+          day: '2-digit', 
+          month: 'short' 
+        })} - ${endDate.toLocaleDateString('en-GB', { 
+          weekday: 'short', 
+          day: '2-digit', 
+          month: 'short', 
+          year: 'numeric' 
+        })})`;
+
+        const grossTotal = baseTotal + coverTotal + supportTotal;
+        const finalAmount = grossTotal - totalDeductions;
 
         invoicesToCreate.push({
           invoice_number: invoiceNumber,
@@ -195,9 +262,28 @@ export const InvoiceManagement = () => {
           company_id: profile.company_id,
           billing_period_start: selectedPeriod.start,
           billing_period_end: selectedPeriod.end,
-          total_parcels: invoiceData[0]?.total_parcels || 0,
-          parcel_rate: invoiceData[0]?.parcel_rate || 0,
-          total_amount: invoiceData[0]?.total_amount || 0,
+          
+          // Legacy fields (for backward compatibility)
+          total_parcels: totals.baseParcels + totals.coverParcels + totals.supportParcels,
+          parcel_rate: baseRate,
+          total_amount: finalAmount,
+          
+          // New detailed fields
+          base_parcels: totals.baseParcels,
+          base_rate: baseRate,
+          base_total: baseTotal,
+          cover_parcels: totals.coverParcels,
+          cover_rate: coverRate,
+          cover_total: coverTotal,
+          support_parcels: totals.supportParcels,
+          support_rate: supportRate,
+          support_total: supportTotal,
+          deductions: deductions,
+          total_deductions: totalDeductions,
+          working_days: totals.workingDays.size,
+          period_description: periodDescription,
+          bonus_payments: [],
+          
           status: 'pending',
           generated_by: profile.user_id
         });
@@ -249,6 +335,26 @@ export const InvoiceManagement = () => {
               driver_name: `${driver?.profiles?.first_name || ''} ${driver?.profiles?.last_name || ''}`,
               period_start: inv.billing_period_start,
               period_end: inv.billing_period_end,
+              period_description: inv.period_description,
+              working_days: inv.working_days,
+              
+              // Detailed parcel breakdown
+              base_parcels: inv.base_parcels || 0,
+              base_rate: inv.base_rate || 0,
+              base_total: inv.base_total || 0,
+              cover_parcels: inv.cover_parcels || 0,
+              cover_rate: inv.cover_rate || 0,
+              cover_total: inv.cover_total || 0,
+              support_parcels: inv.support_parcels || 0,
+              support_rate: inv.support_rate || 0,
+              support_total: inv.support_total || 0,
+              
+              // Deductions and bonuses
+              deductions: inv.deductions || [],
+              total_deductions: inv.total_deductions || 0,
+              bonus_payments: inv.bonus_payments || [],
+              
+              // Legacy fields for backward compatibility
               total_parcels: inv.total_parcels,
               parcel_rate: inv.parcel_rate,
               total_amount: inv.total_amount
@@ -328,16 +434,55 @@ export const InvoiceManagement = () => {
     const driverName = `${driver?.profiles?.first_name || 'Unknown'} ${driver?.profiles?.last_name || 'Driver'}`;
     const driverEmail = driver?.profiles?.email || 'unknown@email.com';
     
-    const invoiceData = `
-INVOICE: ${invoice.invoice_number}
+    // Calculate subtotal before deductions
+    const subtotal = (invoice.base_total || 0) + (invoice.cover_total || 0) + (invoice.support_total || 0);
+    const deductions = invoice.deductions || [];
+    
+    let invoiceData = `
+                    INVOICE
 
-Driver: ${driverName}
-Email: ${driverEmail}
-Period: ${format(new Date(invoice.billing_period_start), 'dd/MM/yyyy')} - ${format(new Date(invoice.billing_period_end), 'dd/MM/yyyy')}
+Bill to: ${driverName}                   Date: ${format(new Date(), 'dd/MM/yyyy')}
+                                        Driver: ${driverName}
+                                        Invoice #: ${invoice.invoice_number}
 
-Total Parcels Delivered: ${invoice.total_parcels}
-Rate per Parcel: £${invoice.parcel_rate.toFixed(2)}
-Total Amount: £${invoice.total_amount.toFixed(2)}
+Description                             Quantity    Rate        Total
+${invoice.period_description || 'Delivery Period'}            ${invoice.working_days || 0} days     -           -`;
+
+    // Add base parcels line
+    if (invoice.base_parcels > 0) {
+      invoiceData += `\n - Base Rate Parcels                   ${invoice.base_parcels}        £${(invoice.base_rate || 0).toFixed(2)}     £${(invoice.base_total || 0).toFixed(2)}`;
+    }
+
+    // Add cover parcels line
+    if (invoice.cover_parcels > 0) {
+      invoiceData += `\n - Cover Parcels                       ${invoice.cover_parcels}        £${(invoice.cover_rate || 0).toFixed(2)}     £${(invoice.cover_total || 0).toFixed(2)}`;
+    }
+
+    // Add support parcels line
+    if (invoice.support_parcels > 0) {
+      invoiceData += `\n - Support Parcels                     ${invoice.support_parcels}        £${(invoice.support_rate || 0).toFixed(2)}     £${(invoice.support_total || 0).toFixed(2)}`;
+    }
+
+    // Add bonus payments if any
+    const bonusPayments = invoice.bonus_payments || [];
+    bonusPayments.forEach((bonus: any) => {
+      invoiceData += `\n - ${bonus.description}                 1           £${bonus.amount.toFixed(2)}     £${bonus.amount.toFixed(2)}`;
+    });
+
+    invoiceData += `\n\n\nDeductions                                                          Total`;
+    
+    // Add deductions
+    if (deductions.length > 0) {
+      deductions.forEach((deduction: any) => {
+        invoiceData += `\n${deduction.description}                                         £${deduction.amount.toFixed(2)}`;
+      });
+    } else {
+      invoiceData += `\nVan Rental / Insurance / Fines                                  £0.00`;
+      invoiceData += `\nFines / Repayments                                              £0.00`;
+    }
+
+    invoiceData += `\n\n\nOther Comments                          Total: £${(invoice.total_amount || 0).toFixed(2)}
+Payments are made monthly as per pay schedule please see admin for dates
 
 Status: ${invoice.status}
 Generated: ${format(new Date(invoice.created_at), 'dd/MM/yyyy HH:mm')}

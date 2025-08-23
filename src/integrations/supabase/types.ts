@@ -459,55 +459,97 @@ export type Database = {
       }
       driver_invoices: {
         Row: {
+          base_parcels: number | null
+          base_rate: number | null
+          base_total: number | null
           billing_period_end: string
           billing_period_start: string
+          bonus_payments: Json | null
           company_id: string
+          cover_parcels: number | null
+          cover_rate: number | null
+          cover_total: number | null
           created_at: string
+          deductions: Json | null
           driver_id: string
           generated_by: string
           id: string
           invoice_number: string
           paid_at: string | null
           parcel_rate: number
+          period_description: string | null
           sent_at: string | null
           status: string
+          support_parcels: number | null
+          support_rate: number | null
+          support_total: number | null
           total_amount: number
+          total_deductions: number | null
           total_parcels: number
           updated_at: string
+          working_days: number | null
         }
         Insert: {
+          base_parcels?: number | null
+          base_rate?: number | null
+          base_total?: number | null
           billing_period_end: string
           billing_period_start: string
+          bonus_payments?: Json | null
           company_id: string
+          cover_parcels?: number | null
+          cover_rate?: number | null
+          cover_total?: number | null
           created_at?: string
+          deductions?: Json | null
           driver_id: string
           generated_by: string
           id?: string
           invoice_number: string
           paid_at?: string | null
           parcel_rate?: number
+          period_description?: string | null
           sent_at?: string | null
           status?: string
+          support_parcels?: number | null
+          support_rate?: number | null
+          support_total?: number | null
           total_amount?: number
+          total_deductions?: number | null
           total_parcels?: number
           updated_at?: string
+          working_days?: number | null
         }
         Update: {
+          base_parcels?: number | null
+          base_rate?: number | null
+          base_total?: number | null
           billing_period_end?: string
           billing_period_start?: string
+          bonus_payments?: Json | null
           company_id?: string
+          cover_parcels?: number | null
+          cover_rate?: number | null
+          cover_total?: number | null
           created_at?: string
+          deductions?: Json | null
           driver_id?: string
           generated_by?: string
           id?: string
           invoice_number?: string
           paid_at?: string | null
           parcel_rate?: number
+          period_description?: string | null
           sent_at?: string | null
           status?: string
+          support_parcels?: number | null
+          support_rate?: number | null
+          support_total?: number | null
           total_amount?: number
+          total_deductions?: number | null
           total_parcels?: number
           updated_at?: string
+          working_days?: number | null
         }
         Relationships: []
       }
