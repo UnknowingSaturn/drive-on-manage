@@ -802,7 +802,7 @@ Generated: ${format(new Date(invoice.created_at), 'dd/MM/yyyy HH:mm')}
         <CardHeader>
           <CardTitle>Driver Invoices</CardTitle>
           <CardDescription>
-            Invoices for period: {format(new Date(selectedPeriod.start), 'dd/MM/yyyy')} - {format(new Date(selectedPeriod.end), 'dd/MM/yyyy')}
+            Detailed invoices for period: {format(new Date(selectedPeriod.start), 'dd/MM/yyyy')} - {format(new Date(selectedPeriod.end), 'dd/MM/yyyy')}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -813,9 +813,11 @@ Generated: ${format(new Date(invoice.created_at), 'dd/MM/yyyy HH:mm')}
                   <TableHead>Invoice #</TableHead>
                   <TableHead>Driver</TableHead>
                   <TableHead>Period</TableHead>
-                  <TableHead>Parcels</TableHead>
-                  <TableHead>Rate</TableHead>
-                  <TableHead>Amount</TableHead>
+                  <TableHead>Base Parcels</TableHead>
+                  <TableHead>Cover Parcels</TableHead>
+                  <TableHead>Support</TableHead>
+                  <TableHead>Deductions</TableHead>
+                  <TableHead>Total Amount</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
@@ -831,16 +833,93 @@ Generated: ${format(new Date(invoice.created_at), 'dd/MM/yyyy HH:mm')}
                       })()}
                     </TableCell>
                     <TableCell>
-                      {format(new Date(invoice.billing_period_start), 'dd/MM')} - {format(new Date(invoice.billing_period_end), 'dd/MM/yyyy')}
+                      <div className="text-sm">
+                        <div>{format(new Date(invoice.billing_period_start), 'dd/MM')} - {format(new Date(invoice.billing_period_end), 'dd/MM/yyyy')}</div>
+                        {invoice.working_days && (
+                          <div className="text-muted-foreground text-xs">{invoice.working_days} working days</div>
+                        )}
+                      </div>
                     </TableCell>
-                    <TableCell>{invoice.total_parcels}</TableCell>
-                    <TableCell>£{invoice.parcel_rate.toFixed(2)}</TableCell>
-                    <TableCell className="font-semibold">£{invoice.total_amount.toFixed(2)}</TableCell>
+                    <TableCell>
+                      <div className="text-sm">
+                        {invoice.base_parcels || 0 > 0 ? (
+                          <>
+                            <div className="font-medium">{invoice.base_parcels || 0}</div>
+                            <div className="text-muted-foreground text-xs">£{((invoice.base_rate || 0).toFixed(2))}</div>
+                            <div className="text-xs font-semibold">£{((invoice.base_total || 0).toFixed(2))}</div>
+                          </>
+                        ) : (
+                          <span className="text-muted-foreground">-</span>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="text-sm">
+                        {invoice.cover_parcels || 0 > 0 ? (
+                          <>
+                            <div className="font-medium">{invoice.cover_parcels || 0}</div>
+                            <div className="text-muted-foreground text-xs">£{((invoice.cover_rate || 0).toFixed(2))}</div>
+                            <div className="text-xs font-semibold">£{((invoice.cover_total || 0).toFixed(2))}</div>
+                          </>
+                        ) : (
+                          <span className="text-muted-foreground">-</span>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="text-sm">
+                        {invoice.support_parcels || 0 > 0 ? (
+                          <>
+                            <div className="font-medium">{invoice.support_parcels || 0}</div>
+                            <div className="text-muted-foreground text-xs">£{((invoice.support_rate || 0).toFixed(2))}</div>
+                            <div className="text-xs font-semibold">£{((invoice.support_total || 0).toFixed(2))}</div>
+                          </>
+                        ) : (
+                          <span className="text-muted-foreground">-</span>
+                        )}
+                      </div>
+                    </TableCell>
+                     <TableCell>
+                       <div className="text-sm">
+                         {invoice.total_deductions && invoice.total_deductions > 0 ? (
+                           <>
+                             <div className="text-red-600 font-medium">-£{invoice.total_deductions.toFixed(2)}</div>
+                             {invoice.deductions && Array.isArray(invoice.deductions) && invoice.deductions.length > 0 && (
+                               <div className="text-xs text-muted-foreground">
+                                 {invoice.deductions.length} item{invoice.deductions.length !== 1 ? 's' : ''}
+                               </div>
+                             )}
+                           </>
+                         ) : (
+                           <span className="text-muted-foreground">-</span>
+                         )}
+                       </div>
+                     </TableCell>
+                    <TableCell>
+                      <div className="text-sm">
+                        <div className="font-semibold text-lg">£{invoice.total_amount.toFixed(2)}</div>
+                        {/* Show breakdown on hover or expand */}
+                        <div className="text-xs text-muted-foreground">
+                          Gross: £{((invoice.base_total || 0) + (invoice.cover_total || 0) + (invoice.support_total || 0)).toFixed(2)}
+                        </div>
+                      </div>
+                    </TableCell>
                     <TableCell>{getStatusBadge(invoice.status)}</TableCell>
                     <TableCell>
                       <div className="flex space-x-1">
-                        <Button size="sm" variant="outline" onClick={() => exportInvoice(invoice)}>
+                        <Button size="sm" variant="outline" onClick={() => exportInvoice(invoice)} title="Download Invoice">
                           <Download className="h-3 w-3" />
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          onClick={() => {
+                            // Show detailed view modal or expand
+                            console.log('View invoice details:', invoice);
+                          }}
+                          title="View Details"
+                        >
+                          <Eye className="h-3 w-3" />
                         </Button>
                         <Select onValueChange={(status) => updateInvoiceStatusMutation.mutate({ invoiceId: invoice.id, status })}>
                           <SelectTrigger className="w-20 h-8">
