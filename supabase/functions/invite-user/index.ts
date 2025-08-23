@@ -24,7 +24,10 @@ const handler = async (req: Request): Promise<Response> => {
     // Initialize Supabase client with service role key for admin operations
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const appUrl = Deno.env.get('APP_URL') || 'https://drive-on-manage.lovable.app';
+    
+    // Generate dynamic login URL from request origin (like driver credentials)
+    const origin = req.headers.get('origin') || req.headers.get('referer')?.split('/').slice(0, 3).join('/') || 'https://drive-on-manage.lovable.app';
+    const loginUrl = `${origin}/auth`;
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey, {
       auth: {
@@ -133,7 +136,7 @@ const handler = async (req: Request): Promise<Response> => {
               <strong>Email:</strong> ${email}<br>
               <strong>Temporary Password:</strong> ${tempPassword}
             </div>
-            <p>Please log in at: <a href="${appUrl}/auth">${appUrl}/auth</a></p>
+            <p>Please log in at: <a href="${loginUrl}">${loginUrl}</a></p>
             <p><strong>Important:</strong> Please change your password after your first login.</p>
             <p>Best regards,<br>The DriveOn Manager Team</p>
           `
