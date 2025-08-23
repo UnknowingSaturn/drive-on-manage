@@ -236,10 +236,13 @@ const StartOfDay = () => {
       setSuccessData(data);
       
       // Auto-start location tracking after successful SOD submission
-      if (permissionGranted && consentGiven) {
-        const trackingStarted = await startShift();
+      // Always try to start tracking since we auto-granted consent during submission
+      if (permissionGranted) {
+        // Auto-grant consent during form submission to ensure startShift works
+        setConsentGiven(true);
+        const trackingStarted = await startShift(true); // Bypass consent check since we just granted it
         setLocationTrackingStarted(trackingStarted);
-      } else if (!consentGiven) {
+      } else {
         setShowLocationConsent(true);
       }
       
@@ -268,7 +271,7 @@ const StartOfDay = () => {
       return;
     }
 
-    console.log('Form validated, checking location permissions and consent...', { 
+    console.log('Form validated, checking location permissions...', { 
       permissionGranted, 
       consentGiven, 
       userAgent: navigator.userAgent 
@@ -290,12 +293,6 @@ const StartOfDay = () => {
         variant: "destructive",
       });
       return;
-    }
-
-    // Auto-grant consent when permissions are confirmed during form submission
-    if (!consentGiven) {
-      console.log('Auto-granting location tracking consent for SOD submission');
-      setConsentGiven(true);
     }
 
     // Capture initial location to verify geolocation works and show user their location is being tracked

@@ -440,13 +440,13 @@ export function useGeolocation() {
     }
   };
 
-  const startShift = async (): Promise<boolean> => {
+  const startShift = async (bypassConsentCheck = false): Promise<boolean> => {
     if (!permissionGranted) {
       const granted = await requestPermissions();
       if (!granted) return false;
     }
 
-    if (!consentGiven) {
+    if (!consentGiven && !bypassConsentCheck) {
       toast.error('Location tracking consent required');
       return false;
     }
