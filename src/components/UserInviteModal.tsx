@@ -164,6 +164,17 @@ const UserInviteModal = ({ trigger, onSuccess }: UserInviteModalProps) => {
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          <Alert>
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              <strong>Email Setup Required:</strong> To send login credentials, verify your domain at{' '}
+              <a href="https://resend.com/domains" target="_blank" rel="noopener noreferrer" className="underline">
+                resend.com/domains
+              </a>{' '}
+              and update your email configuration.
+            </AlertDescription>
+          </Alert>
+
           <div className="space-y-2">
             <Label htmlFor="role">Role</Label>
             <Select 

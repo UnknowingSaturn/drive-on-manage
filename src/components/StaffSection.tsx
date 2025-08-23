@@ -48,7 +48,7 @@ const StaffSection = ({ className }: StaffSectionProps) => {
     queryFn: async () => {
       if (!profile?.company_id) return [];
       
-      // First get user_companies (exclude drivers)
+      // First get user_companies (exclude drivers and current user)
       const { data: userCompanies, error: userCompaniesError } = await supabase
         .from('user_companies')
         .select('id, user_id, role')
@@ -56,7 +56,37 @@ const StaffSection = ({ className }: StaffSectionProps) => {
         .neq('user_id', profile.user_id) // Exclude current user
         .in('role', ['admin', 'supervisor']); // Only admin and supervisor roles
 
-      if (userCompaniesError) throw userCompaniesError;
+      if (userCompaniesError) {
+        console.error('User companies query error:', userCompaniesError);
+        throw userCompaniesError;
+      }
+
+      // Also check profiles table directly for staff members
+      const { data: allProfiles, error: allProfilesError } = await supabase
+        .from('profiles')
+        .select('user_id, first_name, last_name, email, is_active, created_at, user_type')
+        .eq('user_type', 'supervisor')
+        .neq('user_id', profile.user_id);
+
+      if (allProfilesError) {
+        console.error('Profiles query error:', allProfilesError);
+        // Don't throw, just log
+      }
+
+      // If no user_companies found but profiles exist, return profile-based data
+      if ((!userCompanies || userCompanies.length === 0) && allProfiles && allProfiles.length > 0) {
+        return allProfiles.map(p => ({
+          id: p.user_id, // Use user_id as id since no user_companies record
+          user_id: p.user_id,
+          first_name: p.first_name || '',
+          last_name: p.last_name || '',
+          email: p.email || '',
+          role: p.user_type || 'supervisor',
+          is_active: p.is_active || false,
+          created_at: p.created_at || ''
+        })) as TeamMember[];
+      }
+
       if (!userCompanies || userCompanies.length === 0) return [];
 
       // Then get profiles for those users
@@ -293,6 +323,17 @@ const StaffSection = ({ className }: StaffSectionProps) => {
           </div>
         </CardHeader>
         <CardContent>
+          <Alert className="mb-4">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              <strong>Email Configuration Required:</strong> To send login credentials to staff members, you need to verify your domain at{' '}
+              <a href="https://resend.com/domains" target="_blank" rel="noopener noreferrer" className="underline">
+                resend.com/domains
+              </a>{' '}
+              and update the email configuration in your edge functions.
+            </AlertDescription>
+          </Alert>
+
           {teamMembers && teamMembers.length > 0 ? (
             <Table>
               <TableHeader>

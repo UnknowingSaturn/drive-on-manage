@@ -134,7 +134,7 @@ export const InvoiceManagement = () => {
     mutationFn: async () => {
       if (!profile?.company_id) return;
 
-      // Get approved EOD reports for the period
+      // Get all EOD reports for the period
       const { data: eodReports, error: eodError } = await supabase
         .from('end_of_day_reports')
         .select('successful_deliveries, successful_collections, created_at, driver_id')
@@ -142,7 +142,14 @@ export const InvoiceManagement = () => {
         .gte('created_at', selectedPeriod.start)
         .lte('created_at', selectedPeriod.end);
 
-      if (eodError) throw eodError;
+      if (eodError) {
+        console.error('EOD reports query error:', eodError);
+        throw new Error('Failed to fetch EOD reports: ' + eodError.message);
+      }
+
+      if (!eodReports || eodReports.length === 0) {
+        throw new Error('No EOD reports found for the selected period. Please ensure drivers have submitted their end-of-day reports.');
+      }
 
       // Get driver profiles
       const { data: drivers, error: driversError } = await supabase
