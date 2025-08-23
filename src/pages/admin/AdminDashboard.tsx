@@ -111,7 +111,7 @@ const AdminDashboard = () => {
       const sevenDaysAgo = format(subDays(new Date(), 7), 'yyyy-MM-dd');
       try {
         // Manual query to avoid TypeScript instantiation issues
-        const response = await fetch(`https://ttnlrnmdxkecomdylckl.supabase.co/rest/v1/end_of_day_reports?company_id=eq.${profile.company_id}&submitted_at=gte.${sevenDaysAgo}&order=submitted_at.desc&limit=5&select=id,submitted_at,successful_deliveries,successful_collections,driver_id,processing_status`, {
+        const response = await fetch(`https://ttnlrnmdxkecomdylckl.supabase.co/rest/v1/end_of_day_reports?company_id=eq.${profile.company_id}&created_at=gte.${sevenDaysAgo}&order=created_at.desc&limit=5&select=id,created_at,successful_deliveries,successful_collections,driver_id,processing_status`, {
           headers: {
             'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR0bmxybm1keGtlY29tZHlsY2tsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ0OTYzMDksImV4cCI6MjA3MDA3MjMwOX0.y9Twexq7xe3v1RRt3OyU4ypJGB3T7Dt9e_c2pWJIQRM',
             'Authorization': `Bearer ${(supabase as any).supabaseKey}`,
@@ -135,7 +135,7 @@ const AdminDashboard = () => {
           driver_name: `Driver ${index + 1}`
         }));
 
-        const todayReports = reports.filter((r: any) => isToday(new Date(r.submitted_at))).length;
+        const todayReports = reports.filter((r: any) => isToday(new Date(r.created_at))).length;
         const pendingReports = reports.filter((r: any) => r.processing_status === 'pending').length;
         
         return {
