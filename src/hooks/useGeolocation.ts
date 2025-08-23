@@ -88,48 +88,190 @@ export function useGeolocation() {
           return false;
         }
       } else {
-        // Web environment - use getCurrentPosition to trigger permission request
+        // Web environment - progressive location request strategy
         if (!navigator.geolocation) {
           toast.error('Geolocation not supported by this browser');
           return false;
         }
 
-        return new Promise((resolve) => {
-          navigator.geolocation.getCurrentPosition(
-            (position) => {
-              setPermissionGranted(true);
-              toast.success('Location permissions granted');
-              console.log('Location permission granted, position:', position.coords);
-              resolve(true);
-            },
-            (error) => {
-              console.error('Geolocation permission error:', error);
-              setPermissionGranted(false);
-              
-              let errorMessage = 'Location access denied';
-              if (error.code === error.PERMISSION_DENIED) {
-                errorMessage = 'Location access was denied. Please enable location in your browser settings and refresh the page.';
-              } else if (error.code === error.POSITION_UNAVAILABLE) {
-                errorMessage = 'Location information is unavailable. Please check your device settings.';
-              } else if (error.code === error.TIMEOUT) {
-                errorMessage = 'Location request timed out. Please try again.';
-              }
-              
-              toast.error(errorMessage);
-              resolve(false);
-            },
-            { 
-              enableHighAccuracy: false,
-              timeout: 15000,
-              maximumAge: 300000 
-            }
-          );
+        // Try high accuracy first, then fallback to low accuracy
+        const tryLocationAccess = async (options: PositionOptions): Promise<boolean> => {
+          return new Promise((resolve) => {
+            navigator.geolocation.getCurrentPosition(
+              (position) => {
+                setPermissionGranted(true);
+                console.log('Location access granted with options:', options, 'Position:', position.coords);
+                return resolve(true);
+              },
+              (error) => {
+                console.warn('Geolocation attempt failed:', error, 'Options:', options);
+                return resolve(false);
+              },
+              options
+            );
+          });
+        };
+
+        // Strategy 1: Try high accuracy with reasonable timeout
+        console.log('Attempting high accuracy location access...');
+        let success = await tryLocationAccess({
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 60000
         });
+
+        // Strategy 2: Fallback to network-based location (low accuracy)
+        if (!success) {
+          console.log('High accuracy failed, trying network-based location...');
+          success = await tryLocationAccess({
+            enableHighAccuracy: false,
+            timeout: 15000,
+            maximumAge: 300000
+          });
+        }
+
+        // Strategy 3: Final attempt with very permissive settings
+        if (!success) {
+          console.log('Network location failed, trying with maximum compatibility...');
+          success = await tryLocationAccess({
+            enableHighAccuracy: false,
+            timeout: 20000,
+            maximumAge: 600000
+          });
+        }
+
+        if (success) {
+          toast.success('Location permissions granted');
+          return true;
+        } else {
+          // Final fallback - show helpful error with IP geolocation option
+          toast.error('GPS unavailable. Using approximate location instead.', {
+            description: 'Your device may not have GPS. We\'ll use network-based location.',
+          });
+          
+          // Try to get IP-based location as final fallback
+          try {
+            await tryIPGeolocation();
+            setPermissionGranted(true);
+            return true;
+          } catch (ipError) {
+            console.error('IP geolocation also failed:', ipError);
+            toast.error('Unable to determine location. Please enable GPS or try from a different device.');
+            return false;
+          }
+        }
       }
     } catch (error) {
       console.error('Error requesting permissions:', error);
       toast.error('Failed to request location permissions');
       return false;
+    }
+  };
+
+  // IP Geolocation fallback for devices without GPS
+  const tryIPGeolocation = async (): Promise<LocationPoint | null> => {
+    try {
+      console.log('Attempting IP geolocation fallback...');
+      
+      // Use a free IP geolocation service (ipapi.co)
+      const response = await fetch('https://ipapi.co/json/');
+      if (!response.ok) throw new Error('IP geolocation service unavailable');
+      
+      const data = await response.json();
+      
+      if (data.latitude && data.longitude) {
+        const locationPoint: LocationPoint = {
+          latitude: parseFloat(data.latitude),
+          longitude: parseFloat(data.longitude),
+          accuracy: 10000, // IP location is very inaccurate (10km)
+          speed: undefined,
+          heading: undefined,
+          timestamp: Date.now(),
+          batteryLevel: undefined
+        };
+        
+        setCurrentLocation(locationPoint);
+        console.log('IP geolocation successful:', locationPoint);
+        toast.success('Location determined using network. Accuracy may be limited.');
+        
+        return locationPoint;
+      } else {
+        throw new Error('Invalid IP geolocation response');
+      }
+    } catch (error) {
+      console.error('IP geolocation failed:', error);
+      throw error;
+    }
+  };
+
+  // Enhanced location capture with multiple fallback strategies
+  const captureLocationWithFallbacks = async (): Promise<LocationPoint | null> => {
+    if (!navigator.geolocation) {
+      console.warn('Geolocation not supported, trying IP fallback');
+      return await tryIPGeolocation();
+    }
+
+    const attemptLocationCapture = (options: PositionOptions): Promise<LocationPoint | null> => {
+      return new Promise((resolve) => {
+        navigator.geolocation.getCurrentPosition(
+          async (position) => {
+            const batteryLevel = await getBatteryLevel();
+            
+            const locationPoint: LocationPoint = {
+              latitude: position.coords.latitude,
+              longitude: position.coords.longitude,
+              accuracy: position.coords.accuracy || 0,
+              speed: position.coords.speed || undefined,
+              heading: position.coords.heading || undefined,
+              timestamp: position.timestamp,
+              batteryLevel
+            };
+            
+            console.log('GPS location captured:', locationPoint);
+            resolve(locationPoint);
+          },
+          (error) => {
+            console.warn('GPS capture failed:', error);
+            resolve(null);
+          },
+          options
+        );
+      });
+    };
+
+    // Progressive fallback strategy
+    const strategies = [
+      // High accuracy GPS
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 },
+      // Medium accuracy 
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 180000 },
+      // Network-based location
+      { enableHighAccuracy: false, timeout: 12000, maximumAge: 300000 },
+      // Very permissive final attempt
+      { enableHighAccuracy: false, timeout: 20000, maximumAge: 600000 }
+    ];
+
+    for (const [index, strategy] of strategies.entries()) {
+      console.log(`Trying location strategy ${index + 1}:`, strategy);
+      
+      try {
+        const result = await attemptLocationCapture(strategy);
+        if (result) {
+          setCurrentLocation(result);
+          return result;
+        }
+      } catch (error) {
+        console.warn(`Strategy ${index + 1} failed:`, error);
+      }
+    }
+
+    // Final fallback to IP geolocation
+    console.log('All GPS strategies failed, falling back to IP geolocation');
+    try {
+      return await tryIPGeolocation();
+    } catch (error) {
+      console.error('All location strategies failed:', error);
+      return null;
     }
   };
 
@@ -305,39 +447,11 @@ export function useGeolocation() {
         startTime: new Date(shiftData.start_time)
       });
 
-      // Start location tracking
+      // Start location tracking with enhanced error handling
       if (Capacitor.isNativePlatform()) {
-        watchId.current = await Geolocation.watchPosition(
-          {
-            enableHighAccuracy: true,
-            timeout: 30000,
-            maximumAge: 30000
-          },
-          async (position: Position | null) => {
-            if (!position) return;
+        const watchHandler = async (position: Position | null) => {
+          if (!position) return;
 
-            const batteryLevel = await getBatteryLevel();
-            
-            const locationPoint: LocationPoint = {
-              latitude: position.coords.latitude,
-              longitude: position.coords.longitude,
-              accuracy: position.coords.accuracy || 0,
-              speed: position.coords.speed || undefined,
-              heading: position.coords.heading || undefined,
-              timestamp: position.timestamp,
-              batteryLevel
-            };
-
-            setCurrentLocation(locationPoint);
-
-            if (shouldSendUpdate(locationPoint)) {
-              await sendLocationUpdate(locationPoint);
-            }
-          }
-        );
-      } else {
-        // Web environment - use navigator.geolocation
-        const watchHandler = async (position: GeolocationPosition) => {
           const batteryLevel = await getBatteryLevel();
           
           const locationPoint: LocationPoint = {
@@ -357,20 +471,153 @@ export function useGeolocation() {
           }
         };
 
-        const webWatchId = navigator.geolocation.watchPosition(
-          watchHandler,
-          (error) => {
-            console.error('Geolocation watch error:', error);
-            toast.error('Location tracking error: ' + error.message);
-          },
-          {
-            enableHighAccuracy: true,
-            timeout: 30000,
-            maximumAge: 30000
+        const errorHandler = (error: any) => {
+          console.error('Native geolocation watch error:', error);
+          toast.error('Location tracking interrupted. Attempting to restart...');
+          
+          // Attempt to restart tracking after brief delay
+          setTimeout(async () => {
+            try {
+              if (watchId.current) {
+                await Geolocation.clearWatch({ id: watchId.current });
+              }
+              
+              // Restart with more permissive settings
+              watchId.current = await Geolocation.watchPosition(
+                {
+                  enableHighAccuracy: false,
+                  timeout: 45000,
+                  maximumAge: 60000
+                },
+                watchHandler
+              );
+              
+              console.log('Location tracking restarted with fallback settings');
+            } catch (restartError) {
+              console.error('Failed to restart location tracking:', restartError);
+            }
+          }, 3000);
+        };
+
+        // Try high accuracy first, fallback on error
+        try {
+          watchId.current = await Geolocation.watchPosition(
+            {
+              enableHighAccuracy: true,
+              timeout: 30000,
+              maximumAge: 30000
+            },
+            watchHandler
+          );
+        } catch (highAccuracyError) {
+          console.warn('High accuracy watch failed, trying standard accuracy:', highAccuracyError);
+          
+          watchId.current = await Geolocation.watchPosition(
+            {
+              enableHighAccuracy: false,
+              timeout: 45000,
+              maximumAge: 60000
+            },
+            watchHandler
+          );
+        }
+      } else {
+        // Web environment with robust fallback handling
+        const startWebTracking = async (options: PositionOptions) => {
+          const watchHandler = async (position: GeolocationPosition) => {
+            const batteryLevel = await getBatteryLevel();
+            
+            const locationPoint: LocationPoint = {
+              latitude: position.coords.latitude,
+              longitude: position.coords.longitude,
+              accuracy: position.coords.accuracy || 0,
+              speed: position.coords.speed || undefined,
+              heading: position.coords.heading || undefined,
+              timestamp: position.timestamp,
+              batteryLevel
+            };
+
+            setCurrentLocation(locationPoint);
+
+            if (shouldSendUpdate(locationPoint)) {
+              await sendLocationUpdate(locationPoint);
+            }
+          };
+
+          const errorHandler = async (error: GeolocationPositionError) => {
+            console.error('Web geolocation watch error:', error);
+            
+            let shouldRestart = false;
+            let newOptions = options;
+            
+            if (error.code === error.POSITION_UNAVAILABLE) {
+              console.log('Position unavailable, trying lower accuracy...');
+              newOptions = {
+                enableHighAccuracy: false,
+                timeout: 30000,
+                maximumAge: 120000
+              };
+              shouldRestart = true;
+            } else if (error.code === error.TIMEOUT) {
+              console.log('Location timeout, increasing timeout period...');
+              newOptions = {
+                ...options,
+                timeout: Math.min(options.timeout! * 2, 60000)
+              };
+              shouldRestart = true;
+            }
+            
+            if (shouldRestart && watchId.current) {
+              navigator.geolocation.clearWatch(parseInt(watchId.current));
+              
+              setTimeout(() => {
+                const newWatchId = navigator.geolocation.watchPosition(
+                  watchHandler,
+                  errorHandler,
+                  newOptions
+                );
+                watchId.current = newWatchId.toString();
+                console.log('Web location tracking restarted with new options:', newOptions);
+              }, 2000);
+            }
+          };
+
+          const webWatchId = navigator.geolocation.watchPosition(
+            watchHandler,
+            errorHandler,
+            options
+          );
+          
+          watchId.current = webWatchId.toString();
+          console.log('Web location tracking started with options:', options);
+        };
+
+        // Get initial location to ensure tracking works
+        try {
+          const initialLocation = await captureLocationWithFallbacks();
+          if (initialLocation) {
+            // Start tracking with appropriate settings based on initial success
+            const isHighAccuracy = initialLocation.accuracy < 100;
+            
+            await startWebTracking({
+              enableHighAccuracy: isHighAccuracy,
+              timeout: isHighAccuracy ? 30000 : 45000,
+              maximumAge: isHighAccuracy ? 30000 : 60000
+            });
+          } else {
+            throw new Error('Unable to obtain initial location');
           }
-        );
-        
-        watchId.current = webWatchId.toString();
+        } catch (error) {
+          console.error('Failed to start web tracking:', error);
+          toast.error('Location tracking failed to start. Using fallback mode.');
+          
+          // Start with very permissive settings as last resort
+          await startWebTracking({
+            enableHighAccuracy: false,
+            timeout: 60000,
+            maximumAge: 300000
+          });
+        }
       }
 
       setIsTracking(true);
@@ -561,6 +808,7 @@ export function useGeolocation() {
     resumeShift,
     endShift,
     requestPermissions,
-    offlineQueueLength: offlineQueue.current.length
+    offlineQueueLength: offlineQueue.current.length,
+    captureLocationWithFallbacks
   };
 }

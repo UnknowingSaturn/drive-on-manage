@@ -39,7 +39,8 @@ const StartOfDay = () => {
     startShift,
     endShift,
     requestPermissions,
-    offlineQueueLength
+    offlineQueueLength,
+    captureLocationWithFallbacks
   } = useGeolocation();
   
   const [formData, setFormData] = useState({
@@ -283,6 +284,31 @@ const StartOfDay = () => {
         });
         return;
       }
+    }
+
+    // Capture initial location to verify geolocation works
+    console.log('Capturing initial location for SOD...');
+    try {
+      // Use the robust location capture system
+      const initialLocation = await captureLocationWithFallbacks();
+      if (initialLocation) {
+        console.log('Initial location captured for SOD:', initialLocation);
+        toast({
+          title: "Location Confirmed",
+          description: `Location captured with ${Math.round(initialLocation.accuracy)}m accuracy`,
+        });
+      } else {
+        console.warn('Failed to capture initial location, but continuing with form submission');
+        toast({
+          title: "Location Warning", 
+          description: "Could not determine precise location, but shift will start normally.",
+          variant: "destructive",
+        });
+        // Don't block form submission - tracking will attempt to start anyway
+      }
+    } catch (locationError) {
+      console.error('Location capture error:', locationError);
+      // Don't block submission - let tracking handle fallbacks
     }
 
     console.log('All checks passed, submitting SOD form...');
@@ -711,7 +737,33 @@ const StartOfDay = () => {
                        <Alert>
                          <Shield className="h-4 w-4" />
                          <AlertDescription>
-                           Location tracking is required for shifts. This will be requested when you start your day.
+                           <div className="space-y-2">
+                             <p className="font-medium">Location tracking will be enabled when you start your day.</p>
+                             <div className="text-sm space-y-1">
+                               <p>We use multiple fallback methods to ensure reliable location capture:</p>
+                               <ul className="list-disc list-inside space-y-1 text-xs ml-2">
+                                 <li>High-precision GPS (when available)</li>
+                                 <li>Network-based location (WiFi/cell towers)</li>
+                                 <li>IP-based approximate location (fallback)</li>
+                               </ul>
+                             </div>
+                           </div>
+                         </AlertDescription>
+                       </Alert>
+                     )}
+
+                     {permissionGranted && (
+                       <Alert className="border-green-200 bg-green-50 dark:bg-green-950">
+                         <CheckCircle2 className="h-4 w-4 text-green-600" />
+                         <AlertDescription className="text-green-800 dark:text-green-200">
+                           <div className="flex items-center justify-between">
+                             <span className="font-medium">Location access ready</span>
+                             {currentLocation && (
+                               <span className="text-xs">
+                                 Accuracy: {Math.round(currentLocation.accuracy)}m
+                               </span>
+                             )}
+                           </div>
                          </AlertDescription>
                        </Alert>
                      )}
