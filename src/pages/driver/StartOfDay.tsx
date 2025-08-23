@@ -300,20 +300,32 @@ const StartOfDay = () => {
       return;
     }
 
+    // Get the stored consent state
+    const storedConsent = localStorage.getItem('locationTrackingConsent') === 'true';
+    
     console.log('Form validated, checking location consent...', { 
       consentGiven,
+      storedConsent,
       permissionGranted,
       userAgent: navigator.userAgent 
     });
 
+    // Use either the current state or stored consent
+    const hasConsent = consentGiven || storedConsent;
+    
     // Check for explicit consent toggle
-    if (!consentGiven) {
+    if (!hasConsent) {
       toast({
         title: "Location Consent Required",
         description: "Please enable location tracking to start your shift.",
         variant: "destructive",
       });
       return;
+    }
+
+    // Update consent state if needed
+    if (!consentGiven && storedConsent) {
+      setConsentGiven(true);
     }
 
     console.log('Consent confirmed, requesting location permission (user gesture)...');

@@ -41,7 +41,7 @@ import { Badge } from "@/components/ui/badge";
 const adminItems = [
   { title: "Dashboard", url: "/admin/dashboard", icon: LayoutDashboard },
   { title: "Locations", url: "/admin/companies", icon: Building2 },
-  { title: "Driver Management", url: "/admin/drivers", icon: Users },
+  { title: "Team Management", url: "/admin/drivers", icon: Users },
   { title: "Van Management", url: "/admin/vans", icon: Truck },
   { title: "Round Management", url: "/admin/rounds", icon: MapPin },
   { title: "Schedule View", url: "/admin/schedule", icon: Calendar },
@@ -53,7 +53,7 @@ const adminItems = [
 
 const supervisorItems = [
   { title: "Dashboard", url: "/admin/dashboard", icon: LayoutDashboard },
-  { title: "Driver Management", url: "/admin/drivers", icon: Users },
+  { title: "Team Management", url: "/admin/drivers", icon: Users },
   { title: "Van Management", url: "/admin/vans", icon: Truck },
   { title: "Round Management", url: "/admin/rounds", icon: MapPin },
   { title: "Schedule View", url: "/admin/schedule", icon: Calendar },

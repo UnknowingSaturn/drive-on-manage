@@ -14,7 +14,7 @@ import Dashboard from "./pages/Dashboard";
 import NotFound from "./pages/NotFound";
 import NotAuthorized from "./pages/NotAuthorized";
 import AdminDashboard from "./pages/admin/AdminDashboard";
-import DriverManagement from "./pages/admin/DriverManagement";
+import TeamManagement from "./pages/admin/TeamManagement";
 import CompanyManagement from "./pages/admin/CompanyManagement";
 import VanManagement from "./pages/admin/VanManagement";
 import RoundManagement from "./pages/admin/RoundManagement";
@@ -85,7 +85,7 @@ const App = () => (
             <Route path="/admin/drivers" element={
               <ProtectedRoute>
                 <AdminRoute>
-                  <DriverManagement />
+                  <TeamManagement />
                 </AdminRoute>
               </ProtectedRoute>
             } />
