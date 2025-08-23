@@ -256,6 +256,8 @@ const StartOfDay = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('SOD form submitted, checking validation...');
+    
     if (!validateForm()) {
       toast({
         title: "Please fix the errors",
@@ -265,9 +267,14 @@ const StartOfDay = () => {
       return;
     }
 
+    console.log('Form validated, checking location permissions...', { permissionGranted });
+
     // Check location permissions before submission
     if (!permissionGranted) {
+      console.log('Requesting location permissions...');
       const granted = await requestPermissions();
+      console.log('Permission request result:', granted);
+      
       if (!granted) {
         toast({
           title: "Location Required",
@@ -278,6 +285,7 @@ const StartOfDay = () => {
       }
     }
 
+    console.log('All checks passed, submitting SOD form...');
     startDayMutation.mutate(formData);
   };
 

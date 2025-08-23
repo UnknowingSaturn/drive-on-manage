@@ -51,13 +51,27 @@ export function useGeolocation() {
           setPermissionGranted(true);
         }
       } else {
-        // Web environment - check if geolocation is available
-        if (navigator.geolocation) {
-          setPermissionGranted(true);
+        // Web environment - properly check geolocation permission status
+        if (navigator.geolocation && navigator.permissions) {
+          try {
+            const permission = await navigator.permissions.query({name: 'geolocation'});
+            if (permission.state === 'granted') {
+              setPermissionGranted(true);
+            } else {
+              setPermissionGranted(false);
+            }
+          } catch {
+            // Fallback: assume permission needed if we can't query
+            setPermissionGranted(false);
+          }
+        } else if (navigator.geolocation) {
+          // Older browsers - we'll need to request permission to know status
+          setPermissionGranted(false);
         }
       }
     } catch (error) {
       console.error('Error checking permissions:', error);
+      setPermissionGranted(false);
     }
   };
 
@@ -74,20 +88,41 @@ export function useGeolocation() {
           return false;
         }
       } else {
-        // Web environment - test with getCurrentPosition
+        // Web environment - use getCurrentPosition to trigger permission request
+        if (!navigator.geolocation) {
+          toast.error('Geolocation not supported by this browser');
+          return false;
+        }
+
         return new Promise((resolve) => {
           navigator.geolocation.getCurrentPosition(
-            () => {
+            (position) => {
               setPermissionGranted(true);
               toast.success('Location permissions granted');
+              console.log('Location permission granted, position:', position.coords);
               resolve(true);
             },
             (error) => {
-              console.error('Geolocation error:', error);
-              toast.error('Location permissions denied or unavailable');
+              console.error('Geolocation permission error:', error);
+              setPermissionGranted(false);
+              
+              let errorMessage = 'Location access denied';
+              if (error.code === error.PERMISSION_DENIED) {
+                errorMessage = 'Location access was denied. Please enable location in your browser settings and refresh the page.';
+              } else if (error.code === error.POSITION_UNAVAILABLE) {
+                errorMessage = 'Location information is unavailable. Please check your device settings.';
+              } else if (error.code === error.TIMEOUT) {
+                errorMessage = 'Location request timed out. Please try again.';
+              }
+              
+              toast.error(errorMessage);
               resolve(false);
             },
-            { timeout: 10000 }
+            { 
+              enableHighAccuracy: false,
+              timeout: 15000,
+              maximumAge: 300000 
+            }
           );
         });
       }
