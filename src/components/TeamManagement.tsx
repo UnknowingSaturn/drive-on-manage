@@ -81,46 +81,23 @@ const TeamManagement = () => {
     enabled: !!profile?.company_id
   });
 
-  // Add team member mutation
+  // Add team member mutation using the new invite-user edge function
   const addMemberMutation = useMutation({
     mutationFn: async (memberData: typeof newMember) => {
       if (!profile?.company_id) throw new Error('No company ID');
 
-      // Use the comprehensive create function similar to driver creation
-      const { data: createResult, error: createError } = await supabase.functions.invoke('comprehensive-create-driver', {
-        body: {
-          email: memberData.email.trim(),
-          firstName: memberData.first_name.trim(),
-          lastName: memberData.last_name.trim(),
-          phone: null,
-          companyId: profile.company_id,
-          userType: memberData.role, // This will create admin/supervisor instead of driver
-          skipDriverProfile: true // Skip driver-specific setup
-        }
-      });
-
-      if (createError || !createResult?.success) {
-        throw new Error(createError?.message || 'Failed to create team member account');
-      }
-
-      // Send credentials email
-      const { error: emailError } = await supabase.functions.invoke('send-driver-credentials', {
+      const { data, error } = await supabase.functions.invoke('invite-user', {
         body: {
           email: memberData.email,
-          firstName: memberData.first_name,
-          lastName: memberData.last_name,
-          tempPassword: createResult.tempPassword,
+          role: memberData.role,
           companyId: profile.company_id,
-          isTeamMember: true
+          firstName: memberData.first_name,
+          lastName: memberData.last_name
         }
       });
 
-      if (emailError) {
-        // Don't throw here as the user was still created successfully
-        console.warn('Email sending failed:', emailError);
-      }
-
-      return createResult;
+      if (error) throw error;
+      return data;
     },
     onSuccess: () => {
       toast({

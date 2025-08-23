@@ -81,15 +81,6 @@ const StartOfDay = () => {
 
   const today = new Date().toISOString().split('T')[0];
 
-  const [consentGiven, setConsentGiven] = useState(() => {
-    // Check for persistent app-level consent
-    try {
-      return localStorage.getItem('locationTrackingConsent') === 'true';
-    } catch {
-      return false;
-    }
-  });
-
   const persistConsentChoice = (consent: boolean) => {
     try {
       if (consent) {
@@ -408,6 +399,7 @@ const StartOfDay = () => {
     }
 
     console.log('All checks passed, submitting SOD form with location data:', locationData);
+    console.log('Current consent state:', { consentGiven, permissionGranted });
     startDayMutation.mutate(formData);
   };
 

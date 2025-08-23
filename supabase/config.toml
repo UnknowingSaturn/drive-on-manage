@@ -6,7 +6,6 @@ verify_jwt = false
 [functions.delete-driver-comprehensive]
 verify_jwt = false
 
-
 [functions.send-driver-credentials]
 verify_jwt = false
 
@@ -18,3 +17,6 @@ verify_jwt = false
 
 [functions.test-driver-creation]
 verify_jwt = false
+
+[functions.invite-user]
+verify_jwt = true

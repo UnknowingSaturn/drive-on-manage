@@ -21,75 +21,61 @@ export const ProfitLoss = () => {
     end: format(endOfMonth(new Date()), 'yyyy-MM-dd')
   });
 
-  // Fetch P&L data
-  const { data: plData, isLoading } = useQuery({
-    queryKey: ['profit-loss', profile?.company_id, selectedPeriod],
+  // Fetch P&L data using the optimized RPC function
+  const { data: monthlyPL, isLoading } = useQuery({
+    queryKey: ['monthly-pnl', profile?.company_id, selectedPeriod.start, selectedPeriod.end],
     queryFn: async () => {
-      if (!profile?.company_id) return null;
+      if (!profile?.company_id) return [];
       
-      // Get EOD reports for revenue calculation
-      const { data: eodReports, error: eodError } = await supabase
-        .from('end_of_day_reports')
-        .select('successful_deliveries, successful_collections')
-        .eq('company_id', profile.company_id)
-        .gte('submitted_at', selectedPeriod.start)
-        .lte('submitted_at', selectedPeriod.end);
+      const { data, error } = await supabase
+        .rpc('get_monthly_pnl', {
+          p_company_id: profile.company_id,
+          p_from_date: selectedPeriod.start,
+          p_to_date: selectedPeriod.end
+        });
 
-      if (eodError) throw eodError;
-
-      // Get driver payments (wages)
-      const { data: payments, error: paymentsError } = await supabase
-        .from('payments')
-        .select('total_pay')
-        .eq('company_id', profile.company_id)
-        .gte('period_start', selectedPeriod.start)
-        .lte('period_end', selectedPeriod.end);
-
-      if (paymentsError) throw paymentsError;
-
-      // Get operating costs
-      const { data: operatingCosts, error: costsError } = await supabase
-        .from('operating_costs')
-        .select('*')
-        .eq('company_id', profile.company_id)
-        .gte('date', selectedPeriod.start)
-        .lte('date', selectedPeriod.end);
-
-      if (costsError) throw costsError;
-
-      // Calculate metrics
-      const totalParcels = eodReports?.reduce((sum, report) => sum + ((report.successful_deliveries || 0) + (report.successful_collections || 0)), 0) || 0;
-      const totalRevenue = totalParcels * 0.50; // £0.50 per parcel
-      const totalWages = payments?.reduce((sum, payment) => sum + (payment.total_pay || 0), 0) || 0;
-      const totalOperatingCosts = operatingCosts?.reduce((sum, cost) => sum + (cost.amount || 0), 0) || 0;
-      
-      const grossProfit = totalRevenue - totalWages;
-      const netProfit = grossProfit - totalOperatingCosts;
-      const profitMargin = totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0;
-
-      // Group operating costs by category
-      const costsByCategory = operatingCosts?.reduce((acc: any, cost) => {
-        if (!acc[cost.category]) {
-          acc[cost.category] = 0;
-        }
-        acc[cost.category] += cost.amount;
-        return acc;
-      }, {}) || {};
-
-      return {
-        totalRevenue,
-        totalWages,
-        totalOperatingCosts,
-        grossProfit,
-        netProfit,
-        profitMargin,
-        totalParcels,
-        costsByCategory,
-        operatingCosts: operatingCosts || []
-      };
+      if (error) throw error;
+      return data || [];
     },
     enabled: !!profile?.company_id
   });
+
+  // Calculate aggregated totals from monthly data
+  const plData = React.useMemo(() => {
+    if (!monthlyPL || monthlyPL.length === 0) {
+      return {
+        totalRevenue: 0,
+        totalWages: 0,
+        totalOperatingCosts: 0,
+        grossProfit: 0,
+        netProfit: 0,
+        profitMargin: 0,
+        totalParcels: 0,
+        costsByCategory: {},
+        operatingCosts: []
+      };
+    }
+
+    const totalRevenue = monthlyPL.reduce((sum: number, month: any) => sum + (month.revenue || 0), 0);
+    const totalExpenses = monthlyPL.reduce((sum: number, month: any) => sum + (month.expenses || 0), 0);
+    const netProfit = totalRevenue - totalExpenses;
+    const profitMargin = totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0;
+
+    // Estimate parcels (assuming £0.50 per parcel)
+    const totalParcels = Math.round(totalRevenue / 0.50);
+
+    return {
+      totalRevenue,
+      totalWages: 0, // Not available from aggregated view
+      totalOperatingCosts: totalExpenses,
+      grossProfit: totalRevenue, // Simplified since wages not separately tracked
+      netProfit,
+      profitMargin,
+      totalParcels,
+      costsByCategory: { 'Mixed Expenses': totalExpenses },
+      operatingCosts: []
+    };
+  }, [monthlyPL]);
 
   // Prepare chart data
   const revenueVsCostsData = [
