@@ -46,6 +46,32 @@ export const InvoiceManagement = () => {
     enabled: !!profile?.company_id
   });
 
+  // Fetch available EOD reports for preview
+  const { data: eodReportsPreview = [] } = useQuery({
+    queryKey: ['eod-reports-preview', profile?.company_id, selectedPeriod],
+    queryFn: async () => {
+      if (!profile?.company_id) return [];
+      
+      const { data, error } = await supabase
+        .from('end_of_day_reports')
+        .select(`
+          *,
+          driver_profiles!inner(
+            profiles!inner(first_name, last_name, email)
+          )
+        `)
+        .eq('company_id', profile.company_id)
+        .eq('processing_status', 'completed')
+        .gte('created_at', selectedPeriod.start)
+        .lte('created_at', selectedPeriod.end)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!profile?.company_id
+  });
+
   // Fetch driver profiles separately for better performance
   const { data: driverProfiles = [] } = useQuery({
     queryKey: ['driver-profiles-finance', profile?.company_id],
@@ -72,11 +98,12 @@ export const InvoiceManagement = () => {
     queryFn: async () => {
       if (!profile?.company_id) return null;
       
-      // Query using the correct table name
+      // Query using the correct table name and only completed reports
       const eodQuery = await supabase
         .from('end_of_day_reports')
-        .select('successful_deliveries, successful_collections, created_at')
+        .select('successful_deliveries, successful_collections, created_at, driver_id')
         .eq('company_id', profile.company_id)
+        .eq('processing_status', 'completed')
         .gte('created_at', selectedPeriod.start)
         .lte('created_at', selectedPeriod.end);
           
@@ -134,11 +161,12 @@ export const InvoiceManagement = () => {
     mutationFn: async () => {
       if (!profile?.company_id) return;
 
-      // Get approved EOD reports for the period
+      // Get processed EOD reports for the period (only completed ones should be invoiced)
       const { data: eodReports, error: eodError } = await supabase
         .from('end_of_day_reports')
-        .select('successful_deliveries, successful_collections, created_at, driver_id')
+        .select('successful_deliveries, successful_collections, total_parcels, created_at, driver_id')
         .eq('company_id', profile.company_id)
+        .eq('processing_status', 'completed')
         .gte('created_at', selectedPeriod.start)
         .lte('created_at', selectedPeriod.end);
 
@@ -197,7 +225,7 @@ export const InvoiceManagement = () => {
       }
 
       if (invoicesToCreate.length === 0) {
-        throw new Error('No invoices to generate - no approved EOD reports found for this period');
+        throw new Error(`No invoices to generate - no completed EOD reports found for the selected period (${format(new Date(selectedPeriod.start), 'dd/MM/yyyy')} - ${format(new Date(selectedPeriod.end), 'dd/MM/yyyy')}). Please ensure drivers have submitted and completed their EOD reports.`);
       }
 
       const { error } = await supabase
@@ -644,6 +672,63 @@ Generated: ${format(new Date(invoice.created_at), 'dd/MM/yyyy HH:mm')}
           </CardContent>
         </Card>
       </div>
+
+      {/* EOD Reports Preview */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Available EOD Reports</CardTitle>
+          <CardDescription>
+            Completed EOD reports available for invoice generation in this period
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {eodReportsPreview.length > 0 ? (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Driver</TableHead>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Deliveries</TableHead>
+                    <TableHead>Collections</TableHead>
+                    <TableHead>Total Parcels</TableHead>
+                    <TableHead>Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {eodReportsPreview.slice(0, 10).map((report) => (
+                    <TableRow key={report.id}>
+                      <TableCell>
+                        {report.driver_profiles?.profiles?.first_name} {report.driver_profiles?.profiles?.last_name}
+                      </TableCell>
+                      <TableCell>{format(new Date(report.created_at), 'dd/MM/yyyy')}</TableCell>
+                      <TableCell>{report.successful_deliveries}</TableCell>
+                      <TableCell>{report.successful_collections}</TableCell>
+                      <TableCell className="font-semibold">{report.total_parcels}</TableCell>
+                      <TableCell>
+                        <Badge variant="default" className="bg-green-100 text-green-800">
+                          {report.processing_status}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+              {eodReportsPreview.length > 10 && (
+                <p className="text-sm text-muted-foreground mt-2">
+                  Showing first 10 of {eodReportsPreview.length} reports. Generate invoices to process all reports.
+                </p>
+              )}
+            </div>
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              <Package className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <h3 className="text-lg font-medium mb-2">No completed EOD reports</h3>
+              <p>No completed EOD reports found for this period. Drivers need to submit and have their EOD reports processed before invoices can be generated.</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Invoices Table */}
       <Card>
