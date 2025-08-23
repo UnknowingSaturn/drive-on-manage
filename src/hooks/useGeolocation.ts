@@ -47,26 +47,31 @@ export function useGeolocation() {
     try {
       if (Capacitor.isNativePlatform()) {
         const permissions = await Geolocation.checkPermissions();
-        if (permissions.location === 'granted' || permissions.coarseLocation === 'granted') {
-          setPermissionGranted(true);
-        }
+        const granted = permissions.location === 'granted' || permissions.coarseLocation === 'granted';
+        setPermissionGranted(granted);
+        console.log('Native permission check:', granted);
       } else {
         // Web environment - properly check geolocation permission status
-        if (navigator.geolocation && navigator.permissions) {
+        if (!navigator.geolocation) {
+          setPermissionGranted(false);
+          console.log('Geolocation not supported');
+          return;
+        }
+
+        if (navigator.permissions) {
           try {
             const permission = await navigator.permissions.query({name: 'geolocation'});
-            if (permission.state === 'granted') {
-              setPermissionGranted(true);
-            } else {
-              setPermissionGranted(false);
-            }
-          } catch {
-            // Fallback: assume permission needed if we can't query
-            setPermissionGranted(false);
+            const granted = permission.state === 'granted';
+            setPermissionGranted(granted);
+            console.log('Web permission check via query:', granted, permission.state);
+          } catch (error) {
+            console.warn('Permission query failed, will test with getCurrentPosition:', error);
+            // Fallback: test actual geolocation access
+            await testGeolocationAccess();
           }
-        } else if (navigator.geolocation) {
-          // Older browsers - we'll need to request permission to know status
-          setPermissionGranted(false);
+        } else {
+          // Older browsers - test actual access
+          await testGeolocationAccess();
         }
       }
     } catch (error) {
@@ -75,12 +80,34 @@ export function useGeolocation() {
     }
   };
 
-  const requestPermissions = async () => {
+  // Test geolocation access for browsers that don't support permission query
+  const testGeolocationAccess = async () => {
+    return new Promise<void>((resolve) => {
+      navigator.geolocation.getCurrentPosition(
+        () => {
+          setPermissionGranted(true);
+          console.log('Geolocation test: access granted');
+          resolve();
+        },
+        (error) => {
+          const granted = error.code !== 1; // Not PERMISSION_DENIED
+          setPermissionGranted(granted);
+          console.log('Geolocation test:', granted ? 'position unavailable but permission OK' : 'permission denied');
+          resolve();
+        },
+        { timeout: 5000, maximumAge: Infinity }
+      );
+    });
+  };
+
+  const requestPermissions = async (): Promise<boolean> => {
     try {
       if (Capacitor.isNativePlatform()) {
         const permissions = await Geolocation.requestPermissions();
-        if (permissions.location === 'granted' || permissions.coarseLocation === 'granted') {
-          setPermissionGranted(true);
+        const granted = permissions.location === 'granted' || permissions.coarseLocation === 'granted';
+        setPermissionGranted(granted);
+        
+        if (granted) {
           toast.success('Location permissions granted');
           return true;
         } else {
@@ -88,77 +115,80 @@ export function useGeolocation() {
           return false;
         }
       } else {
-        // Web environment - progressive location request strategy
+        // Web environment - comprehensive permission request strategy
         if (!navigator.geolocation) {
           toast.error('Geolocation not supported by this browser');
           return false;
         }
 
-        // Try high accuracy first, then fallback to low accuracy
-        const tryLocationAccess = async (options: PositionOptions): Promise<boolean> => {
-          return new Promise((resolve) => {
+        console.log('Requesting web geolocation permissions...');
+        
+        // Try to get position with multiple fallback strategies
+        const strategies = [
+          { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 },
+          { enableHighAccuracy: false, timeout: 10000, maximumAge: 180000 },
+          { enableHighAccuracy: false, timeout: 15000, maximumAge: 600000 }
+        ];
+
+        for (const [index, options] of strategies.entries()) {
+          console.log(`Trying permission strategy ${index + 1}:`, options);
+          
+          const success = await new Promise<boolean>((resolve) => {
             navigator.geolocation.getCurrentPosition(
               (position) => {
+                console.log(`Strategy ${index + 1} succeeded:`, position.coords);
                 setPermissionGranted(true);
-                console.log('Location access granted with options:', options, 'Position:', position.coords);
-                return resolve(true);
+                resolve(true);
               },
               (error) => {
-                console.warn('Geolocation attempt failed:', error, 'Options:', options);
-                return resolve(false);
+                console.warn(`Strategy ${index + 1} failed:`, error.code, error.message);
+                
+                // Permission denied is a hard failure
+                if (error.code === 1) { // PERMISSION_DENIED
+                  toast.error('Location access denied. Please enable location permissions in your browser.');
+                  resolve(false);
+                } else {
+                  // Position unavailable or timeout - try next strategy
+                  resolve(false);
+                }
               },
               options
             );
           });
-        };
 
-        // Strategy 1: Try high accuracy with reasonable timeout
-        console.log('Attempting high accuracy location access...');
-        let success = await tryLocationAccess({
-          enableHighAccuracy: true,
-          timeout: 10000,
-          maximumAge: 60000
-        });
-
-        // Strategy 2: Fallback to network-based location (low accuracy)
-        if (!success) {
-          console.log('High accuracy failed, trying network-based location...');
-          success = await tryLocationAccess({
-            enableHighAccuracy: false,
-            timeout: 15000,
-            maximumAge: 300000
-          });
-        }
-
-        // Strategy 3: Final attempt with very permissive settings
-        if (!success) {
-          console.log('Network location failed, trying with maximum compatibility...');
-          success = await tryLocationAccess({
-            enableHighAccuracy: false,
-            timeout: 20000,
-            maximumAge: 600000
-          });
-        }
-
-        if (success) {
-          toast.success('Location permissions granted');
-          return true;
-        } else {
-          // Final fallback - show helpful error with IP geolocation option
-          toast.error('GPS unavailable. Using approximate location instead.', {
-            description: 'Your device may not have GPS. We\'ll use network-based location.',
-          });
-          
-          // Try to get IP-based location as final fallback
-          try {
-            await tryIPGeolocation();
-            setPermissionGranted(true);
+          if (success) {
+            toast.success('Location permissions granted');
             return true;
-          } catch (ipError) {
-            console.error('IP geolocation also failed:', ipError);
-            toast.error('Unable to determine location. Please enable GPS or try from a different device.');
-            return false;
           }
+          
+          // If permission was explicitly denied, don't try other strategies
+          if (!success && index === 0) {
+            // Check if this was a permission denial vs other error
+            const permissionDenied = await new Promise<boolean>((resolve) => {
+              navigator.geolocation.getCurrentPosition(
+                () => resolve(false),
+                (error) => resolve(error.code === 1),
+                { timeout: 1000 }
+              );
+            });
+            
+            if (permissionDenied) {
+              return false;
+            }
+          }
+        }
+
+        // Final fallback - try IP geolocation
+        console.log('All GPS strategies failed, trying IP geolocation fallback...');
+        try {
+          await tryIPGeolocation();
+          setPermissionGranted(true);
+          toast.success('Location determined using network (limited accuracy)');
+          return true;
+        } catch (error) {
+          console.error('IP geolocation failed:', error);
+          toast.error('Unable to determine location. Please enable GPS or location services.');
+          return false;
         }
       }
     } catch (error) {

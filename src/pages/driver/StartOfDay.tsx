@@ -268,47 +268,55 @@ const StartOfDay = () => {
       return;
     }
 
-    console.log('Form validated, checking location permissions...', { permissionGranted });
+    console.log('Form validated, checking location permissions...', { 
+      permissionGranted, 
+      consentGiven, 
+      userAgent: navigator.userAgent 
+    });
 
-    // Check location permissions before submission
-    if (!permissionGranted) {
+    // Always ensure fresh permission check and request if needed
+    let locationReady = permissionGranted;
+    
+    if (!locationReady) {
       console.log('Requesting location permissions...');
-      const granted = await requestPermissions();
-      console.log('Permission request result:', granted);
-      
-      if (!granted) {
-        toast({
-          title: "Location Required",
-          description: "Location tracking is required for shifts. Please enable location access.",
-          variant: "destructive",
-        });
-        return;
-      }
+      locationReady = await requestPermissions();
+      console.log('Permission request result:', locationReady);
+    }
+    
+    if (!locationReady) {
+      toast({
+        title: "Location Access Required",
+        description: "Location tracking is mandatory for delivery shifts. Please allow location access and try again.",
+        variant: "destructive",
+      });
+      return;
     }
 
-    // Capture initial location to verify geolocation works
-    console.log('Capturing initial location for SOD...');
+    // Capture initial location to verify geolocation works and show user their location is being tracked
+    console.log('Capturing initial location for SOD to verify functionality...');
     try {
-      // Use the robust location capture system
       const initialLocation = await captureLocationWithFallbacks();
       if (initialLocation) {
-        console.log('Initial location captured for SOD:', initialLocation);
+        console.log('Initial location successfully captured for SOD:', initialLocation);
         toast({
           title: "Location Confirmed",
-          description: `Location captured with ${Math.round(initialLocation.accuracy)}m accuracy`,
+          description: `Starting location captured (±${Math.round(initialLocation.accuracy)}m accuracy)`,
         });
       } else {
-        console.warn('Failed to capture initial location, but continuing with form submission');
+        console.warn('Could not capture initial location - this may indicate GPS issues');
+        // Still allow form submission as tracking will handle fallbacks during the shift
         toast({
-          title: "Location Warning", 
-          description: "Could not determine precise location, but shift will start normally.",
-          variant: "destructive",
+          title: "Location Detection Limited",
+          description: "Using network-based location. GPS may be unavailable on this device.",
         });
-        // Don't block form submission - tracking will attempt to start anyway
       }
     } catch (locationError) {
-      console.error('Location capture error:', locationError);
-      // Don't block submission - let tracking handle fallbacks
+      console.error('Initial location capture failed:', locationError);
+      toast({
+        title: "Location Warning",
+        description: "Location services may be limited. Shift tracking will use available location methods.",
+      });
+      // Continue with form submission - the tracking system has multiple fallbacks
     }
 
     console.log('All checks passed, submitting SOD form...');
