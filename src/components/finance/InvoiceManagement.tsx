@@ -139,7 +139,7 @@ export const InvoiceManagement = () => {
       // Get all EOD reports for the period
       const { data: eodReports, error: eodError } = await supabase
         .from('end_of_day_reports')
-        .select('successful_deliveries, successful_collections, support_parcels, support, created_at, driver_id')
+        .select('successful_deliveries, successful_collections, support_parcels, support, created_at, driver_id, driver_name')
         .eq('company_id', profile.company_id)
         .gte('created_at', selectedPeriod.start)
         .lte('created_at', selectedPeriod.end);
@@ -169,7 +169,8 @@ export const InvoiceManagement = () => {
             coverParcels: 0, 
             supportParcels: 0,
             workingDays: new Set(),
-            reports: [] 
+            reports: [],
+            driverName: report.driver_name // Store driver name from EOD reports
           };
         }
         
@@ -200,7 +201,8 @@ export const InvoiceManagement = () => {
         coverParcels: number; 
         supportParcels: number;
         workingDays: Set<string>;
-        reports: any[] 
+        reports: any[];
+        driverName: string;
       }>);
 
       // Get driver expenses for deductions
@@ -268,6 +270,9 @@ export const InvoiceManagement = () => {
           company_id: profile.company_id,
           billing_period_start: selectedPeriod.start,
           billing_period_end: selectedPeriod.end,
+          
+          // Store driver name from EOD reports
+          driver_name: totals.driverName,
           
           // Legacy fields (for backward compatibility)
           total_parcels: totals.baseParcels + totals.coverParcels + totals.supportParcels,
@@ -859,7 +864,7 @@ Generated: ${format(new Date(invoice.created_at), 'dd/MM/yyyy HH:mm')}
                   <TableRow key={invoice.id}>
                     <TableCell className="font-medium">{invoice.invoice_number}</TableCell>
                     <TableCell>
-                      {(() => {
+                      {invoice.driver_name || (() => {
                         const driver = driverProfiles.find(d => d.id === invoice.driver_id);
                         return `${driver?.profiles?.first_name || 'Unknown'} ${driver?.profiles?.last_name || 'Driver'}`;
                       })()}
