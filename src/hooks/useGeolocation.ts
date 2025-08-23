@@ -350,9 +350,23 @@ export function useGeolocation() {
   };
 
   const sendLocationUpdate = async (locationPoint: LocationPoint) => {
-    if (!profile?.id || !shift.id) return;
+    if (!profile?.user_id || !shift.id) return;
 
     try {
+      // Get driver profile ID for the current user
+      const { data: driverProfile, error: driverError } = await supabase
+        .from('driver_profiles')
+        .select('id')
+        .eq('user_id', profile.user_id)
+        .eq('status', 'active')
+        .single();
+
+      if (driverError || !driverProfile) {
+        console.error('Driver profile not found for location update:', driverError);
+        offlineQueue.current.push(locationPoint);
+        return;
+      }
+
       // Use edge function for secure location ingestion
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
@@ -363,7 +377,7 @@ export function useGeolocation() {
 
       const { data, error } = await supabase.functions.invoke('location-ingest', {
         body: {
-          driver_id: profile.id,
+          driver_id: driverProfile.id,
           latitude: locationPoint.latitude,
           longitude: locationPoint.longitude,
           accuracy: locationPoint.accuracy,
@@ -394,7 +408,20 @@ export function useGeolocation() {
   };
 
   const processOfflineQueue = async () => {
-    if (offlineQueue.current.length === 0 || !profile?.id || !shift.id) return;
+    if (offlineQueue.current.length === 0 || !profile?.user_id || !shift.id) return;
+
+    // Get driver profile ID for the current user
+    const { data: driverProfile, error: driverError } = await supabase
+      .from('driver_profiles')
+      .select('id')
+      .eq('user_id', profile.user_id)
+      .eq('status', 'active')
+      .single();
+
+    if (driverError || !driverProfile) {
+      console.error('Driver profile not found for offline queue processing:', driverError);
+      return;
+    }
 
     const queue = [...offlineQueue.current];
     offlineQueue.current = [];
@@ -409,7 +436,7 @@ export function useGeolocation() {
       }
 
       const locationBatch = queue.map(locationPoint => ({
-        driver_id: profile.id,
+        driver_id: driverProfile.id,
         latitude: locationPoint.latitude,
         longitude: locationPoint.longitude,
         accuracy: locationPoint.accuracy,
@@ -469,17 +496,31 @@ export function useGeolocation() {
       return false;
     }
 
-    if (!profile?.id) {
+    if (!profile?.user_id) {
       toast.error('Profile not loaded');
       return false;
     }
 
     try {
-      // Use the shift management edge function instead of direct DB insert
+      // First get the driver profile ID for the current user
+      const { data: driverProfiles, error: driverError } = await supabase
+        .from('driver_profiles')
+        .select('id, company_id')
+        .eq('user_id', profile.user_id)
+        .eq('status', 'active')
+        .single();
+
+      if (driverError || !driverProfiles) {
+        console.error('Driver profile not found:', driverError);
+        toast.error('Driver profile not found. Please contact your administrator.');
+        return false;
+      }
+
+      // Use the shift management edge function with the correct driver_profile ID
       const { data: shiftData, error: shiftError } = await supabase.functions.invoke('shift-management', {
         body: {
           action: 'start',
-          driver_id: profile.id,
+          driver_id: driverProfiles.id,
           consent_given: true
         }
       });
