@@ -864,7 +864,7 @@ Generated: ${format(new Date(invoice.created_at), 'dd/MM/yyyy HH:mm')}
                   <TableRow key={invoice.id}>
                     <TableCell className="font-medium">{invoice.invoice_number}</TableCell>
                     <TableCell>
-                      {invoice.driver_name || (() => {
+                      {(invoice as any).driver_name || (() => {
                         const driver = driverProfiles.find(d => d.id === invoice.driver_id);
                         return `${driver?.profiles?.first_name || 'Unknown'} ${driver?.profiles?.last_name || 'Driver'}`;
                       })()}

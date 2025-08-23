@@ -472,6 +472,7 @@ export type Database = {
           created_at: string
           deductions: Json | null
           driver_id: string
+          driver_name: string | null
           generated_by: string
           id: string
           invoice_number: string
@@ -503,6 +504,7 @@ export type Database = {
           created_at?: string
           deductions?: Json | null
           driver_id: string
+          driver_name?: string | null
           generated_by: string
           id?: string
           invoice_number: string
@@ -534,6 +536,7 @@ export type Database = {
           created_at?: string
           deductions?: Json | null
           driver_id?: string
+          driver_name?: string | null
           generated_by?: string
           id?: string
           invoice_number?: string
