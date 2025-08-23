@@ -104,7 +104,7 @@ const handler = async (req: Request): Promise<Response> => {
       const resendApiKey = Deno.env.get('RESEND_API_KEY');
       if (resendApiKey) {
         const emailBody = {
-          from: 'DriveOn Manager <noreply@driveon-manage.com>',
+          from: 'DriveOn Manager <onboarding@resend.dev>',
           to: [email],
           subject: `Welcome to DriveOn Manager - Your ${role} Account`,
           html: `

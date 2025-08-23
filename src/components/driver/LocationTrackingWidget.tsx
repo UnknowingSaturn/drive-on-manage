@@ -14,7 +14,8 @@ import {
   Clock, 
   Battery,
   Wifi,
-  WifiOff
+  WifiOff,
+  AlertTriangle
 } from 'lucide-react';
 import { useGeolocation } from '@/hooks/useGeolocation';
 import { format } from 'date-fns';
@@ -37,18 +38,47 @@ export function LocationTrackingWidget() {
 
   const [showConsentDialog, setShowConsentDialog] = useState(false);
 
+  const [isStarting, setIsStarting] = useState(false);
+  const [lastError, setLastError] = useState<string | null>(null);
+
   const handleStartShift = async () => {
     if (!consentGiven) {
       setShowConsentDialog(true);
       return;
     }
-    await startShift();
+    
+    setIsStarting(true);
+    setLastError(null);
+    
+    try {
+      const result = await startShift();
+      if (!result) {
+        setLastError('Failed to start shift. Please check location permissions.');
+      }
+    } catch (error) {
+      setLastError(error instanceof Error ? error.message : 'Failed to start shift');
+    } finally {
+      setIsStarting(false);
+    }
   };
 
   const handleConsentAccept = async () => {
     setConsentGiven(true);
     setShowConsentDialog(false);
-    await startShift();
+    
+    setIsStarting(true);
+    setLastError(null);
+    
+    try {
+      const result = await startShift();
+      if (!result) {
+        setLastError('Failed to start shift. Please check location permissions.');
+      }
+    } catch (error) {
+      setLastError(error instanceof Error ? error.message : 'Failed to start shift');
+    } finally {
+      setIsStarting(false);
+    }
   };
 
   const getStatusColor = () => {
@@ -83,6 +113,14 @@ export function LocationTrackingWidget() {
       </CardHeader>
 
       <CardContent className="space-y-4">
+        {/* Error Alert */}
+        {lastError && (
+          <Alert variant="destructive">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>{lastError}</AlertDescription>
+          </Alert>
+        )}
+
         {/* Permission Status */}
         {!permissionGranted && (
           <Alert>
@@ -168,11 +206,11 @@ export function LocationTrackingWidget() {
           {shift.status === 'inactive' && (
             <Button 
               onClick={handleStartShift}
-              disabled={!permissionGranted}
+              disabled={!permissionGranted || isStarting}
               className="flex-1"
             >
               <Play className="h-4 w-4 mr-2" />
-              Start Shift
+              {isStarting ? 'Starting...' : 'Start Shift'}
             </Button>
           )}
 

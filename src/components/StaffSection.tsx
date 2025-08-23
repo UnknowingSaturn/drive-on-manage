@@ -48,12 +48,13 @@ const StaffSection = ({ className }: StaffSectionProps) => {
     queryFn: async () => {
       if (!profile?.company_id) return [];
       
-      // First get user_companies
+      // First get user_companies (exclude drivers)
       const { data: userCompanies, error: userCompaniesError } = await supabase
         .from('user_companies')
         .select('id, user_id, role')
         .eq('company_id', profile.company_id)
-        .neq('user_id', profile.user_id); // Exclude current user
+        .neq('user_id', profile.user_id) // Exclude current user
+        .in('role', ['admin', 'supervisor']); // Only admin and supervisor roles
 
       if (userCompaniesError) throw userCompaniesError;
       if (!userCompanies || userCompanies.length === 0) return [];
