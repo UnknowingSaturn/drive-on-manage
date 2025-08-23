@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/AppSidebar';
@@ -10,20 +10,37 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { Package, Clock, CheckCircle2, Truck, MapPin, AlertTriangle, Check, Upload } from 'lucide-react';
+import { Package, Clock, CheckCircle2, Truck, MapPin, AlertTriangle, Check, Upload, Shield, Wifi, WifiOff, Battery, Play } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { sanitizeInput } from '@/lib/security';
-import { LocationTrackingWidget } from '@/components/driver/LocationTrackingWidget';
+import { useGeolocation } from '@/hooks/useGeolocation';
+import { format } from 'date-fns';
 
 const StartOfDay = () => {
   const { user, profile } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+
+  // Location tracking integration
+  const {
+    isTracking,
+    shift,
+    currentLocation,
+    permissionGranted,
+    consentGiven,
+    setConsentGiven,
+    startShift,
+    endShift,
+    requestPermissions,
+    offlineQueueLength
+  } = useGeolocation();
   
   const [formData, setFormData] = useState({
     parcelCount: '',
@@ -46,6 +63,8 @@ const StartOfDay = () => {
   const [showSuccess, setShowSuccess] = useState(false);
   const [successData, setSuccessData] = useState<any>(null);
   const [errors, setErrors] = useState<{[key: string]: string}>({});
+  const [showLocationConsent, setShowLocationConsent] = useState(false);
+  const [locationTrackingStarted, setLocationTrackingStarted] = useState(false);
 
   const today = new Date().toISOString().split('T')[0];
 
@@ -212,8 +231,17 @@ const StartOfDay = () => {
 
       return result;
     },
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       setSuccessData(data);
+      
+      // Auto-start location tracking after successful SOD submission
+      if (permissionGranted && consentGiven) {
+        const trackingStarted = await startShift();
+        setLocationTrackingStarted(trackingStarted);
+      } else if (!consentGiven) {
+        setShowLocationConsent(true);
+      }
+      
       setShowSuccess(true);
       queryClient.invalidateQueries({ queryKey: ['today-sod-log'] });
     },
@@ -226,7 +254,7 @@ const StartOfDay = () => {
     }
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateForm()) {
       toast({
@@ -236,7 +264,35 @@ const StartOfDay = () => {
       });
       return;
     }
+
+    // Check location permissions before submission
+    if (!permissionGranted) {
+      const granted = await requestPermissions();
+      if (!granted) {
+        toast({
+          title: "Location Required",
+          description: "Location tracking is required for shifts. Please enable location access.",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
     startDayMutation.mutate(formData);
+  };
+
+  const handleLocationConsentAccept = async () => {
+    setConsentGiven(true);
+    setShowLocationConsent(false);
+    const trackingStarted = await startShift();
+    setLocationTrackingStarted(trackingStarted);
+    
+    if (trackingStarted) {
+      toast({
+        title: "Location Tracking Started",
+        description: "Your location is now being tracked for this shift.",
+      });
+    }
   };
 
   const handleVehicleCheckChange = (item: string, checked: boolean) => {
@@ -379,16 +435,51 @@ const StartOfDay = () => {
                          <Label className="text-sm font-medium">Round:</Label>
                          <p className="text-sm mt-1">{todayLog.round_number}</p>
                       </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="text-center py-8">
-                    <Package className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                    <p className="text-muted-foreground">Ready to start your day?</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+                     )}
+                     
+                     {/* Location Tracking Status */}
+                     {isTracking && (
+                       <Alert className="border-green-200 bg-green-50 dark:bg-green-950">
+                         <MapPin className="h-4 w-4 text-green-600" />
+                         <AlertDescription className="text-green-800 dark:text-green-200">
+                           <div className="flex items-center justify-between">
+                             <span className="font-medium">Location Tracking: ON</span>
+                             <div className="flex items-center gap-2">
+                               {offlineQueueLength > 0 ? (
+                                 <WifiOff className="h-4 w-4 text-orange-500" />
+                               ) : (
+                                 <Wifi className="h-4 w-4 text-green-500" />
+                               )}
+                               {currentLocation?.batteryLevel && (
+                                 <div className="flex items-center gap-1">
+                                   <Battery className="h-3 w-3" />
+                                   <span className="text-xs">{currentLocation.batteryLevel}%</span>
+                                 </div>
+                               )}
+                             </div>
+                           </div>
+                           {shift.startTime && (
+                             <div className="text-xs mt-1">
+                               Started at {format(shift.startTime, 'HH:mm')}
+                               {offlineQueueLength > 0 && (
+                                 <span className="ml-2 text-orange-600">
+                                   ({offlineQueueLength} updates queued)
+                                 </span>
+                               )}
+                             </div>
+                           )}
+                         </AlertDescription>
+                       </Alert>
+                     )}
+                   </div>
+                 ) : (
+                   <div className="text-center py-8">
+                     <Package className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                     <p className="text-muted-foreground">Ready to start your day?</p>
+                   </div>
+                 )}
+               </CardContent>
+             </Card>
 
             {/* Assigned Van Info */}
             {assignedVan && (
@@ -607,35 +698,33 @@ const StartOfDay = () => {
                       />
                     </div>
 
-                    {/* Location Tracking Widget */}
-                    <div className="space-y-3">
-                      <LocationTrackingWidget />
-                    </div>
+                     {/* Location Permission Notice */}
+                     {!permissionGranted && (
+                       <Alert>
+                         <Shield className="h-4 w-4" />
+                         <AlertDescription>
+                           Location tracking is required for shifts. This will be requested when you start your day.
+                         </AlertDescription>
+                       </Alert>
+                     )}
 
-                    {errors.vanAssignment && (
-                      <div className="p-3 border border-destructive rounded-lg bg-destructive/10">
-                        <p className="text-sm text-destructive">{errors.vanAssignment}</p>
-                      </div>
-                    )}
-
-                    <Button 
-                      type="submit" 
-                      className="logistics-button w-full"
-                      disabled={startDayMutation.isPending || !driverProfile?.assigned_van_id}
-                      size="lg"
-                    >
-                      {startDayMutation.isPending ? (
-                        <>
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2"></div>
-                          Starting Day...
-                        </>
-                      ) : (
-                        <>
-                          <Clock className="h-4 w-4 mr-2" />
-                          Start My Day
-                        </>
-                      )}
-                    </Button>
+                     <Button 
+                       type="submit"
+                       disabled={startDayMutation.isPending || !!errors.vanAssignment}
+                       className="logistics-button w-full"
+                     >
+                       {startDayMutation.isPending ? (
+                         <div className="flex items-center">
+                           <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                           Starting Day...
+                         </div>
+                       ) : (
+                         <>
+                           <Play className="h-4 w-4 mr-2" />
+                           Start My Day & Begin Tracking
+                         </>
+                       )}
+                     </Button>
                   </form>
                 </CardContent>
               </Card>
@@ -736,27 +825,109 @@ const StartOfDay = () => {
                 </div>
               </div>
 
-              {successData.round_number && (
-                <div className="p-3 bg-muted rounded-lg">
-                  <Label className="text-xs font-medium">Round:</Label>
-                  <p className="text-sm mt-1">{successData.round_number}</p>
-                </div>
-              )}
-            </div>
-          )}
-          
-          <AlertDialogFooter>
-            <AlertDialogAction onClick={() => {
-              setShowSuccess(false);
-              navigate('/dashboard');
-            }}>
-              Continue to Dashboard
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </SidebarProvider>
-  );
-};
+               {successData.round_number && (
+                 <div className="p-3 bg-muted rounded-lg">
+                   <Label className="text-xs font-medium">Round:</Label>
+                   <p className="text-sm mt-1">{successData.round_number}</p>
+                 </div>
+               )}
+
+               {/* Location Tracking Status in Success Dialog */}
+               <div className="flex items-center justify-between text-sm">
+                 <span>Location Tracking:</span>
+                 <span className="flex items-center">
+                   {locationTrackingStarted ? (
+                     <>
+                       <Check className="w-4 h-4 mr-1 text-success" />
+                       <span className="text-success">Started</span>
+                     </>
+                   ) : (
+                     <>
+                       <AlertTriangle className="w-4 h-4 mr-1 text-orange-500" />
+                       <span className="text-orange-600">Consent Required</span>
+                     </>
+                   )}
+                 </span>
+               </div>
+             </div>
+           )}
+           
+           <AlertDialogFooter>
+             <AlertDialogAction onClick={() => {
+               setShowSuccess(false);
+               navigate('/dashboard');
+             }}>
+               Continue to Dashboard
+             </AlertDialogAction>
+           </AlertDialogFooter>
+         </AlertDialogContent>
+       </AlertDialog>
+
+       {/* Location Consent Dialog */}
+       <Dialog open={showLocationConsent} onOpenChange={setShowLocationConsent}>
+         <DialogContent className="sm:max-w-md">
+           <DialogHeader>
+             <DialogTitle className="flex items-center gap-2">
+               <Shield className="h-5 w-5" />
+               Location Tracking Consent Required
+             </DialogTitle>
+           </DialogHeader>
+           
+           <div className="space-y-4">
+             <div className="text-sm text-muted-foreground space-y-2">
+               <p>
+                 <strong>Your shift has started successfully!</strong> Now we need your consent to begin location tracking.
+               </p>
+               <p>
+                 <strong>Purpose:</strong> We track your location during shifts for:
+               </p>
+               <ul className="list-disc list-inside space-y-1 ml-4">
+                 <li>Safety monitoring and emergency support</li>
+                 <li>Route optimization and assistance</li>
+                 <li>Accurate delivery verification</li>
+               </ul>
+               
+               <p className="mt-3">
+                 <strong>Privacy:</strong> Location data is only collected during work hours and kept for 30 days.
+               </p>
+             </div>
+
+             <div className="flex items-center space-x-2">
+               <Checkbox 
+                 id="shift-consent" 
+                 checked={consentGiven}
+                 onCheckedChange={(checked) => setConsentGiven(checked as boolean)}
+               />
+               <label 
+                 htmlFor="shift-consent" 
+                 className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+               >
+                 I consent to location tracking for this shift
+               </label>
+             </div>
+
+             <div className="flex gap-2">
+               <Button 
+                 variant="outline" 
+                 onClick={() => setShowLocationConsent(false)}
+                 className="flex-1"
+               >
+                 Skip for Now
+               </Button>
+               <Button 
+                 onClick={handleLocationConsentAccept}
+                 disabled={!consentGiven}
+                 className="flex-1"
+               >
+                 <Play className="h-4 w-4 mr-2" />
+                 Start Tracking
+               </Button>
+             </div>
+           </div>
+         </DialogContent>
+       </Dialog>
+     </SidebarProvider>
+   );
+ };
 
 export default StartOfDay;
