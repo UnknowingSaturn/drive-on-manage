@@ -60,12 +60,25 @@ const VehicleCheck = () => {
   const { data: assignedVan } = useQuery({
     queryKey: ['assigned-van', driverProfile?.assigned_van_id],
     queryFn: async () => {
-      if (!driverProfile?.assigned_van_id) return null;
-      const { data } = await supabase
+      if (!driverProfile?.assigned_van_id) {
+        console.log('VehicleCheck: No assigned van ID in driver profile:', driverProfile);
+        return null;
+      }
+      
+      console.log('VehicleCheck: Fetching van with ID:', driverProfile.assigned_van_id);
+      
+      const { data, error } = await supabase
         .from('vans')
         .select('*')
         .eq('id', driverProfile.assigned_van_id)
         .single();
+        
+      if (error) {
+        console.error('VehicleCheck: Error fetching van:', error);
+        return null;
+      }
+      
+      console.log('VehicleCheck: Van data found:', data);
       return data;
     },
     enabled: !!driverProfile?.assigned_van_id
