@@ -95,98 +95,12 @@ const AdminSettings = () => {
 
   const [pendingUpdates, setPendingUpdates] = useState<Record<string, any>>({});
   const [updateTimeout, setUpdateTimeout] = useState<NodeJS.Timeout | null>(null);
-  const [resetPasswordModalOpen, setResetPasswordModalOpen] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<any>(null);
-
-  // Fetch company staff (admins and supervisors) for password reset
-  const { data: companyStaff } = useQuery({
-    queryKey: ['company-staff', profile?.company_id],
-    queryFn: async () => {
-      if (!profile?.company_id) return [];
-      
-      // Get user_companies entries for admins and supervisors
-      const { data: userCompanies, error } = await supabase
-        .from('user_companies')
-        .select(`
-          id,
-          user_id,
-          role,
-          created_at
-        `)
-        .eq('company_id', profile.company_id)
-        .neq('user_id', profile.user_id) // Exclude current user
-        .in('role', ['admin', 'supervisor'])
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-
-      if (!userCompanies?.length) return [];
-
-      // Get profile information for these users
-      const userIds = userCompanies.map(uc => uc.user_id);
-      const { data: profiles, error: profilesError } = await supabase
-        .from('profiles')
-        .select('user_id, first_name, last_name, email, is_active, created_at, user_type')
-        .in('user_id', userIds)
-        .in('user_type', ['admin', 'supervisor']);
-
-      if (profilesError) throw profilesError;
-
-      // Combine the data
-      return userCompanies.map(uc => {
-        const profile = profiles?.find(p => p.user_id === uc.user_id);
-        return {
-          ...uc,
-          ...profile
-        };
-      });
-    },
-    enabled: !!profile?.company_id
+  const [showChangePassword, setShowChangePassword] = useState(false);
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
   });
-
-  // Password reset mutation
-  const resetPasswordMutation = useMutation({
-    mutationFn: async (user: any) => {
-      const { data, error } = await supabase.functions.invoke('reset-user-password', {
-        body: {
-          userId: user.user_id,
-          email: user.email,
-          firstName: user.first_name,
-          lastName: user.last_name,
-          userType: user.user_type
-        }
-      });
-      
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: (data) => {
-      toast({
-        title: "Password reset successful",
-        description: data.message || "New credentials have been sent via email."
-      });
-      setResetPasswordModalOpen(false);
-      setSelectedUser(null);
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Password reset failed",
-        description: error.message,
-        variant: "destructive"
-      });
-    }
-  });
-
-  const handleResetPassword = (user: any) => {
-    setSelectedUser(user);
-    setResetPasswordModalOpen(true);
-  };
-
-  const confirmResetPassword = () => {
-    if (selectedUser) {
-      resetPasswordMutation.mutate(selectedUser);
-    }
-  };
 
   const updateSetting = (key: string, value: any) => {
     if (!settings) return;
@@ -207,6 +121,64 @@ const AdminSettings = () => {
     }, 1000); // 1 second debounce
     
     setUpdateTimeout(newTimeout);
+  };
+
+  // Change password mutation
+  const changePasswordMutation = useMutation({
+    mutationFn: async (passwords: { currentPassword: string; newPassword: string }) => {
+      const { error } = await supabase.auth.updateUser({
+        password: passwords.newPassword
+      });
+      
+      if (error) throw error;
+      return { success: true };
+    },
+    onSuccess: () => {
+      toast({
+        title: "Password changed successfully",
+        description: "Your password has been updated."
+      });
+      setShowChangePassword(false);
+      setPasswordForm({
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: ''
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Password change failed",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+  });
+
+  const handlePasswordChange = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      toast({
+        title: "Password mismatch",
+        description: "New password and confirmation don't match.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    if (passwordForm.newPassword.length < 6) {
+      toast({
+        title: "Password too short",
+        description: "Password must be at least 6 characters long.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    changePasswordMutation.mutate({
+      currentPassword: passwordForm.currentPassword,
+      newPassword: passwordForm.newPassword
+    });
   };
 
   if (isLoading) {
@@ -535,100 +507,88 @@ const AdminSettings = () => {
               </CardContent>
             </Card>
 
-            {/* User Management */}
+            {/* Personal Account Settings */}
             <Card className="logistics-card">
               <CardHeader>
                 <CardTitle className="flex items-center">
-                  <Users className="h-5 w-5 mr-2" />
-                  User Management
+                  <Shield className="h-5 w-5 mr-2" />
+                  Account Security
                 </CardTitle>
                 <CardDescription>
-                  Manage admin and supervisor accounts
+                  Manage your personal account security settings
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <Label>Password Reset</Label>
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label>Change Password</Label>
                     <p className="text-sm text-muted-foreground">
-                      Reset passwords for admins and supervisors in your company
+                      Update your account password for security
                     </p>
                   </div>
-                  
-                  {companyStaff && companyStaff.length > 0 ? (
-                    <div className="space-y-3">
-                      {companyStaff.map((user) => (
-                        <div key={user.user_id} className="flex items-center justify-between p-3 border rounded-lg">
-                          <div className="space-y-1">
-                            <p className="font-medium">{user.first_name} {user.last_name}</p>
-                            <p className="text-sm text-muted-foreground">{user.email}</p>
-                            <div className="flex items-center gap-2">
-                              <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                                user.user_type === 'admin' 
-                                  ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' 
-                                  : 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                              }`}>
-                                {user.user_type}
-                              </span>
-                              <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                                user.is_active 
-                                  ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
-                                  : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-                              }`}>
-                                {user.is_active ? 'Active' : 'Inactive'}
-                              </span>
-                            </div>
-                          </div>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleResetPassword(user)}
-                            disabled={resetPasswordMutation.isPending}
-                          >
-                            <KeyRound className="h-4 w-4 mr-2" />
-                            Reset Password
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-sm text-muted-foreground text-center py-4">
-                      No staff members found in your company
-                    </p>
-                  )}
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowChangePassword(!showChangePassword)}
+                  >
+                    <KeyRound className="h-4 w-4 mr-2" />
+                    {showChangePassword ? 'Cancel' : 'Change Password'}
+                  </Button>
                 </div>
+
+                {showChangePassword && (
+                  <form onSubmit={handlePasswordChange} className="space-y-4 border-t pt-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="current-password">Current Password</Label>
+                      <Input
+                        id="current-password"
+                        type="password"
+                        value={passwordForm.currentPassword}
+                        onChange={(e) => setPasswordForm(prev => ({ ...prev, currentPassword: e.target.value }))}
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="new-password">New Password</Label>
+                      <Input
+                        id="new-password"
+                        type="password"
+                        value={passwordForm.newPassword}
+                        onChange={(e) => setPasswordForm(prev => ({ ...prev, newPassword: e.target.value }))}
+                        required
+                        minLength={6}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="confirm-password">Confirm New Password</Label>
+                      <Input
+                        id="confirm-password"
+                        type="password"
+                        value={passwordForm.confirmPassword}
+                        onChange={(e) => setPasswordForm(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                        required
+                        minLength={6}
+                      />
+                    </div>
+                    <div className="flex justify-end space-x-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setShowChangePassword(false)}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        type="submit"
+                        disabled={changePasswordMutation.isPending}
+                      >
+                        {changePasswordMutation.isPending ? 'Updating...' : 'Update Password'}
+                      </Button>
+                    </div>
+                  </form>
+                )}
               </CardContent>
             </Card>
-
-            {/* Remove Team Management from Settings - now in Driver Management */}
           </main>
-
-          {/* Password Reset Confirmation Modal */}
-          <Dialog open={resetPasswordModalOpen} onOpenChange={setResetPasswordModalOpen}>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Reset Password</DialogTitle>
-                <DialogDescription>
-                  Are you sure you want to reset the password for {selectedUser?.first_name} {selectedUser?.last_name}? 
-                  A new temporary password will be generated and sent to their email address.
-                </DialogDescription>
-              </DialogHeader>
-              <div className="flex justify-end space-x-2 mt-4">
-                <Button 
-                  variant="outline" 
-                  onClick={() => setResetPasswordModalOpen(false)}
-                >
-                  Cancel
-                </Button>
-                <Button 
-                  onClick={confirmResetPassword}
-                  disabled={resetPasswordMutation.isPending}
-                >
-                  {resetPasswordMutation.isPending ? 'Resetting...' : 'Reset Password'}
-                </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
         </SidebarInset>
       </div>
     </SidebarProvider>
