@@ -50,52 +50,53 @@ const StaffSection = ({ className }: StaffSectionProps) => {
       
       console.log('Fetching team members for company:', profile.company_id);
       
-      // Get user_companies for the company with profiles in a single query
-      const { data: teamData, error: teamError } = await supabase
+      // Get user_companies for the company (excluding current user)
+      const { data: userCompanies, error: userCompaniesError } = await supabase
         .from('user_companies')
-        .select(`
-          id,
-          user_id,
-          role,
-          created_at,
-          profiles!inner (
-            user_id,
-            first_name,
-            last_name,
-            email,
-            is_active,
-            created_at
-          )
-        `)
+        .select('id, user_id, role, created_at')
         .eq('company_id', profile.company_id)
         .neq('user_id', profile.user_id)
         .in('role', ['admin', 'supervisor'])
         .order('created_at', { ascending: false });
 
-      if (teamError) {
-        console.error('Team members query error:', teamError);
-        throw teamError;
+      if (userCompaniesError) {
+        console.error('User companies query error:', userCompaniesError);
+        throw userCompaniesError;
       }
 
-      console.log('Raw team data:', teamData);
+      console.log('User companies found:', userCompanies);
 
-      if (!teamData || teamData.length === 0) {
-        console.log('No team members found');
+      if (!userCompanies || userCompanies.length === 0) {
+        console.log('No user companies found');
         return [];
       }
 
-      // Transform the data
-      const transformedData = teamData.map(uc => {
-        const profile = uc.profiles as any;
+      // Get profiles for those users
+      const userIds = userCompanies.map(uc => uc.user_id);
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('user_id, first_name, last_name, email, is_active, created_at')
+        .in('user_id', userIds);
+
+      if (profilesError) {
+        console.error('Profiles query error:', profilesError);
+        throw profilesError;
+      }
+
+      console.log('Profiles found:', profiles);
+
+      // Combine the data
+      const transformedData = userCompanies.map(uc => {
+        const userProfile = profiles?.find(p => p.user_id === uc.user_id);
         return {
           id: uc.id,
           user_id: uc.user_id,
-          first_name: profile?.first_name || '',
-          last_name: profile?.last_name || '',
-          email: profile?.email || '',
+          first_name: userProfile?.first_name || '',
+          last_name: userProfile?.last_name || '',
+          email: userProfile?.email || '',
           role: uc.role,
-          is_active: profile?.is_active || false,
-          created_at: profile?.created_at || uc.created_at
+          is_active: userProfile?.is_active || false,
+          created_at: userProfile?.created_at || uc.created_at
         };
       }) as TeamMember[];
 
