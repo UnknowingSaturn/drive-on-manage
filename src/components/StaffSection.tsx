@@ -43,54 +43,68 @@ const StaffSection = ({ className }: StaffSectionProps) => {
   });
 
   // Fetch team members
-  const { data: teamMembers, isLoading } = useQuery({
+  const { data: teamMembers, isLoading, refetch } = useQuery({
     queryKey: ['team-members', profile?.company_id],
     queryFn: async () => {
       if (!profile?.company_id) return [];
       
-      // Get user_companies for the company
-      const { data: userCompanies, error: userCompaniesError } = await supabase
+      console.log('Fetching team members for company:', profile.company_id);
+      
+      // Get user_companies for the company with profiles in a single query
+      const { data: teamData, error: teamError } = await supabase
         .from('user_companies')
-        .select('id, user_id, role, created_at')
+        .select(`
+          id,
+          user_id,
+          role,
+          created_at,
+          profiles!inner (
+            user_id,
+            first_name,
+            last_name,
+            email,
+            is_active,
+            created_at
+          )
+        `)
         .eq('company_id', profile.company_id)
         .neq('user_id', profile.user_id)
-        .in('role', ['admin', 'supervisor']);
+        .in('role', ['admin', 'supervisor'])
+        .order('created_at', { ascending: false });
 
-      if (userCompaniesError) {
-        console.error('User companies query error:', userCompaniesError);
-        throw userCompaniesError;
+      if (teamError) {
+        console.error('Team members query error:', teamError);
+        throw teamError;
       }
 
-      if (!userCompanies || userCompanies.length === 0) return [];
+      console.log('Raw team data:', teamData);
 
-      // Get profiles for those users
-      const userIds = userCompanies.map(uc => uc.user_id);
-      const { data: profiles, error: profilesError } = await supabase
-        .from('profiles')
-        .select('user_id, first_name, last_name, email, is_active, created_at')
-        .in('user_id', userIds);
-
-      if (profilesError) {
-        console.error('Profiles query error:', profilesError);
-        throw profilesError;
+      if (!teamData || teamData.length === 0) {
+        console.log('No team members found');
+        return [];
       }
 
-      // Combine the data
-      return userCompanies.map(uc => {
-        const userProfile = profiles?.find(p => p.user_id === uc.user_id);
+      // Transform the data
+      const transformedData = teamData.map(uc => {
+        const profile = uc.profiles as any;
         return {
           id: uc.id,
           user_id: uc.user_id,
-          first_name: userProfile?.first_name || '',
-          last_name: userProfile?.last_name || '',
-          email: userProfile?.email || '',
+          first_name: profile?.first_name || '',
+          last_name: profile?.last_name || '',
+          email: profile?.email || '',
           role: uc.role,
-          is_active: userProfile?.is_active || false,
-          created_at: userProfile?.created_at || uc.created_at
+          is_active: profile?.is_active || false,
+          created_at: profile?.created_at || uc.created_at
         };
       }) as TeamMember[];
+
+      console.log('Transformed team members:', transformedData);
+      return transformedData;
     },
-    enabled: !!profile?.company_id
+    enabled: !!profile?.company_id,
+    refetchInterval: 5000, // Refetch every 5 seconds to catch new additions
+    staleTime: 0 // Always consider data stale to ensure fresh queries
   });
 
   // Add team member mutation using the invite-user edge function
@@ -123,8 +137,12 @@ const StaffSection = ({ className }: StaffSectionProps) => {
         email: '',
         role: 'supervisor'
       });
-      // Refresh the team members list
+      // Force refresh the team members list
       queryClient.invalidateQueries({ queryKey: ['team-members'] });
+      // Also trigger a manual refetch after a short delay to ensure the data is available
+      setTimeout(() => {
+        refetch();
+      }, 1000);
     },
     onError: (error: any) => {
       console.error('Add member error:', error);
@@ -314,48 +332,63 @@ const StaffSection = ({ className }: StaffSectionProps) => {
           </Alert>
 
           {teamMembers && teamMembers.length > 0 ? (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Joined</TableHead>
-                  <TableHead className="w-[100px]">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {teamMembers.map((member) => (
-                  <TableRow key={member.id}>
-                    <TableCell className="font-medium">
-                      {member.first_name} {member.last_name}
-                    </TableCell>
-                    <TableCell>{member.email}</TableCell>
-                    <TableCell>{getRoleBadge(member.role)}</TableCell>
-                    <TableCell>
-                      <Badge variant={member.is_active ? "default" : "secondary"}>
-                        {member.is_active ? "Active" : "Inactive"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      {new Date(member.created_at).toLocaleDateString()}
-                    </TableCell>
-                    <TableCell>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeMemberMutation.mutate(member.user_id)}
-                        disabled={removeMemberMutation.isPending}
-                        className="text-destructive hover:text-destructive/90"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <p className="text-sm text-muted-foreground">
+                  {teamMembers.length} team member{teamMembers.length !== 1 ? 's' : ''} found
+                </p>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => refetch()}
+                  disabled={isLoading}
+                >
+                  Refresh
+                </Button>
+              </div>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Role</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Joined</TableHead>
+                    <TableHead className="w-[100px]">Actions</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {teamMembers.map((member) => (
+                    <TableRow key={member.id}>
+                      <TableCell className="font-medium">
+                        {member.first_name} {member.last_name}
+                      </TableCell>
+                      <TableCell>{member.email}</TableCell>
+                      <TableCell>{getRoleBadge(member.role)}</TableCell>
+                      <TableCell>
+                        <Badge variant={member.is_active ? "default" : "secondary"}>
+                          {member.is_active ? "Active" : "Inactive"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {new Date(member.created_at).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeMemberMutation.mutate(member.user_id)}
+                          disabled={removeMemberMutation.isPending}
+                          className="text-destructive hover:text-destructive/90"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           ) : (
             <div className="text-center py-8">
               <Users className="h-8 w-8 text-muted-foreground mx-auto mb-4" />
