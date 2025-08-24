@@ -33,9 +33,13 @@ const StartOfDayEnhanced = () => {
 
   // Get driver profile and info
   const { data: driverInfo, isLoading: loadingDriverInfo } = useQuery({
-    queryKey: ['driver-sod-info', user?.id],
+    queryKey: ['driver-sod-info', user?.id, profile?.user_id],
     queryFn: async () => {
-      if (!user?.id) return null;
+      // Try both user.id and profile.user_id for compatibility
+      const userId = user?.id || profile?.user_id;
+      if (!userId) return null;
+
+      console.log('StartOfDayEnhanced: Fetching driver profile for user:', userId);
 
       // Get driver profile
       const { data: driverProfile, error: driverError } = await supabase
@@ -46,8 +50,20 @@ const StartOfDayEnhanced = () => {
           company_id,
           profiles!inner(first_name, last_name)
         `)
-        .eq('user_id', user.id)
-        .single();
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      if (driverError) {
+        console.error('StartOfDayEnhanced: Error fetching driver profile:', driverError);
+        throw driverError;
+      }
+      
+      if (!driverProfile) {
+        console.log('StartOfDayEnhanced: No driver profile found for user:', userId);
+        return null;
+      }
+
+      console.log('StartOfDayEnhanced: Driver profile found:', driverProfile);
 
       if (driverError) throw driverError;
 
@@ -70,7 +86,7 @@ const StartOfDayEnhanced = () => {
         roundNumbers: schedules?.map(s => s.rounds?.round_number).filter(Boolean) || []
       };
     },
-    enabled: !!user?.id,
+    enabled: !!(user?.id || profile?.user_id),
   });
 
   // Check if already submitted today - allow multiple submissions for different rounds
