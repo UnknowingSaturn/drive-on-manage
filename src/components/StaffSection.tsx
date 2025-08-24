@@ -56,57 +56,66 @@ const StaffSection = ({
       if (!profile?.company_id) return [];
       console.log('Fetching team members for company:', profile.company_id);
 
-      // Get user_companies for the company with profiles in a single query
+      // First get user_companies for the company (excluding current user)
       const {
-        data: teamData,
-        error: teamError
-      } = await supabase.from('user_companies').select(`
-          id,
-          user_id,
-          role,
-          created_at,
-          profiles!inner (
-            user_id,
-            first_name,
-            last_name,
-            email,
-            is_active,
-            created_at
-          )
-        `).eq('company_id', profile.company_id).neq('user_id', profile.user_id).in('role', ['admin', 'supervisor']).order('created_at', {
-        ascending: false
-      });
-      if (teamError) {
-        console.error('Team members query error:', teamError);
-        throw teamError;
+        data: userCompaniesData,
+        error: userCompaniesError
+      } = await supabase
+        .from('user_companies')
+        .select('id, user_id, role, created_at')
+        .eq('company_id', profile.company_id)
+        .neq('user_id', profile.user_id) // Exclude current user
+        .in('role', ['admin', 'supervisor'])
+        .order('created_at', { ascending: false });
+
+      if (userCompaniesError) {
+        console.error('User companies query error:', userCompaniesError);
+        throw userCompaniesError;
       }
-      console.log('Raw team data:', teamData);
-      if (!teamData || teamData.length === 0) {
+
+      if (!userCompaniesData || userCompaniesData.length === 0) {
         console.log('No team members found');
         return [];
       }
 
-      // Transform the data
-      const transformedData = teamData.map(uc => {
-        const profile = uc.profiles as any;
+      // Get user IDs to fetch profiles
+      const userIds = userCompaniesData.map(uc => uc.user_id);
+
+      // Fetch profiles for these users
+      const {
+        data: profilesData,
+        error: profilesError
+      } = await supabase
+        .from('profiles')
+        .select('user_id, first_name, last_name, email, is_active, created_at')
+        .in('user_id', userIds);
+
+      if (profilesError) {
+        console.error('Profiles query error:', profilesError);
+        throw profilesError;
+      }
+
+      // Combine the data
+      const transformedData = userCompaniesData.map(uc => {
+        const userProfile = profilesData?.find(p => p.user_id === uc.user_id);
         return {
           id: uc.id,
           user_id: uc.user_id,
-          first_name: profile?.first_name || '',
-          last_name: profile?.last_name || '',
-          email: profile?.email || '',
+          first_name: userProfile?.first_name || 'Unknown',
+          last_name: userProfile?.last_name || 'User',
+          email: userProfile?.email || 'No email',
           role: uc.role,
-          is_active: profile?.is_active || false,
-          created_at: profile?.created_at || uc.created_at
+          is_active: userProfile?.is_active || false,
+          created_at: userProfile?.created_at || uc.created_at
         };
       }) as TeamMember[];
+
       console.log('Transformed team members:', transformedData);
       return transformedData;
     },
     enabled: !!profile?.company_id,
     refetchInterval: 5000,
-    // Refetch every 5 seconds to catch new additions
-    staleTime: 0 // Always consider data stale to ensure fresh queries
+    staleTime: 0
   });
 
   // Add team member mutation using the invite-user edge function
