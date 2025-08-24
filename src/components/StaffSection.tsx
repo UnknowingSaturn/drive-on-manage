@@ -81,34 +81,38 @@ const StaffSection = ({
       // Get user IDs to fetch profiles
       const userIds = userCompaniesData.map(uc => uc.user_id);
 
-      // Fetch profiles for these users
+      // Fetch profiles for these users - only admins and supervisors
       const {
         data: profilesData,
         error: profilesError
       } = await supabase
         .from('profiles')
-        .select('user_id, first_name, last_name, email, is_active, created_at')
-        .in('user_id', userIds);
+        .select('user_id, first_name, last_name, email, is_active, created_at, user_type')
+        .in('user_id', userIds)
+        .in('user_type', ['admin', 'supervisor']); // Ensure user_type matches role
 
       if (profilesError) {
         console.error('Profiles query error:', profilesError);
         throw profilesError;
       }
 
-      // Combine the data
-      const transformedData = userCompaniesData.map(uc => {
-        const userProfile = profilesData?.find(p => p.user_id === uc.user_id);
-        return {
-          id: uc.id,
-          user_id: uc.user_id,
-          first_name: userProfile?.first_name || 'Unknown',
-          last_name: userProfile?.last_name || 'User',
-          email: userProfile?.email || 'No email',
-          role: uc.role,
-          is_active: userProfile?.is_active || false,
-          created_at: userProfile?.created_at || uc.created_at
-        };
-      }) as TeamMember[];
+      // Combine the data - only include users who have matching profiles
+      const transformedData = userCompaniesData
+        .map(uc => {
+          const userProfile = profilesData?.find(p => p.user_id === uc.user_id);
+          if (!userProfile) return null; // Skip if no matching profile found
+          return {
+            id: uc.id,
+            user_id: uc.user_id,
+            first_name: userProfile.first_name || 'Unknown',
+            last_name: userProfile.last_name || 'User',
+            email: userProfile.email || 'No email',
+            role: uc.role,
+            is_active: userProfile.is_active || false,
+            created_at: userProfile.created_at || uc.created_at
+          };
+        })
+        .filter(Boolean) as TeamMember[]; // Remove null entries
 
       console.log('Transformed team members:', transformedData);
       return transformedData;
