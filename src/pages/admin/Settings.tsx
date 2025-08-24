@@ -9,11 +9,12 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
-import { Settings, DollarSign, Bell, FileText, Clock, Shield } from 'lucide-react';
+import { Settings, DollarSign, Bell, FileText, Clock, Shield, Users, KeyRound } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import TeamManagement from '@/components/TeamManagement';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 const AdminSettings = () => {
   const { profile } = useAuth();
@@ -94,6 +95,98 @@ const AdminSettings = () => {
 
   const [pendingUpdates, setPendingUpdates] = useState<Record<string, any>>({});
   const [updateTimeout, setUpdateTimeout] = useState<NodeJS.Timeout | null>(null);
+  const [resetPasswordModalOpen, setResetPasswordModalOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<any>(null);
+
+  // Fetch company staff (admins and supervisors) for password reset
+  const { data: companyStaff } = useQuery({
+    queryKey: ['company-staff', profile?.company_id],
+    queryFn: async () => {
+      if (!profile?.company_id) return [];
+      
+      // Get user_companies entries for admins and supervisors
+      const { data: userCompanies, error } = await supabase
+        .from('user_companies')
+        .select(`
+          id,
+          user_id,
+          role,
+          created_at
+        `)
+        .eq('company_id', profile.company_id)
+        .neq('user_id', profile.user_id) // Exclude current user
+        .in('role', ['admin', 'supervisor'])
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      if (!userCompanies?.length) return [];
+
+      // Get profile information for these users
+      const userIds = userCompanies.map(uc => uc.user_id);
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('user_id, first_name, last_name, email, is_active, created_at, user_type')
+        .in('user_id', userIds)
+        .in('user_type', ['admin', 'supervisor']);
+
+      if (profilesError) throw profilesError;
+
+      // Combine the data
+      return userCompanies.map(uc => {
+        const profile = profiles?.find(p => p.user_id === uc.user_id);
+        return {
+          ...uc,
+          ...profile
+        };
+      });
+    },
+    enabled: !!profile?.company_id
+  });
+
+  // Password reset mutation
+  const resetPasswordMutation = useMutation({
+    mutationFn: async (user: any) => {
+      const { data, error } = await supabase.functions.invoke('reset-user-password', {
+        body: {
+          userId: user.user_id,
+          email: user.email,
+          firstName: user.first_name,
+          lastName: user.last_name,
+          userType: user.user_type
+        }
+      });
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Password reset successful",
+        description: data.message || "New credentials have been sent via email."
+      });
+      setResetPasswordModalOpen(false);
+      setSelectedUser(null);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Password reset failed",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+  });
+
+  const handleResetPassword = (user: any) => {
+    setSelectedUser(user);
+    setResetPasswordModalOpen(true);
+  };
+
+  const confirmResetPassword = () => {
+    if (selectedUser) {
+      resetPasswordMutation.mutate(selectedUser);
+    }
+  };
 
   const updateSetting = (key: string, value: any) => {
     if (!settings) return;
@@ -442,8 +535,100 @@ const AdminSettings = () => {
               </CardContent>
             </Card>
 
+            {/* User Management */}
+            <Card className="logistics-card">
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Users className="h-5 w-5 mr-2" />
+                  User Management
+                </CardTitle>
+                <CardDescription>
+                  Manage admin and supervisor accounts
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <Label>Password Reset</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Reset passwords for admins and supervisors in your company
+                    </p>
+                  </div>
+                  
+                  {companyStaff && companyStaff.length > 0 ? (
+                    <div className="space-y-3">
+                      {companyStaff.map((user) => (
+                        <div key={user.user_id} className="flex items-center justify-between p-3 border rounded-lg">
+                          <div className="space-y-1">
+                            <p className="font-medium">{user.first_name} {user.last_name}</p>
+                            <p className="text-sm text-muted-foreground">{user.email}</p>
+                            <div className="flex items-center gap-2">
+                              <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                                user.user_type === 'admin' 
+                                  ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' 
+                                  : 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                              }`}>
+                                {user.user_type}
+                              </span>
+                              <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                                user.is_active 
+                                  ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
+                                  : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                              }`}>
+                                {user.is_active ? 'Active' : 'Inactive'}
+                              </span>
+                            </div>
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleResetPassword(user)}
+                            disabled={resetPasswordMutation.isPending}
+                          >
+                            <KeyRound className="h-4 w-4 mr-2" />
+                            Reset Password
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground text-center py-4">
+                      No staff members found in your company
+                    </p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
             {/* Remove Team Management from Settings - now in Driver Management */}
           </main>
+
+          {/* Password Reset Confirmation Modal */}
+          <Dialog open={resetPasswordModalOpen} onOpenChange={setResetPasswordModalOpen}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Reset Password</DialogTitle>
+                <DialogDescription>
+                  Are you sure you want to reset the password for {selectedUser?.first_name} {selectedUser?.last_name}? 
+                  A new temporary password will be generated and sent to their email address.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="flex justify-end space-x-2 mt-4">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setResetPasswordModalOpen(false)}
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={confirmResetPassword}
+                  disabled={resetPasswordMutation.isPending}
+                >
+                  {resetPasswordMutation.isPending ? 'Resetting...' : 'Reset Password'}
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
         </SidebarInset>
       </div>
     </SidebarProvider>
