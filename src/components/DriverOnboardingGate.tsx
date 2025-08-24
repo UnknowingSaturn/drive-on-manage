@@ -46,8 +46,8 @@ const DriverOnboardingGate: React.FC<DriverOnboardingGateProps> = ({ children })
     return <Navigate to="/auth" replace />;
   }
 
-  // Admin users don't need onboarding
-  if (profile?.user_type === 'admin') {
+  // Admin and supervisor users don't need onboarding
+  if (profile?.user_type === 'admin' || profile?.user_type === 'supervisor') {
     return <>{children}</>;
   }
 
@@ -60,36 +60,24 @@ const DriverOnboardingGate: React.FC<DriverOnboardingGateProps> = ({ children })
       firstLoginCompleted: driverProfile?.first_login_completed
     });
 
-    // No driver profile exists or requires onboarding
-    if (!driverProfile || driverProfile.requires_onboarding || driverProfile.status === 'pending_onboarding') {
-      console.log('DriverOnboardingGate - Redirecting to onboarding: missing profile or requires onboarding');
+    // No driver profile exists - needs onboarding
+    if (!driverProfile) {
+      console.log('DriverOnboardingGate - Redirecting to onboarding: no profile found');
       return <Navigate to="/driver/onboarding" replace />;
     }
 
-    // First login check
-    if (!driverProfile.first_login_completed) {
-      console.log('DriverOnboardingGate - Redirecting to onboarding: first login not completed');
-      return <Navigate to="/driver/onboarding" replace />;
-    }
-
-    // Check if all required onboarding fields are completed (insurance is optional)
-    const isOnboardingComplete = !!(
-      driverProfile.driving_license_number &&
-      driverProfile.license_expiry &&
-      driverProfile.driving_license_document &&
-      driverProfile.right_to_work_document &&
-      // insurance_document is optional
+    // Check if onboarding is complete based on status and completion timestamp
+    const isOnboardingComplete = 
+      driverProfile.status === 'active' &&
+      driverProfile.onboarding_completed_at &&
       !driverProfile.requires_onboarding &&
-      driverProfile.status !== 'pending_onboarding'
-    );
+      driverProfile.first_login_completed;
 
     console.log('DriverOnboardingGate - Onboarding completion check:', {
-      driving_license_number: !!driverProfile.driving_license_number,
-      license_expiry: !!driverProfile.license_expiry,
-      driving_license_document: !!driverProfile.driving_license_document,
-      right_to_work_document: !!driverProfile.right_to_work_document,
-      requires_onboarding: driverProfile.requires_onboarding,
       status: driverProfile.status,
+      onboarding_completed_at: !!driverProfile.onboarding_completed_at,
+      requires_onboarding: driverProfile.requires_onboarding,
+      first_login_completed: driverProfile.first_login_completed,
       isOnboardingComplete
     });
 

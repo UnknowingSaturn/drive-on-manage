@@ -111,10 +111,10 @@ const StaffSection = ({ className }: StaffSectionProps) => {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       toast({
-        title: "Team member added",
-        description: "The team member has been added and will receive login credentials via email.",
+        title: "Team member added successfully",
+        description: `${newMember.first_name} ${newMember.last_name} has been added as ${newMember.role} and will receive login credentials via email.`,
       });
       setIsAddModalOpen(false);
       setNewMember({
@@ -123,12 +123,14 @@ const StaffSection = ({ className }: StaffSectionProps) => {
         email: '',
         role: 'supervisor'
       });
+      // Refresh the team members list
       queryClient.invalidateQueries({ queryKey: ['team-members'] });
     },
     onError: (error: any) => {
+      console.error('Add member error:', error);
       toast({
         title: "Error adding team member",
-        description: error.message,
+        description: error.message || "Failed to add team member. Please try again.",
         variant: "destructive",
       });
     }
