@@ -31,17 +31,29 @@ const VehicleCheck = () => {
 
   // Get driver profile
   const { data: driverProfile } = useQuery({
-    queryKey: ['driver-profile', user?.id],
+    queryKey: ['driver-profile', user?.id, profile?.user_id],
     queryFn: async () => {
-      if (!user?.id) return null;
-      const { data } = await supabase
+      // Try both user.id and profile.user_id for compatibility
+      const userId = user?.id || profile?.user_id;
+      if (!userId) return null;
+      
+      console.log('VehicleCheck: Fetching driver profile for user:', userId);
+      
+      const { data, error } = await supabase
         .from('driver_profiles')
         .select('*')
-        .eq('user_id', user.id)
-        .single();
+        .eq('user_id', userId)
+        .maybeSingle();
+        
+      if (error) {
+        console.error('VehicleCheck: Error fetching driver profile:', error);
+        return null;
+      }
+      
+      console.log('VehicleCheck: Driver profile found:', data);
       return data;
     },
-    enabled: !!user?.id
+    enabled: !!(user?.id || profile?.user_id)
   });
 
   // Get assigned van info
