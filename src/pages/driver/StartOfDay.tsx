@@ -11,15 +11,12 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { Package, Clock, CheckCircle2, Truck, MapPin, AlertTriangle, Check, Upload, Shield, Wifi, WifiOff, Battery, Play } from 'lucide-react';
+import { Package, Clock, CheckCircle2, Truck, AlertTriangle, Check, Upload } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { sanitizeInput } from '@/lib/security';
-import { useGeolocation } from '@/hooks/useGeolocation';
 import { format } from 'date-fns';
 
 const StartOfDay = () => {
@@ -27,33 +24,6 @@ const StartOfDay = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-
-  // Location tracking integration
-  const {
-    isTracking,
-    shift,
-    currentLocation,
-    permissionGranted,
-    consentGiven,
-    setConsentGiven,
-    startShift,
-    endShift,
-    requestPermissions,
-    offlineQueueLength,
-    captureLocationWithFallbacks
-  } = useGeolocation();
-
-  // Initialize consent from localStorage
-  useEffect(() => {
-    try {
-      const storedConsent = localStorage.getItem('locationTrackingConsent') === 'true';
-      if (storedConsent && !consentGiven) {
-        setConsentGiven(true);
-      }
-    } catch (error) {
-      console.error('Failed to read stored consent:', error);
-    }
-  }, [consentGiven, setConsentGiven]);
   
   const [formData, setFormData] = useState({
     parcelCount: '',
@@ -76,23 +46,8 @@ const StartOfDay = () => {
   const [showSuccess, setShowSuccess] = useState(false);
   const [successData, setSuccessData] = useState<any>(null);
   const [errors, setErrors] = useState<{[key: string]: string}>({});
-  const [showLocationConsent, setShowLocationConsent] = useState(false);
-  const [locationTrackingStarted, setLocationTrackingStarted] = useState(false);
 
   const today = new Date().toISOString().split('T')[0];
-
-  const persistConsentChoice = (consent: boolean) => {
-    try {
-      if (consent) {
-        localStorage.setItem('locationTrackingConsent', 'true');
-      } else {
-        localStorage.removeItem('locationTrackingConsent');
-      }
-      setConsentGiven(consent);
-    } catch (error) {
-      console.error('Failed to persist consent choice:', error);
-    }
-  };
 
   // Get driver profile
   const { data: driverProfile } = useQuery({
@@ -192,17 +147,6 @@ const StartOfDay = () => {
         screenshotUrl = fileName;
       }
 
-      const logData = {
-        driver_id: driverProfile.id,
-        company_id: profile.company_id,
-        name: `${profile.first_name} ${profile.last_name}`.trim(),
-        round_number: 'Manual Entry',
-        total_deliveries: parseInt(data.parcelCount),
-        screenshot_url: screenshotUrl,
-        processing_status: 'manual',
-        manifest_date: today
-      };
-
       const { data: result, error } = await supabase
         .from('start_of_day_reports')
         .insert({
@@ -224,57 +168,24 @@ const StartOfDay = () => {
 
       if (error) throw error;
 
-      // If screenshot was uploaded, also create a SOD report for processing
+      // If screenshot was uploaded, process it
       if (screenshotUrl) {
-        const { data: reportData, error: reportError } = await supabase
-          .from('start_of_day_reports')
-          .insert({
-            driver_id: driverProfile.id,
-            company_id: profile.company_id,
-            driver_name: `${profile.first_name} ${profile.last_name}`.trim(),
-            round_number: 'TBD', // Will be extracted by Vision API
-            screenshot_url: screenshotUrl,
-            processing_status: 'pending'
-          })
-          .select()
-          .single();
-
-        if (!reportError && reportData) {
-          // Call Vision API to process screenshot
-          try {
-            await supabase.functions.invoke('sod-vision-ocr', {
-              body: {
-                screenshotPath: screenshotUrl,
-                reportId: reportData.id
-              }
-            });
-          } catch (visionError) {
-            console.error('Vision API processing failed:', visionError);
-          }
+        try {
+          await supabase.functions.invoke('sod-vision-ocr', {
+            body: {
+              screenshotPath: screenshotUrl,
+              reportId: result.id
+            }
+          });
+        } catch (visionError) {
+          console.error('Vision API processing failed:', visionError);
         }
       }
 
       return result;
     },
-    onSuccess: async (data) => {
+    onSuccess: (data) => {
       setSuccessData(data);
-      
-      // Auto-start location tracking if consent is given
-      if (consentGiven) {
-        console.log('Starting shift with consent already given');
-        const trackingStarted = await startShift();
-        setLocationTrackingStarted(trackingStarted);
-        
-        if (trackingStarted) {
-          toast({
-            title: "Shift Started",
-            description: "Location tracking is now active for your delivery shift.",
-          });
-        }
-      } else {
-        setShowLocationConsent(true);
-      }
-      
       setShowSuccess(true);
       queryClient.invalidateQueries({ queryKey: ['today-sod-log'] });
     },
@@ -289,7 +200,6 @@ const StartOfDay = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('SOD form submitted, checking validation...');
     
     if (!validateForm()) {
       toast({
@@ -300,113 +210,7 @@ const StartOfDay = () => {
       return;
     }
 
-    console.log('Form validated, proceeding with SOD submission...');
-    
-    // Update consent state from localStorage if available
-    const storedConsent = localStorage.getItem('locationTrackingConsent') === 'true';
-    if (storedConsent && !consentGiven) {
-      setConsentGiven(true);
-    }
-
-    console.log('Consent confirmed, requesting location permission (user gesture)...');
-    
-    // Request geolocation permission with user gesture
-    let locationReady = permissionGranted;
-    let locationData: { latitude?: number; longitude?: number; accuracy?: number } | null = null;
-    
-    if (!locationReady) {
-      console.log('Requesting location permissions...');
-      locationReady = await requestPermissions();
-      console.log('Permission request result:', locationReady);
-    }
-
-    // Always try to capture location after user gesture, even if permission failed
-    console.log('Attempting to capture current location...');
-    
-    try {
-      const currentPosition = await new Promise<GeolocationPosition | null>((resolve) => {
-        if (!navigator.geolocation) {
-          console.log('Geolocation not supported');
-          resolve(null);
-          return;
-        }
-
-        navigator.geolocation.getCurrentPosition(
-          (position) => {
-            console.log('Location captured successfully:', position.coords);
-            resolve(position);
-          },
-          (error) => {
-            console.log('Location capture failed:', error.code, error.message);
-            
-            // Handle different error types
-            if (error.code === 1) { // PERMISSION_DENIED
-              toast({
-                title: "Location Access Denied",
-                description: "Please enable location permissions in your browser to continue.",
-                variant: "destructive",
-              });
-              resolve(null);
-            } else {
-              // Code 2 (Position unavailable) or 3 (Timeout) - proceed anyway
-              console.log('Location unavailable or timeout, proceeding with submission');
-              resolve(null);
-            }
-          },
-          { 
-            enableHighAccuracy: false, 
-            timeout: 15000, 
-            maximumAge: 60000 
-          }
-        );
-      });
-
-      if (currentPosition) {
-        locationData = {
-          latitude: currentPosition.coords.latitude,
-          longitude: currentPosition.coords.longitude,
-          accuracy: currentPosition.coords.accuracy
-        };
-        
-        toast({
-          title: "Location Confirmed", 
-          description: `Starting location captured (±${Math.round(currentPosition.coords.accuracy)}m accuracy)`
-        });
-      } else if (!locationReady) {
-        // Only block if permission was explicitly denied
-        return;
-      } else {
-        // Permission granted but location unavailable/timeout - continue
-        toast({
-          title: "Location Detection Limited",
-          description: "GPS unavailable. Proceeding with network-based location."
-        });
-      }
-    } catch (error) {
-      console.error('Location capture error:', error);
-      toast({
-        title: "Location Warning",
-        description: "Location services limited. Shift tracking will use available methods."
-      });
-    }
-
-    console.log('All checks passed, submitting SOD form with location data:', locationData);
-    console.log('Current consent state:', { consentGiven, permissionGranted });
     startDayMutation.mutate(formData);
-  };
-
-  const handleLocationConsentAccept = async () => {
-    persistConsentChoice(true);
-    setShowLocationConsent(false);
-    const trackingStarted = await startShift();
-    setLocationTrackingStarted(trackingStarted);
-    
-    if (trackingStarted) {
-      toast({
-        title: "Location Tracking Started",
-        description: "Your location is now being tracked for this shift.",
-      });
-    }
   };
 
   const handleVehicleCheckChange = (item: string, checked: boolean) => {
@@ -505,591 +309,204 @@ const StartOfDay = () => {
                   })}
                 </CardDescription>
               </CardHeader>
-              <CardContent>
-                {isAlreadyStarted ? (
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div className="text-center p-4 rounded-lg bg-card/50">
-                         <div className="text-2xl font-bold text-gradient">
-                           N/A
-                        </div>
-                        <div className="text-sm text-muted-foreground">Parcels</div>
-                      </div>
-                      <div className="text-center p-4 rounded-lg bg-card/50">
-                         <div className="text-2xl font-bold text-gradient">
-                           N/A
-                        </div>
-                        <div className="text-sm text-muted-foreground">Start Mileage</div>
-                      </div>
-                      <div className="text-center p-4 rounded-lg bg-card/50">
-                         <div className="text-sm text-success">
-                           Started at {new Date(todayLog.created_at).toLocaleTimeString()}
-                        </div>
-                        <div className="text-sm text-muted-foreground">Time</div>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="p-4 bg-card/50 rounded-lg">
-                        <Label className="text-sm font-medium">Vehicle Check</Label>
-                        <div className="flex items-center mt-1">
-                          <CheckCircle2 className="h-4 w-4 text-success mr-1" />
-                          <span className="text-sm text-success">Completed</span>
-                        </div>
-                      </div>
-                      <div className="p-4 bg-card/50 rounded-lg">
-                        <Label className="text-sm font-medium">Van Confirmed</Label>
-                        <div className="flex items-center mt-1">
-                          <CheckCircle2 className="h-4 w-4 text-success mr-1" />
-                          <span className="text-sm text-success">Confirmed</span>
-                        </div>
-                      </div>
-                    </div>
-                     {todayLog.round_number && (
-                       <div className="p-4 bg-muted rounded-lg">
-                         <Label className="text-sm font-medium">Round:</Label>
-                         <p className="text-sm mt-1">{todayLog.round_number}</p>
-                      </div>
-                     )}
-                     
-                     {/* Location Tracking Status */}
-                     {isTracking && (
-                       <Alert className="border-green-200 bg-green-50 dark:bg-green-950">
-                         <MapPin className="h-4 w-4 text-green-600" />
-                         <AlertDescription className="text-green-800 dark:text-green-200">
-                           <div className="flex items-center justify-between">
-                             <span className="font-medium">Location Tracking: ON</span>
-                             <div className="flex items-center gap-2">
-                               {offlineQueueLength > 0 ? (
-                                 <WifiOff className="h-4 w-4 text-orange-500" />
-                               ) : (
-                                 <Wifi className="h-4 w-4 text-green-500" />
-                               )}
-                               {currentLocation?.batteryLevel && (
-                                 <div className="flex items-center gap-1">
-                                   <Battery className="h-3 w-3" />
-                                   <span className="text-xs">{currentLocation.batteryLevel}%</span>
-                                 </div>
-                               )}
-                             </div>
-                           </div>
-                           {shift.startTime && (
-                             <div className="text-xs mt-1">
-                               Started at {format(shift.startTime, 'HH:mm')}
-                               {offlineQueueLength > 0 && (
-                                 <span className="ml-2 text-orange-600">
-                                   ({offlineQueueLength} updates queued)
-                                 </span>
-                               )}
-                             </div>
-                           )}
-                         </AlertDescription>
-                       </Alert>
-                     )}
-                   </div>
-                 ) : (
-                   <div className="text-center py-8">
-                     <Package className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                     <p className="text-muted-foreground">Ready to start your day?</p>
-                   </div>
-                 )}
-               </CardContent>
-             </Card>
+            </Card>
 
-            {/* Assigned Van Info */}
-            {assignedVan && (
+            {showSuccess ? (
               <Card className="logistics-card">
-                <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <Truck className="h-5 w-5 text-primary mr-2" />
-                    Assigned Vehicle
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div>
-                      <Label className="text-sm font-medium">Registration</Label>
-                      <p className="text-lg font-semibold">{assignedVan.registration}</p>
-                    </div>
-                    <div>
-                      <Label className="text-sm font-medium">Make & Model</Label>
-                      <p className="text-lg">{assignedVan.make} {assignedVan.model}</p>
-                    </div>
-                    <div>
-                      <Label className="text-sm font-medium">Year</Label>
-                      <p className="text-lg">{assignedVan.year}</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Van Assignment Error */}
-            {!driverProfile?.assigned_van_id && !isAlreadyStarted && (
-              <Card className="logistics-card border-destructive">
-                <CardHeader>
-                  <CardTitle className="flex items-center text-destructive">
-                    <AlertTriangle className="h-5 w-5 mr-2" />
-                    No Van Assigned
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-muted-foreground">
-                    You don't have a van assigned for today. Please contact your administrator before starting your shift.
+                <CardContent className="text-center py-8">
+                  <CheckCircle2 className="h-16 w-16 text-success mx-auto mb-4" />
+                  <h3 className="text-xl font-semibold mb-2">Day Started Successfully!</h3>
+                  <p className="text-muted-foreground mb-4">
+                    Your start of day report has been submitted.
                   </p>
+                  <div className="space-y-2 text-sm text-muted-foreground">
+                    <p>Time: {format(new Date(), 'HH:mm')}</p>
+                    {successData && (
+                      <p>Report ID: {successData.id.slice(0, 8)}...</p>
+                    )}
+                  </div>
+                  <Button 
+                    onClick={() => navigate('/dashboard')}
+                    className="mt-4"
+                  >
+                    Go to Dashboard
+                  </Button>
                 </CardContent>
               </Card>
-            )}
-
-            {/* Start of Day Form */}
-            {!isAlreadyStarted && (
+            ) : (
               <Card className="logistics-card">
                 <CardHeader>
                   <CardTitle className="flex items-center">
                     <Package className="h-5 w-5 text-primary mr-2" />
-                    Start Your Day
+                    Start of Day Form
                   </CardTitle>
                   <CardDescription>
-                    Enter your starting information to begin your shift
+                    Complete your daily startup checklist to begin your shift
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <form onSubmit={handleSubmit} className="space-y-6">
-                    {/* Processing Hint */}
-                    <div className="p-4 bg-gradient-to-r from-primary/10 to-primary/5 border border-primary/20 rounded-lg">
-                      <div className="flex items-start space-x-3">
-                        <div className="flex-shrink-0">
-                          <div className="w-8 h-8 bg-primary/20 rounded-full flex items-center justify-center">
-                            <Package className="w-4 h-4 text-primary" />
+                    {/* Driver & Van Info */}
+                    <div className="bg-muted p-4 rounded-lg space-y-3">
+                      <h3 className="font-semibold">Driver & Vehicle Information</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <Label>Driver Name</Label>
+                          <div className="mt-1 text-sm font-medium">
+                            {profile?.first_name} {profile?.last_name}
                           </div>
                         </div>
-                        <div className="flex-grow">
-                          <h3 className="text-sm font-medium text-foreground mb-1">
-                            Enhanced Data Processing
-                          </h3>
-                          <p className="text-xs text-muted-foreground leading-relaxed">
-                            Take a screenshot of your parcel manifest after completing your start of day. Our system will automatically process and extract parcel count information using advanced OCR technology.
-                          </p>
-                        </div>
+                        {assignedVan && (
+                          <div>
+                            <Label>Assigned Van</Label>
+                            <div className="mt-1 text-sm font-medium">
+                              {assignedVan.make} {assignedVan.model} - {assignedVan.registration}
+                            </div>
+                          </div>
+                        )}
                       </div>
+                      
+                      {errors.vanAssignment && (
+                        <Alert variant="destructive">
+                          <AlertTriangle className="h-4 w-4" />
+                          <AlertDescription>{errors.vanAssignment}</AlertDescription>
+                        </Alert>
+                      )}
                     </div>
 
-                    {/* Basic Information */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="parcelCount">
-                          Parcel Count <span className="text-destructive">*</span>
-                        </Label>
+                    {/* Form Fields */}
+                    <div className="space-y-4">
+                      <div>
+                        <Label htmlFor="parcelCount">Starting Parcel Count *</Label>
                         <Input
                           id="parcelCount"
                           type="number"
                           min="0"
                           value={formData.parcelCount}
-                          onChange={(e) => {
-                            setFormData(prev => ({ ...prev, parcelCount: e.target.value }));
-                            if (errors.parcelCount) setErrors(prev => ({ ...prev, parcelCount: '' }));
-                          }}
-                          placeholder="Enter total parcels"
+                          onChange={(e) => setFormData(prev => ({ ...prev, parcelCount: sanitizeInput(e.target.value) }))}
                           className={errors.parcelCount ? 'border-destructive' : ''}
                         />
-                        {errors.parcelCount && (
-                          <p className="text-sm text-destructive">{errors.parcelCount}</p>
-                        )}
+                        {errors.parcelCount && <p className="text-destructive text-sm mt-1">{errors.parcelCount}</p>}
                       </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="mileage">
-                          Starting Mileage <span className="text-destructive">*</span>
-                        </Label>
+
+                      <div>
+                        <Label htmlFor="mileage">Starting Mileage *</Label>
                         <Input
                           id="mileage"
                           type="number"
                           min="0"
                           value={formData.mileage}
-                          onChange={(e) => {
-                            setFormData(prev => ({ ...prev, mileage: e.target.value }));
-                            if (errors.mileage) setErrors(prev => ({ ...prev, mileage: '' }));
-                          }}
-                          placeholder="Enter vehicle mileage"
+                          onChange={(e) => setFormData(prev => ({ ...prev, mileage: sanitizeInput(e.target.value) }))}
                           className={errors.mileage ? 'border-destructive' : ''}
                         />
-                        {errors.mileage && (
-                          <p className="text-sm text-destructive">{errors.mileage}</p>
-                        )}
+                        {errors.mileage && <p className="text-destructive text-sm mt-1">{errors.mileage}</p>}
+                      </div>
+
+                      <div>
+                        <Label htmlFor="notes">Notes (Optional)</Label>
+                        <Textarea
+                          id="notes"
+                          value={formData.notes}
+                          onChange={(e) => setFormData(prev => ({ ...prev, notes: sanitizeInput(e.target.value) }))}
+                          placeholder="Any additional notes for today's shift..."
+                        />
+                      </div>
+                    </div>
+
+                    {/* Vehicle Check */}
+                    <div className="space-y-4">
+                      <Label>Vehicle Safety Check *</Label>
+                      {errors.vehicleCheck && (
+                        <Alert variant="destructive">
+                          <AlertTriangle className="h-4 w-4" />
+                          <AlertDescription>{errors.vehicleCheck}</AlertDescription>
+                        </Alert>
+                      )}
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {Object.entries(vehicleCheck).map(([key, checked]) => (
+                          <div key={key} className="flex items-center space-x-2">
+                            <Checkbox
+                              id={key}
+                              checked={checked}
+                              onCheckedChange={(checked) => handleVehicleCheckChange(key, !!checked)}
+                            />
+                            <Label htmlFor={key} className="capitalize">
+                              {key.replace(/([A-Z])/g, ' $1').trim()}
+                            </Label>
+                            {checked && <Check className="h-4 w-4 text-success" />}
+                          </div>
+                        ))}
                       </div>
                     </div>
 
                     {/* Van Confirmation */}
-                    {assignedVan && (
-                      <div className="space-y-3">
-                        <Label className="text-sm font-medium">
-                          Vehicle Confirmation <span className="text-destructive">*</span>
-                        </Label>
-                        <div className="flex items-center space-x-2 p-3 border rounded-lg bg-card/50">
-                          <Checkbox
-                            id="vanConfirmed"
-                            checked={formData.vanConfirmed}
-                            onCheckedChange={(checked) => {
-                              setFormData(prev => ({ ...prev, vanConfirmed: checked as boolean }));
-                              if (errors.vanConfirmed) setErrors(prev => ({ ...prev, vanConfirmed: '' }));
-                            }}
-                          />
-                          <label htmlFor="vanConfirmed" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                            I confirm I am using van: <strong>{assignedVan.registration}</strong> ({assignedVan.make} {assignedVan.model})
-                          </label>
-                        </div>
-                        {errors.vanConfirmed && (
-                          <p className="text-sm text-destructive">{errors.vanConfirmed}</p>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Vehicle Check Dropdown */}
-                    <div className="space-y-3">
-                      <Label className="text-sm font-medium">
-                        Vehicle Safety Check <span className="text-destructive">*</span>
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="vanConfirmed"
+                        checked={formData.vanConfirmed}
+                        onCheckedChange={(checked) => {
+                          setFormData(prev => ({ ...prev, vanConfirmed: !!checked }));
+                          if (checked) {
+                            setErrors(prev => ({ ...prev, vanConfirmed: '' }));
+                          }
+                        }}
+                      />
+                      <Label htmlFor="vanConfirmed">
+                        I confirm this is my assigned van and it's ready for service *
                       </Label>
-                      <div className="space-y-2 p-4 border rounded-lg bg-card/50">
-                        <p className="text-sm text-muted-foreground mb-3">
-                          Please confirm all items have been checked:
-                        </p>
-                        {Object.entries({
-                          lights: 'All lights working (headlights, indicators, brake lights)',
-                          tyres: 'Tyres in good condition (tread depth, no damage)',
-                          brakes: 'Brakes functioning properly',
-                          mirrors: 'All mirrors clean and properly adjusted',
-                          fuel: 'Adequate fuel level for route',
-                          cleanliness: 'Vehicle interior and exterior clean',
-                          documentation: 'Insurance and registration documents present'
-                        }).map(([key, description]) => (
-                          <div key={key} className="flex items-center space-x-2">
-                            <Checkbox
-                              id={key}
-                              checked={vehicleCheck[key as keyof typeof vehicleCheck]}
-                              onCheckedChange={(checked) => handleVehicleCheckChange(key, checked as boolean)}
-                            />
-                            <label htmlFor={key} className="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                              {description}
-                            </label>
-                          </div>
-                        ))}
-                      </div>
-                      {errors.vehicleCheck && (
-                        <p className="text-sm text-destructive">{errors.vehicleCheck}</p>
-                      )}
                     </div>
-                    
-                    {/* Optional Screenshot Upload */}
+                    {errors.vanConfirmed && <p className="text-destructive text-sm">{errors.vanConfirmed}</p>}
+
+                    {/* Screenshot Upload */}
                     <div className="space-y-2">
                       <Label htmlFor="screenshot">Manifest Screenshot (Optional)</Label>
-                      <div className="flex items-center space-x-2">
-                        <Input
+                      <div className="border-2 border-dashed border-border rounded-lg p-4">
+                        <input
                           id="screenshot"
                           type="file"
                           accept="image/*"
                           onChange={handleFileChange}
-                          className="file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-sm file:bg-primary file:text-primary-foreground hover:file:bg-primary/90"
+                          className="w-full"
                         />
-                        <Upload className="h-4 w-4 text-muted-foreground" />
-                      </div>
-                      {formData.screenshot && (
-                        <p className="text-sm text-success">
-                          ✓ Selected: {formData.screenshot.name}
+                        <p className="text-sm text-muted-foreground mt-2">
+                          Upload a screenshot of your delivery manifest if available
                         </p>
+                      </div>
+                    </div>
+
+                    {/* Submit Button */}
+                    <Button 
+                      type="submit" 
+                      className="w-full" 
+                      disabled={startDayMutation.isPending || !!isAlreadyStarted}
+                    >
+                      {startDayMutation.isPending ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                          Starting Day...
+                        </>
+                      ) : isAlreadyStarted ? (
+                        <>
+                          <CheckCircle2 className="h-4 w-4 mr-2" />
+                          Day Already Started
+                        </>
+                      ) : (
+                        <>
+                          <Clock className="h-4 w-4 mr-2" />
+                          Start My Day
+                        </>
                       )}
-                      <p className="text-xs text-muted-foreground">
-                        Upload a manifest screenshot for automatic parcel type extraction (optional).
-                      </p>
-                    </div>
-
-                     {/* Location Consent Toggle */}
-                     <div className="space-y-3">
-                       <Label className="text-sm font-medium">
-                         Location Tracking Consent <span className="text-destructive">*</span>
-                       </Label>
-                       <div className="p-4 border rounded-lg bg-card/50">
-                         <div className="flex items-start space-x-3">
-                           <Checkbox
-                             id="locationConsent"
-                             checked={consentGiven}
-                             onCheckedChange={(checked) => persistConsentChoice(checked as boolean)}
-                           />
-                           <div className="flex-1">
-                             <label htmlFor="locationConsent" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                               I consent to location tracking during my shift
-                             </label>
-                             <p className="text-xs text-muted-foreground mt-1">
-                               Location data is used for safety monitoring, route optimization, and delivery verification. Data is kept for 30 days.
-                             </p>
-                           </div>
-                         </div>
-                       </div>
-                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="notes">Notes (Optional)</Label>
-                      <Textarea
-                        id="notes"
-                        placeholder="Any additional notes or observations..."
-                        value={formData.notes}
-                        onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
-                        className="min-h-[80px]"
-                      />
-                    </div>
-
-                     {/* Location Permission Notice */}
-                     {!permissionGranted && (
-                       <Alert>
-                         <Shield className="h-4 w-4" />
-                         <AlertDescription>
-                           <div className="space-y-2">
-                             <p className="font-medium">Location tracking will be enabled when you start your day.</p>
-                             <div className="text-sm space-y-1">
-                               <p>We use multiple fallback methods to ensure reliable location capture:</p>
-                               <ul className="list-disc list-inside space-y-1 text-xs ml-2">
-                                 <li>High-precision GPS (when available)</li>
-                                 <li>Network-based location (WiFi/cell towers)</li>
-                                 <li>IP-based approximate location (fallback)</li>
-                               </ul>
-                             </div>
-                           </div>
-                         </AlertDescription>
-                       </Alert>
-                     )}
-
-                     {permissionGranted && (
-                       <Alert className="border-green-200 bg-green-50 dark:bg-green-950">
-                         <CheckCircle2 className="h-4 w-4 text-green-600" />
-                         <AlertDescription className="text-green-800 dark:text-green-200">
-                           <div className="flex items-center justify-between">
-                             <span className="font-medium">Location access ready</span>
-                             {currentLocation && (
-                               <span className="text-xs">
-                                 Accuracy: {Math.round(currentLocation.accuracy)}m
-                               </span>
-                             )}
-                           </div>
-                         </AlertDescription>
-                       </Alert>
-                     )}
-
-                     <Button 
-                       type="submit"
-                       disabled={startDayMutation.isPending || !!errors.vanAssignment}
-                       className="logistics-button w-full"
-                     >
-                       {startDayMutation.isPending ? (
-                         <div className="flex items-center">
-                           <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                           Starting Day...
-                         </div>
-                       ) : (
-                         <>
-                           <Play className="h-4 w-4 mr-2" />
-                           Start My Day & Begin Tracking
-                         </>
-                       )}
-                     </Button>
+                    </Button>
                   </form>
                 </CardContent>
               </Card>
             )}
-
-            {/* Quick Actions */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Card className="logistics-card hover-lift click-shrink group">
-                <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <Truck className="h-5 w-5 text-primary mr-2" />
-                    Vehicle Check
-                  </CardTitle>
-                  <CardDescription>
-                    Perform daily vehicle inspection
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Button 
-                    className="logistics-button w-full"
-                    onClick={() => navigate('/driver/vehicle-check')}
-                  >
-                    <Truck className="h-4 w-4 mr-2" />
-                    Vehicle Check
-                  </Button>
-                </CardContent>
-              </Card>
-
-              <Card className="logistics-card hover-lift click-shrink group">
-                <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <MapPin className="h-5 w-5 text-primary mr-2" />
-                    Route Info
-                  </CardTitle>
-                  <CardDescription>
-                    View your delivery route details
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Button 
-                    className="logistics-button w-full"
-                    variant="outline"
-                  >
-                    <MapPin className="h-4 w-4 mr-2" />
-                    View Route
-                  </Button>
-                </CardContent>
-              </Card>
-            </div>
           </main>
         </SidebarInset>
       </div>
-
-      {/* Success Dialog */}
-      <AlertDialog open={showSuccess} onOpenChange={setShowSuccess}>
-        <AlertDialogContent className="max-w-md">
-          <AlertDialogHeader>
-            <div className="flex items-center justify-center w-12 h-12 mx-auto mb-4 bg-success/10 rounded-full">
-              <Check className="w-6 h-6 text-success" />
-            </div>
-            <AlertDialogTitle className="text-center">Start of Day Complete!</AlertDialogTitle>
-            <AlertDialogDescription className="text-center">
-              Your shift has been successfully started. Here's a summary:
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          
-          {successData && (
-            <div className="space-y-3 my-4">
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                 <div className="text-center p-3 bg-card/50 rounded-lg">
-                   <div className="font-semibold text-lg">{successData.total_deliveries}</div>
-                   <div className="text-muted-foreground">Parcels</div>
-                 </div>
-                 <div className="text-center p-3 bg-card/50 rounded-lg">
-                   <div className="font-semibold text-lg">Manual Entry</div>
-                   <div className="text-muted-foreground">Entry Type</div>
-                </div>
-              </div>
-              
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <span>Vehicle Check:</span>
-                  <span className="flex items-center text-success">
-                    <Check className="w-4 h-4 mr-1" />
-                    Completed
-                  </span>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span>Van Confirmed:</span>
-                  <span className="flex items-center text-success">
-                    <Check className="w-4 h-4 mr-1" />
-                    Yes
-                  </span>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                   <span>Started at:</span>
-                   <span>{new Date(successData.submitted_at).toLocaleTimeString()}</span>
-                </div>
-              </div>
-
-               {successData.round_number && (
-                 <div className="p-3 bg-muted rounded-lg">
-                   <Label className="text-xs font-medium">Round:</Label>
-                   <p className="text-sm mt-1">{successData.round_number}</p>
-                 </div>
-               )}
-
-               {/* Location Tracking Status in Success Dialog */}
-               <div className="flex items-center justify-between text-sm">
-                 <span>Location Tracking:</span>
-                 <span className="flex items-center">
-                   {locationTrackingStarted ? (
-                     <>
-                       <Check className="w-4 h-4 mr-1 text-success" />
-                       <span className="text-success">Started</span>
-                     </>
-                   ) : (
-                     <>
-                       <AlertTriangle className="w-4 h-4 mr-1 text-orange-500" />
-                       <span className="text-orange-600">Consent Required</span>
-                     </>
-                   )}
-                 </span>
-               </div>
-             </div>
-           )}
-           
-           <AlertDialogFooter>
-             <AlertDialogAction onClick={() => {
-               setShowSuccess(false);
-               navigate('/dashboard');
-             }}>
-               Continue to Dashboard
-             </AlertDialogAction>
-           </AlertDialogFooter>
-         </AlertDialogContent>
-       </AlertDialog>
-
-       {/* Location Consent Dialog */}
-       <Dialog open={showLocationConsent} onOpenChange={setShowLocationConsent}>
-         <DialogContent className="sm:max-w-md">
-           <DialogHeader>
-             <DialogTitle className="flex items-center gap-2">
-               <Shield className="h-5 w-5" />
-               Location Tracking Consent Required
-             </DialogTitle>
-           </DialogHeader>
-           
-           <div className="space-y-4">
-             <div className="text-sm text-muted-foreground space-y-2">
-               <p>
-                 <strong>Your shift has started successfully!</strong> Now we need your consent to begin location tracking.
-               </p>
-               <p>
-                 <strong>Purpose:</strong> We track your location during shifts for:
-               </p>
-               <ul className="list-disc list-inside space-y-1 ml-4">
-                 <li>Safety monitoring and emergency support</li>
-                 <li>Route optimization and assistance</li>
-                 <li>Accurate delivery verification</li>
-               </ul>
-               
-               <p className="mt-3">
-                 <strong>Privacy:</strong> Location data is only collected during work hours and kept for 30 days.
-               </p>
-             </div>
-
-             <div className="flex items-center space-x-2">
-               <Checkbox 
-                 id="shift-consent" 
-                 checked={consentGiven}
-                 onCheckedChange={(checked) => setConsentGiven(checked as boolean)}
-               />
-               <label 
-                 htmlFor="shift-consent" 
-                 className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-               >
-                 I consent to location tracking for this shift
-               </label>
-             </div>
-
-             <div className="flex gap-2">
-               <Button 
-                 variant="outline" 
-                 onClick={() => setShowLocationConsent(false)}
-                 className="flex-1"
-               >
-                 Skip for Now
-               </Button>
-               <Button 
-                 onClick={handleLocationConsentAccept}
-                 disabled={!consentGiven}
-                 className="flex-1"
-               >
-                 <Play className="h-4 w-4 mr-2" />
-                 Start Tracking
-               </Button>
-             </div>
-           </div>
-         </DialogContent>
-       </Dialog>
-     </SidebarProvider>
-   );
- };
+    </SidebarProvider>
+  );
+};
 
 export default StartOfDay;

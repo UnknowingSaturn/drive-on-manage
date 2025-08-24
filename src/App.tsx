@@ -22,9 +22,6 @@ import ScheduleView from "./pages/admin/ScheduleView";
 import EODReports from "./pages/admin/EODReports";
 import Finance from "./pages/admin/Finance";
 import DriverEngagement from "./pages/admin/DriverEngagement";
-import LiveTrackingMap from "./pages/admin/LiveTrackingMap";
-
-
 import AdminSettings from "./pages/admin/Settings";
 import ResetPasswordNew from "./pages/ResetPasswordNew";
 
@@ -39,7 +36,6 @@ import NewsChat from "./pages/driver/NewsChat";
 import Profile from "./pages/driver/Profile";
 import EarningsTracker from "./pages/driver/EarningsTracker";
 import RouteFeedback from "./pages/driver/RouteFeedback";
-import Leaderboard from "./pages/driver/Leaderboard";
 import ExpenseTracker from "./pages/driver/ExpenseTracker";
 import DriverOnboarding from "./pages/driver/Onboarding";
 import EndOfDay from "./pages/driver/EndOfDay";
@@ -145,13 +141,6 @@ const App = () => (
                 </AdminRoute>
               </ProtectedRoute>
             } />
-            <Route path="/admin/live-map" element={
-              <ProtectedRoute>
-                <AdminRoute>
-                  <LiveTrackingMap />
-                </AdminRoute>
-              </ProtectedRoute>
-            } />
             
             {/* Driver Routes */}
             {/* Onboarding route - no onboarding gate */}
@@ -222,13 +211,6 @@ const App = () => (
               <ProtectedRoute>
                 <DriverOnboardingGate>
                   <RouteFeedback />
-                </DriverOnboardingGate>
-              </ProtectedRoute>
-            } />
-            <Route path="/driver/leaderboard" element={
-              <ProtectedRoute>
-                <DriverOnboardingGate>
-                  <Leaderboard />
                 </DriverOnboardingGate>
               </ProtectedRoute>
             } />

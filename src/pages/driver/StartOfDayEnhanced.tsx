@@ -14,7 +14,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
-import { useGeolocation } from '@/hooks/useGeolocation';
 
 const StartOfDayEnhanced = () => {
   const { user, profile } = useAuth();
@@ -22,7 +21,6 @@ const StartOfDayEnhanced = () => {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { startShift } = useGeolocation();
   
   const [formData, setFormData] = useState({
     roundNumber: '',
@@ -196,13 +194,8 @@ const StartOfDayEnhanced = () => {
           }
         }
 
-        // Start location tracking
-        try {
-          await startShift();
-        } catch (trackingError) {
-          console.error('Failed to start location tracking:', trackingError);
-          // Don't fail the submission if tracking fails
-        }
+        // Start location tracking is removed
+        // Location tracking functionality has been removed
 
         return reportData;
 

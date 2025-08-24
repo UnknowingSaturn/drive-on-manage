@@ -92,28 +92,8 @@ const DriverEngagement = () => {
   });
 
   // Fetch achievements
-  const { data: achievementsData } = useQuery({
-    queryKey: ['driver-achievements-admin', profile?.company_id],
-    queryFn: async () => {
-      if (!profile?.company_id) return [];
-      
-      const { data, error } = await supabase
-        .from('driver_achievements')
-        .select(`
-          *,
-          driver_profiles(
-            id,
-            profiles(first_name, last_name)
-          )
-        `)
-        .eq('company_id', profile.company_id)
-        .order('earned_at', { ascending: false });
-
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!profile?.company_id
-  });
+  // Achievements removed - using empty array
+  const achievementsData: any[] = [];
 
   // Fetch expenses
   const { data: expensesData } = useQuery({
@@ -143,7 +123,7 @@ const DriverEngagement = () => {
   const totalEarnings = earningsData?.reduce((sum, e) => sum + Number(e.total_earnings), 0) || 0;
   const avgRouteRating = feedbackData?.length ? 
     feedbackData.reduce((sum, f) => sum + (f.route_difficulty + f.traffic_rating + f.depot_experience) / 3, 0) / feedbackData.length : 0;
-  const totalAchievements = achievementsData?.filter(a => a.is_completed).length || 0;
+  const totalAchievements = 0; // Achievements system removed
   const pendingExpenses = expensesData?.filter(e => e.is_approved === null).length || 0;
 
   const getDriverName = (driverProfile: any) => {

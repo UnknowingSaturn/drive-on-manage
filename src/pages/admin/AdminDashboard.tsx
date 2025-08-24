@@ -12,7 +12,6 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { format, subDays, isToday } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
-import { LiveTrackingMap } from '@/components/admin/LiveTrackingMap';
 const AdminDashboard = () => {
   const {
     profile
@@ -548,18 +547,22 @@ const AdminDashboard = () => {
             
             {/* Live Tracking Map */}
             <div className="grid grid-cols-1 gap-6 md:gap-8">
-              <Card className="group relative overflow-hidden bg-gradient-to-br from-card via-card/95 to-card/90 border-0 shadow-xl hover:shadow-2xl transition-all duration-500">
-                <div className="absolute inset-0 bg-gradient-to-br from-primary/3 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-                <CardHeader className="relative">
-                  <CardTitle className="flex items-center text-foreground text-lg font-semibold">
-                    Live Driver Tracking
-                  </CardTitle>
-                  <CardDescription className="text-muted-foreground">Real-time location monitoring</CardDescription>
-                </CardHeader>
-                <CardContent className="relative p-0">
-                  {React.createElement(LiveTrackingMap)}
-                </CardContent>
-              </Card>
+               {/* Performance Overview Card */}
+               <Card className="group relative overflow-hidden bg-gradient-to-br from-card via-card/95 to-card/90 border-0 shadow-xl hover:shadow-2xl transition-all duration-500">
+                 <div className="absolute inset-0 bg-gradient-to-br from-primary/3 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                 <CardHeader className="relative">
+                   <CardTitle className="flex items-center text-foreground text-lg font-semibold">
+                     Performance Overview
+                   </CardTitle>
+                   <CardDescription className="text-muted-foreground">Key performance metrics</CardDescription>
+                 </CardHeader>
+                 <CardContent className="relative p-4">
+                   <div className="space-y-3 text-center">
+                     <div className="text-2xl font-bold text-primary">{performanceData?.totalDelivered || 0}</div>
+                     <div className="text-sm text-muted-foreground">Total Deliveries (7 days)</div>
+                   </div>
+                 </CardContent>
+               </Card>
             </div>
           </main>
         </SidebarInset>
