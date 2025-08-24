@@ -26,7 +26,7 @@ interface EndOfDayFormData {
 }
 
 const EndOfDay = () => {
-  const { profile } = useAuth();
+  const { user, profile } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -43,9 +43,13 @@ const EndOfDay = () => {
 
   // Fetch driver profile with assigned van and schedule info
   const { data: driverInfo, isLoading: loadingDriverInfo } = useQuery({
-    queryKey: ['driver-eod-info', profile?.user_id],
+    queryKey: ['driver-eod-info', profile?.user_id, user?.id],
     queryFn: async () => {
-      if (!profile?.user_id) return null;
+      // Try both profile.user_id and user.id for compatibility
+      const userId = profile?.user_id || user?.id;
+      if (!userId) return null;
+
+      console.log('EOD: Fetching driver info for user:', userId);
 
       // Get driver profile with van information
       const { data: driverProfile, error: driverError } = await supabase
@@ -58,10 +62,20 @@ const EndOfDay = () => {
           profiles!inner(first_name, last_name),
           vans(registration, make, model)
         `)
-        .eq('user_id', profile.user_id)
-        .single();
+        .eq('user_id', userId)
+        .maybeSingle();
 
-      if (driverError) throw driverError;
+      if (driverError) {
+        console.error('EOD: Error fetching driver profile:', driverError);
+        throw driverError;
+      }
+
+      if (!driverProfile) {
+        console.log('EOD: No driver profile found for user:', userId);
+        return null;
+      }
+
+      console.log('EOD: Driver profile found:', driverProfile);
 
       // Get today's assigned rounds/schedule
       const today = new Date().toISOString().split('T')[0];
@@ -74,7 +88,12 @@ const EndOfDay = () => {
         .eq('driver_id', driverProfile.id)
         .eq('scheduled_date', today);
 
-      if (scheduleError) throw scheduleError;
+      if (scheduleError) {
+        console.error('EOD: Error fetching schedules:', scheduleError);
+        throw scheduleError;
+      }
+
+      console.log('EOD: Schedules found:', schedules);
 
       return {
         driverProfile,
@@ -85,7 +104,7 @@ const EndOfDay = () => {
         roundNumbers: schedules?.map(s => s.rounds?.round_number).filter(Boolean) || []
       };
     },
-    enabled: !!profile?.user_id,
+    enabled: !!(profile?.user_id || user?.id),
   });
 
   const today = new Date().toISOString().split('T')[0];
