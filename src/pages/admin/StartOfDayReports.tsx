@@ -10,7 +10,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Package, Eye, Search, Filter, Download, Calendar, ChevronLeft, ChevronRight, AlertTriangle, CheckCircle, X, Edit, FileText } from 'lucide-react';
+import { Package, Eye, Search, Filter, Download, Calendar, ChevronLeft, ChevronRight, AlertTriangle, CheckCircle, X, Edit, FileText, RefreshCw } from 'lucide-react';
+import { SODEditModal } from '@/components/admin/SODEditModal';
+import { ReprocessButton } from '@/components/admin/ReprocessButton';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { format, startOfDay, endOfDay, addDays, subDays, parseISO, isToday, differenceInDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth, addWeeks, subWeeks, addMonths, subMonths } from 'date-fns';
@@ -228,37 +230,7 @@ const StartOfDayReports = () => {
     }
   });
 
-  // Update report mutation
-  const updateReportMutation = useMutation({
-    mutationFn: async (data: any) => {
-      const { error } = await supabase
-        .from('start_of_day_reports')
-        .update({
-          driver_name: data.driver_name,
-          round_number: data.round_number,
-          extracted_round_number: data.extracted_round_number,
-          heavy_parcels: parseInt(data.heavy_parcels) || 0,
-          standard: parseInt(data.standard) || 0,
-          hanging_garments: parseInt(data.hanging_garments) || 0,
-          packets: parseInt(data.packets) || 0,
-          small_packets: parseInt(data.small_packets) || 0,
-          postables: parseInt(data.postables) || 0,
-          processing_status: data.processing_status
-        })
-        .eq('id', data.id);
-      
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      toast({
-        title: "Report updated successfully",
-        description: "The SOD report has been updated.",
-      });
-      queryClient.invalidateQueries({ queryKey: ['sod-reports'] });
-      setEditDialogOpen(false);
-      setEditingReport(null);
-    }
-  });
+  // This mutation is now handled by the SODEditModal component
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -594,10 +566,9 @@ const StartOfDayReports = () => {
                              <TableCell className="text-center">{report.postables || 0}</TableCell>
                              <TableCell>{getStatusBadge(report.processing_status)}</TableCell>
                              <TableCell>{getValidationBadge(report)}</TableCell>
-                             <TableCell>
-                              {report.screenshot_url && (
-                                <Dialog>
-                                  <DialogTrigger asChild>
+                              <TableCell>
+                                <div className="flex items-center space-x-2">
+                                  {report.screenshot_url && (
                                     <Button 
                                       variant="outline" 
                                       size="sm"
@@ -605,24 +576,25 @@ const StartOfDayReports = () => {
                                     >
                                       <Eye className="h-4 w-4" />
                                     </Button>
-                                  </DialogTrigger>
-                                  <DialogContent className="max-w-4xl">
-                                    <DialogHeader>
-                                      <DialogTitle>Manifest Screenshot - {report.driver_name}</DialogTitle>
-                                    </DialogHeader>
-                                    <div className="flex justify-center">
-                                      {previewImage && (
-                                        <img 
-                                          src={previewImage} 
-                                          alt="Manifest screenshot" 
-                                          className="max-h-96 object-contain rounded-lg"
-                                        />
-                                      )}
-                                    </div>
-                                  </DialogContent>
-                                </Dialog>
-                              )}
-                            </TableCell>
+                                  )}
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                      setEditingReport(report);
+                                      setEditDialogOpen(true);
+                                    }}
+                                  >
+                                    <Edit className="h-4 w-4" />
+                                  </Button>
+                                  <ReprocessButton
+                                    reportId={report.id}
+                                    screenshotPath={report.screenshot_url}
+                                    type="sod"
+                                    size="sm"
+                                  />
+                                </div>
+                              </TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
@@ -752,161 +724,11 @@ const StartOfDayReports = () => {
         </Dialog>
 
         {/* Edit Report Dialog */}
-        <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle className="flex items-center">
-                <Edit className="h-5 w-5 text-primary mr-2" />
-                Edit SOD Report - {editingReport?.driver_name}
-              </DialogTitle>
-              <DialogDescription>
-                Edit the details of this Start of Day report
-              </DialogDescription>
-            </DialogHeader>
-            
-            {editingReport && (
-              <form onSubmit={(e) => {
-                e.preventDefault();
-                const formData = new FormData(e.target as HTMLFormElement);
-                const data = Object.fromEntries(formData.entries());
-                updateReportMutation.mutate({ ...data, id: editingReport.id });
-              }}>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Driver Information */}
-                  <div className="space-y-4">
-                    <h4 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground">Driver Information</h4>
-                    <div className="space-y-2">
-                      <Label htmlFor="driver_name">Driver Name</Label>
-                      <Input
-                        id="driver_name"
-                        name="driver_name"
-                        defaultValue={editingReport.driver_name}
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  {/* Round Information */}
-                  <div className="space-y-4">
-                    <h4 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground">Round Information</h4>
-                    <div className="space-y-2">
-                      <Label htmlFor="round_number">Selected Round</Label>
-                      <Input
-                        id="round_number"
-                        name="round_number"
-                        defaultValue={editingReport.round_number}
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="extracted_round_number">Detected Round</Label>
-                      <Input
-                        id="extracted_round_number"
-                        name="extracted_round_number"
-                        defaultValue={editingReport.extracted_round_number || ''}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Parcel Counts */}
-                  <div className="space-y-4">
-                    <h4 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground">Parcel Types</h4>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="heavy_parcels">Heavy Parcels</Label>
-                        <Input
-                          id="heavy_parcels"
-                          name="heavy_parcels"
-                          type="number"
-                          min="0"
-                          defaultValue={editingReport.heavy_parcels || 0}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="standard">Standard</Label>
-                        <Input
-                          id="standard"
-                          name="standard"
-                          type="number"
-                          min="0"
-                          defaultValue={editingReport.standard || 0}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="hanging_garments">Hanging Garments</Label>
-                        <Input
-                          id="hanging_garments"
-                          name="hanging_garments"
-                          type="number"
-                          min="0"
-                          defaultValue={editingReport.hanging_garments || 0}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="packets">Packets</Label>
-                        <Input
-                          id="packets"
-                          name="packets"
-                          type="number"
-                          min="0"
-                          defaultValue={editingReport.packets || 0}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="small_packets">Small Packets</Label>
-                        <Input
-                          id="small_packets"
-                          name="small_packets"
-                          type="number"
-                          min="0"
-                          defaultValue={editingReport.small_packets || 0}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="postables">Postables</Label>
-                        <Input
-                          id="postables"
-                          name="postables"
-                          type="number"
-                          min="0"
-                          defaultValue={editingReport.postables || 0}
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Status */}
-                  <div className="space-y-4">
-                    <h4 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground">Status</h4>
-                    <div className="space-y-2">
-                      <Label htmlFor="processing_status">Processing Status</Label>
-                      <Select name="processing_status" defaultValue={editingReport.processing_status}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="pending">Pending</SelectItem>
-                          <SelectItem value="processing">Processing</SelectItem>
-                          <SelectItem value="completed">Completed</SelectItem>
-                          <SelectItem value="failed">Failed</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                </div>
-
-                <DialogFooter className="mt-6">
-                  <Button variant="outline" type="button" onClick={() => setEditDialogOpen(false)}>
-                    Cancel
-                  </Button>
-                  <Button type="submit" disabled={updateReportMutation.isPending}>
-                    {updateReportMutation.isPending ? 'Saving...' : 'Save Changes'}
-                  </Button>
-                </DialogFooter>
-              </form>
-            )}
-          </DialogContent>
-        </Dialog>
+        <SODEditModal
+          open={editDialogOpen}
+          onOpenChange={setEditDialogOpen}
+          report={editingReport}
+        />
       </SidebarProvider>
     );
   };

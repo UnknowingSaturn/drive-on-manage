@@ -9,7 +9,9 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Calendar, Download, FileText, Search, ChevronLeft, ChevronRight, Eye } from 'lucide-react';
+import { Calendar, Download, FileText, Search, ChevronLeft, ChevronRight, Eye, Edit, RefreshCw } from 'lucide-react';
+import { EODEditModal } from '@/components/admin/EODEditModal';
+import { ReprocessButton } from '@/components/admin/ReprocessButton';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
@@ -49,6 +51,8 @@ const EODReports = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [viewType, setViewType] = useState<ViewType>('daily');
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editingReport, setEditingReport] = useState<any>(null);
 
   // Fetch user companies
   const { data: userCompanies } = useQuery({
@@ -107,9 +111,9 @@ const EODReports = () => {
 
   // Fetch EOD reports for the current date range
   const { data: reports = [], isLoading } = useQuery({
-    queryKey: ['eod-reports', profile?.company_id, dateRange.start, dateRange.end, selectedDriver, viewType],
+    queryKey: ['eod-reports', companyIds, dateRange.start, dateRange.end, selectedDriver, viewType],
     queryFn: async () => {
-      if (!profile?.company_id) return [];
+      if (companyIds.length === 0) return [];
       
       let query = supabase
         .from('end_of_day_reports')
@@ -133,8 +137,8 @@ const EODReports = () => {
           company_id
         `);
 
-      // Filter by company directly and add date filters  
-      query = query.eq('company_id', profile.company_id);
+      // Filter by company IDs and add date filters  
+      query = query.in('company_id', companyIds);
 
       if (viewType === 'daily') {
         query = query
@@ -156,7 +160,7 @@ const EODReports = () => {
       if (error) throw error;
       return data || [];
     },
-    enabled: !!profile?.company_id
+    enabled: companyIds.length > 0
   });
 
   // Filter reports based on search term
@@ -422,15 +426,33 @@ const EODReports = () => {
                             </Badge>
                           </TableCell>
                            <TableCell>
-                             {report.screenshot_path && (
+                             <div className="flex items-center space-x-2">
+                               {report.screenshot_path && (
+                                 <Button
+                                   variant="outline"
+                                   size="sm"
+                                   onClick={() => viewScreenshot(report.screenshot_path!)}
+                                 >
+                                   <Eye className="h-4 w-4" />
+                                 </Button>
+                               )}
                                <Button
                                  variant="outline"
                                  size="sm"
-                                 onClick={() => viewScreenshot(report.screenshot_path!)}
+                                 onClick={() => {
+                                   setEditingReport(report);
+                                   setEditDialogOpen(true);
+                                 }}
                                >
-                                 <Eye className="h-4 w-4" />
+                                 <Edit className="h-4 w-4" />
                                </Button>
-                             )}
+                               <ReprocessButton
+                                 reportId={report.id}
+                                 screenshotPath={report.screenshot_path}
+                                 type="eod"
+                                 size="sm"
+                               />
+                             </div>
                            </TableCell>
                         </TableRow>
                       ))}
@@ -461,6 +483,13 @@ const EODReports = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Edit Report Dialog */}
+      <EODEditModal
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+        report={editingReport}
+      />
     </SidebarProvider>
   );
 };
