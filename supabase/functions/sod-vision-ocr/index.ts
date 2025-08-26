@@ -77,7 +77,7 @@ serve(async (req) => {
     }
 
     const imageBuffer = await imageResponse.arrayBuffer();
-    const base64Image = btoa(String.fromCharCode(...new Uint8Array(imageBuffer)));
+    const base64Image = arrayBufferToBase64(imageBuffer);
 
     // Call Google Vision API
     console.log('Calling Google Vision API for SOD text detection');
@@ -179,6 +179,20 @@ serve(async (req) => {
     );
   }
 });
+
+// Safe base64 conversion for large images
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  const chunkSize = 8192; // Process in chunks to avoid stack overflow
+  let binary = '';
+  
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    const chunk = bytes.slice(i, i + chunkSize);
+    binary += String.fromCharCode(...chunk);
+  }
+  
+  return btoa(binary);
+}
 
 async function updateReportStatus(
   supabaseClient: any,
