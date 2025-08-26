@@ -125,25 +125,24 @@ const TeamManagement = () => {
   // Remove team member mutation
   const removeMemberMutation = useMutation({
     mutationFn: async (userId: string) => {
-      // Remove from user_companies
-      const { error } = await supabase
-        .from('user_companies')
-        .delete()
-        .eq('user_id', userId)
-        .eq('company_id', profile?.company_id);
+      if (!profile?.company_id) throw new Error('No company ID');
+
+      const { data, error } = await supabase.functions.invoke('delete-user', {
+        body: {
+          userId: userId,
+          companyId: profile.company_id
+        }
+      });
 
       if (error) throw error;
-
-      // Deactivate the profile
-      await supabase
-        .from('profiles')
-        .update({ is_active: false })
-        .eq('user_id', userId);
+      return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       toast({
         title: "Team member removed",
-        description: "The team member has been removed from your company.",
+        description: data.deleted_from_auth 
+          ? "The team member has been completely removed from the system."
+          : "The team member has been removed from your company.",
       });
       queryClient.invalidateQueries({ queryKey: ['team-members'] });
     },
