@@ -175,31 +175,37 @@ const StaffSection = ({
   // Remove team member mutation
   const removeMemberMutation = useMutation({
     mutationFn: async (userId: string) => {
-      // Remove from user_companies
-      const {
-        error
-      } = await supabase.from('user_companies').delete().eq('user_id', userId).eq('company_id', profile?.company_id);
-      if (error) throw error;
+      if (!profile?.company_id) throw new Error('No company ID');
 
-      // Deactivate the profile
-      await supabase.from('profiles').update({
-        is_active: false
-      }).eq('user_id', userId);
+      const { data, error } = await supabase.functions.invoke('delete-user', {
+        body: {
+          userId: userId,
+          companyId: profile.company_id
+        }
+      });
+
+      if (error) throw error;
+      return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       toast({
-        title: "Team member removed",
-        description: "The team member has been removed from your company."
+        title: "Staff member removed",
+        description: data.deleted_from_auth 
+          ? "The staff member has been completely removed from the system."
+          : "The staff member has been removed from your company.",
       });
-      queryClient.invalidateQueries({
-        queryKey: ['team-members']
-      });
+      queryClient.invalidateQueries({ queryKey: ['team-members'] });
+      // Also trigger a manual refetch to ensure UI updates
+      setTimeout(() => {
+        refetch();
+      }, 500);
     },
     onError: (error: any) => {
+      console.error('Remove member error:', error);
       toast({
-        title: "Error removing team member",
-        description: error.message,
-        variant: "destructive"
+        title: "Error removing staff member",
+        description: error.message || "Failed to remove staff member. Please try again.",
+        variant: "destructive",
       });
     }
   });
