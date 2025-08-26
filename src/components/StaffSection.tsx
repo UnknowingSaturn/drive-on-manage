@@ -60,19 +60,14 @@ const StaffSection = ({
       const {
         data: userCompaniesData,
         error: userCompaniesError
-      } = await supabase
-        .from('user_companies')
-        .select('id, user_id, role, created_at')
-        .eq('company_id', profile.company_id)
-        .neq('user_id', profile.user_id) // Exclude current user
-        .in('role', ['admin', 'supervisor'])
-        .order('created_at', { ascending: false });
-
+      } = await supabase.from('user_companies').select('id, user_id, role, created_at').eq('company_id', profile.company_id).neq('user_id', profile.user_id) // Exclude current user
+      .in('role', ['admin', 'supervisor']).order('created_at', {
+        ascending: false
+      });
       if (userCompaniesError) {
         console.error('User companies query error:', userCompaniesError);
         throw userCompaniesError;
       }
-
       if (!userCompaniesData || userCompaniesData.length === 0) {
         console.log('No team members found');
         return [];
@@ -85,11 +80,7 @@ const StaffSection = ({
       const {
         data: profilesData,
         error: profilesError
-      } = await supabase
-        .from('profiles')
-        .select('user_id, first_name, last_name, email, is_active, created_at, user_type')
-        .in('user_id', userIds)
-        .in('user_type', ['admin', 'supervisor']); // Ensure user_type matches role
+      } = await supabase.from('profiles').select('user_id, first_name, last_name, email, is_active, created_at, user_type').in('user_id', userIds).in('user_type', ['admin', 'supervisor']); // Ensure user_type matches role
 
       if (profilesError) {
         console.error('Profiles query error:', profilesError);
@@ -97,22 +88,20 @@ const StaffSection = ({
       }
 
       // Combine the data - only include users who have matching profiles
-      const transformedData = userCompaniesData
-        .map(uc => {
-          const userProfile = profilesData?.find(p => p.user_id === uc.user_id);
-          if (!userProfile) return null; // Skip if no matching profile found
-          return {
-            id: uc.id,
-            user_id: uc.user_id,
-            first_name: userProfile.first_name || 'Unknown',
-            last_name: userProfile.last_name || 'User',
-            email: userProfile.email || 'No email',
-            role: uc.role,
-            is_active: userProfile.is_active || false,
-            created_at: userProfile.created_at || uc.created_at
-          };
-        })
-        .filter(Boolean) as TeamMember[]; // Remove null entries
+      const transformedData = userCompaniesData.map(uc => {
+        const userProfile = profilesData?.find(p => p.user_id === uc.user_id);
+        if (!userProfile) return null; // Skip if no matching profile found
+        return {
+          id: uc.id,
+          user_id: uc.user_id,
+          first_name: userProfile.first_name || 'Unknown',
+          last_name: userProfile.last_name || 'User',
+          email: userProfile.email || 'No email',
+          role: uc.role,
+          is_active: userProfile.is_active || false,
+          created_at: userProfile.created_at || uc.created_at
+        };
+      }).filter(Boolean) as TeamMember[]; // Remove null entries
 
       console.log('Transformed team members:', transformedData);
       return transformedData;
@@ -176,25 +165,26 @@ const StaffSection = ({
   const removeMemberMutation = useMutation({
     mutationFn: async (userId: string) => {
       if (!profile?.company_id) throw new Error('No company ID');
-
-      const { data, error } = await supabase.functions.invoke('delete-user', {
+      const {
+        data,
+        error
+      } = await supabase.functions.invoke('delete-user', {
         body: {
           userId: userId,
           companyId: profile.company_id
         }
       });
-
       if (error) throw error;
       return data;
     },
-    onSuccess: (data) => {
+    onSuccess: data => {
       toast({
         title: "Staff member removed",
-        description: data.deleted_from_auth 
-          ? "The staff member has been completely removed from the system."
-          : "The staff member has been removed from your company.",
+        description: data.deleted_from_auth ? "The staff member has been completely removed from the system." : "The staff member has been removed from your company."
       });
-      queryClient.invalidateQueries({ queryKey: ['team-members'] });
+      queryClient.invalidateQueries({
+        queryKey: ['team-members']
+      });
       // Also trigger a manual refetch to ensure UI updates
       setTimeout(() => {
         refetch();
@@ -205,7 +195,7 @@ const StaffSection = ({
       toast({
         title: "Error removing staff member",
         description: error.message || "Failed to remove staff member. Please try again.",
-        variant: "destructive",
+        variant: "destructive"
       });
     }
   });
@@ -323,16 +313,7 @@ const StaffSection = ({
           </div>
         </CardHeader>
         <CardContent>
-          <Alert className="mb-4">
-            
-            <AlertDescription>
-              <strong>Email Configuration Required:</strong> To send login credentials to staff members, you need to verify your domain at{' '}
-              <a href="https://resend.com/domains" target="_blank" rel="noopener noreferrer" className="underline">
-                resend.com/domains
-              </a>{' '}
-              and update the email configuration in your edge functions.
-            </AlertDescription>
-          </Alert>
+          
 
           {teamMembers && teamMembers.length > 0 ? <div>
               <div className="flex items-center justify-between mb-4">
