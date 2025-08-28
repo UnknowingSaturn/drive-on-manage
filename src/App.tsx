@@ -172,6 +172,7 @@ const App = () => (
                 </AdminRoute>
               </ProtectedRoute>
             } />
+            
             <Route path="/driver/end-of-day" element={
               <ProtectedRoute>
                 <DriverOnboardingGate>
